@@ -1,4 +1,14 @@
 node_modules/
 dist/
+coverage/
+
+# Environment files — never commit these, only the .env.example templates
 .env
+
+# Logs
+*.log
+
+# Editors / OS
+.vscode/
+.idea/
 .DS_Store
