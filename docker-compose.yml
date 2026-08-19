@@ -1,0 +1,27 @@
+services:
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "${DB_PORT}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      # Scripts here run automatically the first time the container is created.
+      - ./docker/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      # Uses TCP (127.0.0.1) on purpose: during initialisation MySQL runs a
+      # temporary socket-only server, so a socket ping would report "ready" too early.
+      test:
+        ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+volumes:
+  mysql_data:
