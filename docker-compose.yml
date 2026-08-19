@@ -1,27 +1,57 @@
 services:
-  mysql:
-    image: mysql:8.0
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${DB_NAME}
-      MYSQL_USER: ${DB_USER}
-      MYSQL_PASSWORD: ${DB_PASSWORD}
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${DB_SA_PASSWORD}
+      # Developer edition is free for local development.
+      MSSQL_PID: Developer
     ports:
-      - "${DB_PORT}:3306"
+      - "${DB_PORT}:1433"
     volumes:
-      - mysql_data:/var/lib/mysql
-      # Scripts here run automatically the first time the container is created.
-      - ./docker/init:/docker-entrypoint-initdb.d:ro
+      - mssql_data:/var/opt/mssql
     healthcheck:
-      # Uses TCP (127.0.0.1) on purpose: during initialisation MySQL runs a
-      # temporary socket-only server, so a socket ping would report "ready" too early.
+      # The tools moved to mssql-tools18 in newer images, so try both paths.
       test:
-        ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
-      interval: 5s
+        - CMD-SHELL
+        - >
+          if [ -x /opt/mssql-tools18/bin/sqlcmd ]; then
+            /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$$MSSQL_SA_PASSWORD" -Q "SELECT 1";
+          else
+            /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$$MSSQL_SA_PASSWORD" -Q "SELECT 1";
+          fi
+      interval: 10s
       timeout: 5s
       retries: 20
       start_period: 30s
 
+  # One-shot container: creates the application database and login, then exits.
+  # The SQL Server image has no /docker-entrypoint-initdb.d equivalent.
+  mssql-init:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    depends_on:
+      mssql:
+        condition: service_healthy
+    environment:
+      MSSQL_SA_PASSWORD: ${DB_SA_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - ./docker/init:/init:ro
+    entrypoint:
+      - /bin/bash
+      - -c
+      - >
+        if [ -x /opt/mssql-tools18/bin/sqlcmd ]; then
+          SQLCMD="/opt/mssql-tools18/bin/sqlcmd -C";
+        else
+          SQLCMD="/opt/mssql-tools/bin/sqlcmd";
+        fi;
+        $$SQLCMD -S mssql -U sa -P "$$MSSQL_SA_PASSWORD" -b -i /init/01-init.sql
+        -v DbName="$$DB_NAME" DbUser="$$DB_USER" DbPassword="$$DB_PASSWORD"
+    restart: "no"
+
 volumes:
-  mysql_data:
+  mssql_data:

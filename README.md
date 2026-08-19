@@ -9,12 +9,12 @@ Modular web application for project, task, budget, and documentation management 
 ## Tech Stack
 - **Frontend:** React + TypeScript (Vite)
 - **Backend:** NestJS (TypeScript)
-- **Database:** MySQL 8 + Prisma ORM
-- **Local database:** runs in Docker (no local MySQL installation needed)
+- **Database:** SQL Server 2022 + Prisma ORM
+- **Local database:** runs in Docker (no local SQL Server installation needed)
 
 ## Prerequisites
 - [Node.js](https://nodejs.org/) **22 or newer** (the exact major is pinned in `.nvmrc`; with [nvm](https://github.com/nvm-sh/nvm) just run `nvm use`)
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) — must be running before you start the database
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) — must be running before you start the database. The SQL Server image is about 1.5 GB and the container needs at least 2 GB of RAM, so make sure Docker Desktop is allowed that much.
 
 ## How to run locally
 
@@ -39,9 +39,9 @@ On macOS/Linux use `cp` instead of `Copy-Item`.
 
 > These `.env` files are gitignored — never commit them. Only the `.env.example` templates belong in the repository.
 
-> ⚠️ If you change any `DB_*` value in the root `.env`, you must update `DATABASE_URL` in `backend/.env` to match — the root file configures the MySQL container, `backend/.env` tells Prisma how to reach it. Mismatched values are the most common cause of "backend won't connect".
+> ⚠️ If you change any `DB_*` value in the root `.env`, you must update `DATABASE_URL` in `backend/.env` to match — the root file configures the SQL Server container, `backend/.env` tells Prisma how to reach it. Mismatched values are the most common cause of "backend won't connect".
 
-### 3. Start the MySQL database
+### 3. Start the SQL Server database
 
 Make sure Docker Desktop is running, then:
 
@@ -49,9 +49,9 @@ Make sure Docker Desktop is running, then:
 docker compose up -d --wait
 ```
 
-This starts MySQL 8 in a container on port `3306`. Data is kept in a Docker volume, so it survives restarts.
+This starts SQL Server 2022 in a container on port `1433`. Data is kept in a Docker volume, so it survives restarts.
 
-The first run takes about 30 seconds, because MySQL has to initialise the database and apply the grants in `docker/init/`. The `--wait` flag holds the terminal until the container reports **healthy**, so you can safely run the next step as soon as it returns.
+The very first run takes several minutes, because Docker has to download the SQL Server image (~1.5 GB). After that it is roughly a minute, because SQL Server initialises itself and then `docker/init/01-init.sql` creates the application database and login. The `--wait` flag holds the terminal until everything is ready, so you can safely run the next step as soon as it returns.
 
 Check the status at any time:
 
@@ -105,21 +105,40 @@ Runs at http://localhost:5173 — you should see "Hello World" and `Backend: ✅
 │   ├── prisma/       Prisma schema and migrations
 │   └── src/          Application code
 ├── frontend/         React + Vite app
-├── docker/init/      SQL/shell scripts run once when the DB container is created
-├── docker-compose.yml    MySQL container definition
+├── docker/init/      SQL script that creates the database and application login
+├── docker-compose.yml    SQL Server container definition
 ├── .nvmrc            Node version used by the team
 └── .env.example      Database credentials used by docker-compose
 ```
 
 ## Troubleshooting
 
+**`the URL must start with the protocol sqlserver://`** — your local `backend/.env` still holds the old MySQL connection string. The `.env` files are gitignored, so `git pull` cannot update them. Re-copy the templates:
+
+```powershell
+Copy-Item .env.example .env -Force
+Copy-Item backend/.env.example backend/.env -Force
+```
+
+Then remove the old MySQL container and volume, and start the new one:
+
+```bash
+docker compose down -v --remove-orphans
+docker volume rm bieszczady_mysql_data
+docker compose up -d --wait
+```
+
 **`error during connect ... dockerDesktopLinuxEngine`** — Docker Desktop is not running. Start it and wait until it reports "running", then retry.
 
-**Backend crashes on start with a Prisma connection error** — the database is not ready or not running. Check `docker compose ps`; the `mysql` service must say `healthy`. If it does not exist, run `docker compose up -d --wait`.
+**Backend crashes on start with a Prisma connection error** — the database is not ready or not running. Check `docker compose ps`; the `mssql` service must say `healthy`. If it does not exist, run `docker compose up -d --wait`.
 
-**`P3014` / shadow database error** — the grants in `docker/init/` only run when the container is created for the very first time. If your volume predates that script, recreate it with `docker compose down -v && docker compose up -d --wait` (this deletes all local data).
+**`P3014` / shadow database error** — Prisma Migrate could not create its temporary shadow database. The `dbcreator` role is granted by `docker/init/01-init.sql`, which runs against a fresh container. If your volume predates that script, recreate it with `docker compose down -v && docker compose up -d --wait` (this deletes all local data).
 
-**`Access denied for user` / backend connects to the wrong database** — `DATABASE_URL` in `backend/.env` does not match the `DB_*` values in the root `.env`.
+**`Login failed for user` / backend connects to the wrong database** — `DATABASE_URL` in `backend/.env` does not match the `DB_*` values in the root `.env`.
+
+**`Password validation failed` when the container starts** — SQL Server rejects weak SA passwords. `DB_SA_PASSWORD` must be at least 8 characters and mix upper case, lower case, digits and a symbol.
+
+**`certificate chain was issued by an authority that is not trusted`** — `DATABASE_URL` is missing `trustServerCertificate=true`. The local container uses a self-signed certificate.
 
 **Frontend shows `❌ brak połączenia`** — the backend is not running, or `VITE_API_URL` in `frontend/.env` does not match the backend address. The `/health` endpoint returns HTTP 503 when the database is unreachable, so this also appears when the backend is up but the database is not.
 
