@@ -9,3 +9,36 @@ datasource db {
   provider = "sqlserver"
   url      = env("DATABASE_URL")
 }
+
+enum Role {
+  DIRECTOR
+  COORDINATOR
+  EXECUTOR
+  PARTNER
+}
+
+enum AccountStatus {
+  ACTIVE
+  INACTIVE
+  DELETED
+}
+
+model User {
+  id                 String        @id @default(cuid())
+  firstName          String        @map("first_name")
+  lastName           String        @map("last_name")
+  email              String        @unique
+  phone              String?
+  passwordHash       String        @map("password_hash")
+  avatar             String?
+  role               Role
+  accountStatus      AccountStatus @default(ACTIVE) @map("account_status")
+  mustChangePassword Boolean       @default(true) @map("must_change_password")
+  lastLogin          DateTime?     @map("last_login")
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt          DateTime      @updatedAt @map("updated_at")
+  deletedAt          DateTime?     @map("deleted_at")
+
+  @@map("users")
+}
+
