@@ -3,14 +3,17 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 @Injectable()
 export class AuthService {
+  // tymczasowe dane do czasu wdrożenia modelu User
   private readonly users = [
     {
       id: '1',
+      firstName: 'Jan',
+      lastName: 'Kowalski',
       email: 'test@example.com',
       passwordHash:
         '$2b$10$4EhmxWW38ZDsw4eFtRKIZeQ1JKnzjdO4A8.qtUHhxqerUo6/fklmm',
       role: 'DIRECTOR',
-      status: 'ACTIVE',
+      accountStatus: 'ACTIVE',
       mustChangePassword: false,
     },
   ];
@@ -26,7 +29,7 @@ export class AuthService {
     const user = this.findByEmail(email);
     if (!user) {
       return null;
-    } else if (user.status !== 'ACTIVE') {
+    } else if (user.accountStatus !== 'ACTIVE') {
       return null;
     }
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
@@ -36,8 +39,10 @@ export class AuthService {
       return {
         id: user.id,
         email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
         role: user.role,
-        status: user.status,
+        accountStatus: user.accountStatus,
         mustChangePassword: user.mustChangePassword,
       };
     }
