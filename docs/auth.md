@@ -19,7 +19,7 @@ The refresh token lives in an `httpOnly` cookie, which JavaScript cannot read at
 Every authenticated request needs two things:
 
 ```js
-fetch('/api/v1/users/me', {
+fetch('/api/v1/auth/me', {
   headers: { Authorization: `Bearer ${accessToken}` },
   credentials: 'include',
 });
@@ -67,3 +67,5 @@ GET  /api/v1/auth/me        (Bearer token)        →  user
 - **The refresh cookie is scoped to `/api/v1/auth/refresh`.** The browser will not send it to any other path. That is deliberate.
 - **CORS:** the API only accepts requests from the origin set in `CORS_ORIGIN` (`http://localhost:5173` in development). A different port means the request is rejected before it reaches any of this.
 - **`mustChangePassword: true`** means the user is still on an admin-issued password and must set their own before doing anything else.
+- **`sameSite: 'strict'` and production domains:** the refresh cookie is only sent when the request comes from the same site. This is fine in development (`localhost:5173` → `localhost:3000`). If the frontend and the API ever end up on genuinely different domains, the browser will silently stop sending the cookie and session refresh will break with no error anywhere. Check this before the first deployment.
+

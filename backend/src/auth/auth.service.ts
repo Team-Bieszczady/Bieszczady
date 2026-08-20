@@ -20,6 +20,8 @@ interface StoredUser {
   mustChangePassword: boolean;
 }
 
+// Compared against when no user matches, so a failed login takes the same
+// time whether the account exists or not (prevents user enumeration).
 const DUMMY_PASSWORD_HASH =
   '$2b$10$.DnJAlyzBFH.ZiGkQiy5nuQSUoaSpZzPYaAMj59yL4PEcXo/2xflW';
 
