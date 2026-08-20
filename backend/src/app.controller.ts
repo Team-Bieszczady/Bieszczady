@@ -20,8 +20,6 @@ export class AppController {
       await this.prisma.$queryRaw`SELECT 1`;
       return { status: 'ok' };
     } catch {
-      // 503 so that monitoring, load balancers and Docker healthchecks
-      // can tell a broken database apart from a healthy service.
       throw new ServiceUnavailableException({ status: 'error' });
     }
   }
