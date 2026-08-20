@@ -18,6 +18,9 @@ export class AuthService {
   findByEmail = (email: string) => {
     return this.users.find((el) => el.email === email);
   };
+  findById = (id: string) => {
+    return this.users.find((el) => el.id === id);
+  };
 
   async validateUser(email: string, password: string) {
     const user = this.findByEmail(email);
