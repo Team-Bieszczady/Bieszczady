@@ -16,3 +16,8 @@ export interface AuthenticatedUser {
   accountStatus: AccountStatus;
   mustChangePassword: boolean;
 }
+
+export interface AuthResponse {
+  accessToken: string;
+  user: AuthenticatedUser;
+}

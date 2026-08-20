@@ -14,8 +14,9 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
-import { type AuthenticatedUser } from './types/auth.types';
+import { type AuthenticatedUser, type AuthResponse } from './types/auth.types';
 import { type Request, type Response } from 'express';
+import { REFRESH_TOKEN_TTL_DAYS } from './refresh-token.service';
 
 const REFRESH_COOKIE = 'refresh_token';
 
@@ -24,7 +25,7 @@ const REFRESH_COOKIE_OPTIONS = {
   secure: process.env.NODE_ENV === 'production',
   sameSite: 'strict' as const,
   path: '/api/v1/auth/refresh',
-  maxAge: 7 * 24 * 60 * 60 * 1000,
+  maxAge: REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000,
 };
 
 @Controller('auth')
@@ -36,7 +37,7 @@ export class AuthController {
   async login(
     @Body() dto: LoginDto,
     @Res({ passthrough: true }) res: Response,
-  ) {
+  ): Promise<AuthResponse> {
     const { accessToken, refreshToken, user } = await this.authService.login(
       dto.email,
       dto.password,
@@ -52,7 +53,7 @@ export class AuthController {
   async refresh(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-  ) {
+  ): Promise<AuthResponse> {
     const cookies = req.cookies as Record<string, string | undefined>;
     const token = cookies?.[REFRESH_COOKIE];
 
@@ -70,7 +71,7 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  getMe(@CurrentUser() user: AuthenticatedUser) {
+  getMe(@CurrentUser() user: AuthenticatedUser): AuthenticatedUser {
     return user;
   }
 }

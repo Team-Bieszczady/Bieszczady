@@ -1,8 +1,7 @@
 import { Injectable } from '@nestjs/common';
+import { createHash, randomBytes } from 'node:crypto';
 
-import { createHash, randomBytes } from 'crypto';
-
-const REFRESH_TOKEN_TTL_DAYS = 7;
+export const REFRESH_TOKEN_TTL_DAYS = 7;
 
 interface StoredToken {
   userId: string;
@@ -13,6 +12,7 @@ interface StoredToken {
 @Injectable()
 export class RefreshTokenService {
   private readonly store = new Map<string, StoredToken>();
+
   issue(userId: string): string {
     const token = randomBytes(32).toString('hex');
     const expiresAt = new Date();

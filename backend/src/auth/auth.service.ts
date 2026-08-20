@@ -8,6 +8,7 @@ import {
   UserRole,
 } from './types/auth.types';
 import { RefreshTokenService } from './refresh-token.service';
+
 interface StoredUser {
   id: string;
   firstName: string;
@@ -18,14 +19,20 @@ interface StoredUser {
   accountStatus: AccountStatus;
   mustChangePassword: boolean;
 }
+
+const DUMMY_PASSWORD_HASH =
+  '$2b$10$.DnJAlyzBFH.ZiGkQiy5nuQSUoaSpZzPYaAMj59yL4PEcXo/2xflW';
+
 export interface LoginResult {
   accessToken: string;
   refreshToken: string;
   user: AuthenticatedUser;
 }
+
 @Injectable()
 export class AuthService {
-  //  tymczasowe dane, po zmergowaniu modelu User podmienić na Prismę.
+  // TODO(F0.3): tymczasowe dane, po zmergowaniu modelu User podmienić na Prismę.
+
   private readonly users: StoredUser[] = [
     {
       id: '1',
@@ -78,12 +85,13 @@ export class AuthService {
     password: string,
   ): Promise<AuthenticatedUser | null> {
     const user = this.findByEmail(email);
-    if (!user || user.accountStatus !== 'ACTIVE') {
-      return null;
-    }
 
-    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
-    if (!isPasswordValid) {
+    const isPasswordValid = await bcrypt.compare(
+      password,
+      user?.passwordHash ?? DUMMY_PASSWORD_HASH,
+    );
+
+    if (!user || !isPasswordValid || user.accountStatus !== 'ACTIVE') {
       return null;
     }
 
