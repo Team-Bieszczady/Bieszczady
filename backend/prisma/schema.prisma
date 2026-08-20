@@ -10,29 +10,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  DIRECTOR
-  COORDINATOR
-  EXECUTOR
-  PARTNER
-}
-
-enum AccountStatus {
-  ACTIVE
-  INACTIVE
-  DELETED
-}
-
 model User {
-  id                 String        @id @default(cuid())
-  firstName          String        @map("first_name")
-  lastName           String        @map("last_name")
-  email              String        @unique
+  id                 String   @id @default(uuid())
+  firstName          String   @map("first_name")
+  lastName           String   @map("last_name")
+  email              String   @unique
   phone              String?
-  passwordHash       String        @map("password_hash")
+  passwordHash       String   @map("password_hash")
   avatar             String?
-  role               Role
-  accountStatus      AccountStatus @default(ACTIVE) @map("account_status")
+  accountStatus      String   @default("ACTIVE") @map("account_status")
+  isDirector         Boolean       @default(false) @map("is_director")
   mustChangePassword Boolean       @default(true) @map("must_change_password")
   lastLogin          DateTime?     @map("last_login")
   createdAt          DateTime      @default(now()) @map("created_at")
@@ -40,5 +27,16 @@ model User {
   deletedAt          DateTime?     @map("deleted_at")
 
   @@map("users")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  actorId   String   @map("actor_id")
+  targetId  String   @map("target_id")
+  action    String
+  metadata  String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("audit_logs")
 }
 

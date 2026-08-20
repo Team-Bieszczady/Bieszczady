@@ -1,0 +1,5 @@
+export enum ProjectRole {
+  COORDINATOR = 'COORDINATOR',
+  EXECUTOR = 'EXECUTOR',
+  PARTNER = 'PARTNER',
+}

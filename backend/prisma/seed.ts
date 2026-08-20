@@ -4,69 +4,70 @@ import * as bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  const hashedPassword = await bcrypt.hash('ChangeMe123!', 10);
+  const passwordHash = await bcrypt.hash('ChangeMe123!', 10);
 
-  const users = [
+  const directors = [
     {
-      email: 'director@bieszczady.local',
+      email: 'director1@bieszczady.local',
       firstName: 'Director',
-      lastName: 'User',
-      passwordHash: hashedPassword,
-      role: 'DIRECTOR' as const,
-      accountStatus: 'ACTIVE' as const,
+      lastName: 'One',
     },
     {
-      email: 'coordinator@bieszczady.local',
-      firstName: 'Coordinator',
-      lastName: 'User',
-      passwordHash: hashedPassword,
-      role: 'COORDINATOR' as const,
-      accountStatus: 'ACTIVE' as const,
+      email: 'director2@bieszczady.local',
+      firstName: 'Director',
+      lastName: 'Two',
     },
     {
-      email: 'executor@bieszczady.local',
-      firstName: 'Executor',
-      lastName: 'User',
-      passwordHash: hashedPassword,
-      role: 'EXECUTOR' as const,
-      accountStatus: 'ACTIVE' as const,
+      email: 'director3@bieszczady.local',
+      firstName: 'Director',
+      lastName: 'Three',
     },
+  ];
+
+  for (const d of directors) {
+    await prisma.user.upsert({
+      where: { email: d.email },
+      update: {},
+      create: {
+        ...d,
+        passwordHash,
+        isDirector: true,
+        accountStatus: 'ACTIVE',
+      },
+    });
+  }
+
+  const regularUsers = [
     {
-      email: 'partner@bieszczady.local',
-      firstName: 'Partner',
+      email: 'active.user@bieszczady.local',
+      firstName: 'Active',
       lastName: 'User',
-      passwordHash: hashedPassword,
-      role: 'PARTNER' as const,
-      accountStatus: 'ACTIVE' as const,
+      accountStatus: 'ACTIVE',
     },
     {
       email: 'inactive.user@bieszczady.local',
       firstName: 'Inactive',
       lastName: 'User',
-      passwordHash: hashedPassword,
-      role: 'EXECUTOR' as const,
-      accountStatus: 'INACTIVE' as const,
+      accountStatus: 'INACTIVE',
     },
     {
       email: 'deleted.user@bieszczady.local',
       firstName: 'Deleted',
       lastName: 'User',
-      passwordHash: hashedPassword,
-      role: 'COORDINATOR' as const,
-      accountStatus: 'DELETED' as const,
+      accountStatus: 'ACTIVE',
       deletedAt: new Date(),
     },
   ];
 
-  for (const user of users) {
+  for (const u of regularUsers) {
     await prisma.user.upsert({
-      where: { email: user.email },
+      where: { email: u.email },
       update: {},
-      create: user,
+      create: { ...u, passwordHash, isDirector: false },
     });
   }
 
-  console.log('Seed completed. Created 6 sample users.');
+  console.log('Seed completed. Created 3 directors and 3 regular users.');
 }
 
 main()
