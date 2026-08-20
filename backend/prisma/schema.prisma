@@ -9,3 +9,34 @@ datasource db {
   provider = "sqlserver"
   url      = env("DATABASE_URL")
 }
+
+model User {
+  id                 String   @id @default(uuid())
+  firstName          String   @map("first_name")
+  lastName           String   @map("last_name")
+  email              String   @unique
+  phone              String?
+  passwordHash       String   @map("password_hash")
+  avatar             String?
+  accountStatus      String   @default("ACTIVE") @map("account_status")
+  isDirector         Boolean       @default(false) @map("is_director")
+  mustChangePassword Boolean       @default(true) @map("must_change_password")
+  lastLogin          DateTime?     @map("last_login")
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt          DateTime      @updatedAt @map("updated_at")
+  deletedAt          DateTime?     @map("deleted_at")
+
+  @@map("users")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  actorId   String   @map("actor_id")
+  targetId  String   @map("target_id")
+  action    String
+  metadata  String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("audit_logs")
+}
+
