@@ -1,22 +1,18 @@
 import {
   Body,
   Controller,
-  Get,
   HttpCode,
   HttpStatus,
   Post,
   Req,
   Res,
   UnauthorizedException,
-  UseGuards,
 } from '@nestjs/common';
 import { type CookieOptions, type Request, type Response } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { CurrentUser } from './decorators/current-user.decorator';
-import { type AuthenticatedUser, type AuthResponse } from './types/auth.types';
 import { REFRESH_TOKEN_TTL_DAYS } from './refresh-token.service';
+import { type AuthResponse } from './types/auth.types';
 
 const REFRESH_COOKIE = 'refresh_token';
 
@@ -69,10 +65,5 @@ export class AuthController {
     res.cookie(REFRESH_COOKIE, refreshToken, refreshCookieOptions());
 
     return { accessToken, user };
-  }
-  @UseGuards(JwtAuthGuard)
-  @Get('me')
-  getMe(@CurrentUser() user: AuthenticatedUser): AuthenticatedUser {
-    return user;
   }
 }
