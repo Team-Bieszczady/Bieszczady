@@ -10,11 +10,6 @@ How the frontend talks to the API. Read this before wiring up any request.
 | Stored in | **Memory only** (a variable / React state) | `httpOnly` cookie |
 | Frontend touches it? | Yes — you send it | **No** — you never see it |
 
-<<<<<<< HEAD
-=======
-**Never put the access token in `localStorage` or `sessionStorage`.** Anything stored there can be read by any script running on the page, so a single XSS bug hands an attacker a working token. Keeping it in memory means it disappears on page refresh — that is the point, not a bug. See *Page refresh* below.
-
->>>>>>> da2d384 (docs: describe auth transport for the frontend)
 The refresh token lives in an `httpOnly` cookie, which JavaScript cannot read at all. The browser attaches it automatically. There is nothing for you to store or manage.
 
 ## Sending requests
@@ -23,10 +18,14 @@ Every authenticated request needs two things:
 
 ```js
 <<<<<<< HEAD
+<<<<<<< HEAD
 fetch(`${import.meta.env.VITE_API_URL}/api/v1/auth/me`, {
 =======
 fetch('/api/v1/users/me', {
 >>>>>>> da2d384 (docs: describe auth transport for the frontend)
+=======
+fetch('/api/v1/auth/me', {
+>>>>>>> acb3f75 (refactor: tighten roles typing, export AuthService, document temporary storage)
   headers: { Authorization: `Bearer ${accessToken}` },
   credentials: 'include',
 });
@@ -99,8 +98,13 @@ GET  /api/v1/auth/me        (Bearer token)        →  user
 - **CORS:** the API only accepts requests from the origin set in `CORS_ORIGIN` (`http://localhost:5173` in development). A different port means the request is rejected before it reaches any of this.
 - **`mustChangePassword: true`** means the user is still on an admin-issued password and must set their own before doing anything else.
 <<<<<<< HEAD
+<<<<<<< HEAD
 - **`isDirector` is not a role.** It is a global admin flag, and it is the only permission this endpoint returns. Project roles (coordinator, executor, partner) are per-project and will arrive on a separate endpoint once projects exist — do not expect them here.
 - **`sameSite: 'strict'` and production domains:** the refresh cookie is only sent when the request comes from the same site. This is fine in development (`localhost:5173` → `localhost:3000`). If the frontend and the API ever end up on genuinely different domains, the browser will silently stop sending the cookie and session refresh will break with no error anywhere. Check this before the first deployment.
 
 =======
 >>>>>>> da2d384 (docs: describe auth transport for the frontend)
+=======
+- **`sameSite: 'strict'` and production domains:** the refresh cookie is only sent when the request comes from the same site. This is fine in development (`localhost:5173` → `localhost:3000`). If the frontend and the API ever end up on genuinely different domains, the browser will silently stop sending the cookie and session refresh will break with no error anywhere. Check this before the first deployment.
+
+>>>>>>> acb3f75 (refactor: tighten roles typing, export AuthService, document temporary storage)

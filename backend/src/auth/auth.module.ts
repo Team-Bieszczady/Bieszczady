@@ -20,7 +20,6 @@ import { UsersModule } from '../users/users.module';
     PassportModule,
     UsersModule,
   ],
-
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, RefreshTokenService],
   exports: [AuthService],
