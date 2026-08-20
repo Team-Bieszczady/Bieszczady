@@ -70,7 +70,6 @@ export class AuthController {
 
     return { accessToken, user };
   }
-
   @UseGuards(JwtAuthGuard)
   @Get('me')
   getMe(@CurrentUser() user: AuthenticatedUser): AuthenticatedUser {
