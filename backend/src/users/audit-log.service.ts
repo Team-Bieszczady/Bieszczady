@@ -5,7 +5,7 @@ interface AuditLogEntry {
   actorId: string;
   targetId: string;
   action: string;
-  metadata?: Record<string, unknown>;
+  metadata?: Record<string, string | number | boolean | null>;
 }
 
 @Injectable()

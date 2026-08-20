@@ -12,7 +12,7 @@ import { Request } from 'express';
  * x-user-id header mechanism entirely.
  */
 export const ActorId = createParamDecorator(
-  (_data: unknown, ctx: ExecutionContext): string => {
+  (_data: void, ctx: ExecutionContext): string => {
     const request = ctx.switchToHttp().getRequest<Request>();
     const actorId = request.headers['x-user-id'];
     if (typeof actorId !== 'string' || actorId.length === 0) {

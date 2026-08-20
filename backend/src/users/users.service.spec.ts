@@ -40,23 +40,30 @@ describe('UsersService', () => {
   };
 
   beforeEach(async () => {
+    const prismaMock = {
+      user: {
+        create: jest.fn(),
+        findFirst: jest.fn(),
+        findUnique: jest.fn(),
+        update: jest.fn(),
+        count: jest.fn(),
+      },
+      auditLog: {
+        create: jest.fn(),
+      },
+      $transaction: jest.fn(),
+    };
+    prismaMock.$transaction.mockImplementation(
+      <T>(cb: (tx: typeof prismaMock) => T | Promise<T>): Promise<T> =>
+        Promise.resolve(cb(prismaMock) as T),
+    );
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UsersService,
         {
           provide: PrismaService,
-          useValue: {
-            user: {
-              create: jest.fn(),
-              findFirst: jest.fn(),
-              findUnique: jest.fn(),
-              update: jest.fn(),
-              count: jest.fn(),
-            },
-            auditLog: {
-              create: jest.fn(),
-            },
-          },
+          useValue: prismaMock,
         },
         {
           provide: AuditLogService,

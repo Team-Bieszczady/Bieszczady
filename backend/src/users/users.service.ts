@@ -11,7 +11,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
-import { User, Prisma } from '@prisma/client';
+import { User, Prisma, PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { randomBytes } from 'node:crypto';
 import { AuditLogService } from './audit-log.service';
@@ -51,11 +51,12 @@ export class UsersService {
   }
 
   private async assertNotLastActiveDirector(
+    tx: PrismaClient,
     user: User,
     action: string,
   ): Promise<void> {
     if (user.isDirector && user.accountStatus === 'ACTIVE') {
-      const activeDirectorCount = await this.prisma.user.count({
+      const activeDirectorCount = await tx.user.count({
         where: { isDirector: true, accountStatus: 'ACTIVE', deletedAt: null },
       });
       if (activeDirectorCount <= 1) {
@@ -159,22 +160,31 @@ export class UsersService {
     id: string,
     status: string,
   ): Promise<Omit<User, 'passwordHash'>> {
-    const user = await this.prisma.user.findFirst({
-      where: { id, deletedAt: null },
-    });
+    const updated = await this.prisma.$transaction(
+      async (tx) => {
+        const user = await tx.user.findFirst({
+          where: { id, deletedAt: null },
+        });
 
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
+        if (!user) {
+          throw new NotFoundException('User not found');
+        }
 
-    if (status === 'INACTIVE') {
-      await this.assertNotLastActiveDirector(user, 'deactivate');
-    }
+        if (status === 'INACTIVE') {
+          await this.assertNotLastActiveDirector(
+            tx as PrismaClient,
+            user,
+            'deactivate',
+          );
+        }
 
-    const updated = await this.prisma.user.update({
-      where: { id },
-      data: { accountStatus: status },
-    });
+        return tx.user.update({
+          where: { id },
+          data: { accountStatus: status },
+        });
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
 
     return this.excludePasswordHash(updated);
   }
@@ -184,28 +194,39 @@ export class UsersService {
     targetId: string,
     isDirector: boolean,
   ): Promise<Omit<User, 'passwordHash'>> {
-    const target = await this.prisma.user.findFirst({
-      where: { id: targetId, deletedAt: null },
-    });
+    const result = await this.prisma.$transaction(
+      async (tx) => {
+        const target = await tx.user.findFirst({
+          where: { id: targetId, deletedAt: null },
+        });
 
-    if (!target) {
-      throw new NotFoundException('User not found');
-    }
+        if (!target) {
+          throw new NotFoundException('User not found');
+        }
 
-    if (actorId === targetId && !isDirector) {
-      throw new ForbiddenException(
-        'A director cannot revoke their own director status',
-      );
-    }
+        if (actorId === targetId && !isDirector) {
+          throw new ForbiddenException(
+            'A director cannot revoke their own director status',
+          );
+        }
 
-    if (!isDirector && target.isDirector) {
-      await this.assertNotLastActiveDirector(target, 'remove');
-    }
+        if (!isDirector && target.isDirector) {
+          await this.assertNotLastActiveDirector(
+            tx as PrismaClient,
+            target,
+            'remove',
+          );
+        }
 
-    const updated = await this.prisma.user.update({
-      where: { id: targetId },
-      data: { isDirector },
-    });
+        const updated = await tx.user.update({
+          where: { id: targetId },
+          data: { isDirector },
+        });
+
+        return { updated, previousIsDirector: target.isDirector };
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
 
     await this.auditLog.record({
       actorId,
@@ -213,10 +234,13 @@ export class UsersService {
       action: isDirector
         ? 'DIRECTOR_STATUS_GRANTED'
         : 'DIRECTOR_STATUS_REVOKED',
-      metadata: { previousValue: target.isDirector, newValue: isDirector },
+      metadata: {
+        previousValue: result.previousIsDirector,
+        newValue: isDirector,
+      },
     });
 
-    return this.excludePasswordHash(updated);
+    return this.excludePasswordHash(result.updated);
   }
 
   async changeOwnPassword(
@@ -240,19 +264,28 @@ export class UsersService {
   }
 
   async softDeleteUser(id: string): Promise<void> {
-    const user = await this.prisma.user.findFirst({
-      where: { id, deletedAt: null },
-    });
+    await this.prisma.$transaction(
+      async (tx) => {
+        const user = await tx.user.findFirst({
+          where: { id, deletedAt: null },
+        });
 
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
+        if (!user) {
+          throw new NotFoundException('User not found');
+        }
 
-    await this.assertNotLastActiveDirector(user, 'delete');
+        await this.assertNotLastActiveDirector(
+          tx as PrismaClient,
+          user,
+          'delete',
+        );
 
-    await this.prisma.user.update({
-      where: { id },
-      data: { deletedAt: new Date() },
-    });
+        await tx.user.update({
+          where: { id },
+          data: { deletedAt: new Date() },
+        });
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
   }
 }
