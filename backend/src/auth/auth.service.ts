@@ -1,10 +1,32 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import {
+  AccountStatus,
+  AuthenticatedUser,
+  JwtPayload,
+  UserRole,
+} from './types/auth.types';
+import { RefreshTokenService } from './refresh-token.service';
+interface StoredUser {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  passwordHash: string;
+  role: UserRole;
+  accountStatus: AccountStatus;
+  mustChangePassword: boolean;
+}
+export interface LoginResult {
+  accessToken: string;
+  refreshToken: string;
+  user: AuthenticatedUser;
+}
 @Injectable()
 export class AuthService {
-  // tymczasowe dane do czasu wdrożenia modelu User
-  private readonly users = [
+  //  tymczasowe dane, po zmergowaniu modelu User podmienić na Prismę.
+  private readonly users: StoredUser[] = [
     {
       id: '1',
       firstName: 'Jan',
@@ -17,44 +39,85 @@ export class AuthService {
       mustChangePassword: false,
     },
   ];
-  constructor(private readonly jwtService: JwtService) {}
-  findByEmail = (email: string) => {
-    return this.users.find((el) => el.email === email);
-  };
-  findById = (id: string) => {
-    return this.users.find((el) => el.id === id);
-  };
 
-  async validateUser(email: string, password: string) {
-    const user = this.findByEmail(email);
-    if (!user) {
-      return null;
-    } else if (user.accountStatus !== 'ACTIVE') {
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly refreshTokens: RefreshTokenService,
+  ) {}
+
+  private findByEmail(email: string): StoredUser | undefined {
+    return this.users.find((user) => user.email === email);
+  }
+
+  private findById(id: string): StoredUser | undefined {
+    return this.users.find((user) => user.id === id);
+  }
+
+  private toAuthenticatedUser(user: StoredUser): AuthenticatedUser {
+    return {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role,
+      accountStatus: user.accountStatus,
+      mustChangePassword: user.mustChangePassword,
+    };
+  }
+
+  getActiveUserById(id: string): AuthenticatedUser | null {
+    const user = this.findById(id);
+    if (!user || user.accountStatus !== 'ACTIVE') {
       return null;
     }
+    return this.toAuthenticatedUser(user);
+  }
+
+  async validateUser(
+    email: string,
+    password: string,
+  ): Promise<AuthenticatedUser | null> {
+    const user = this.findByEmail(email);
+    if (!user || user.accountStatus !== 'ACTIVE') {
+      return null;
+    }
+
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
     if (!isPasswordValid) {
       return null;
-    } else {
-      return {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role: user.role,
-        accountStatus: user.accountStatus,
-        mustChangePassword: user.mustChangePassword,
-      };
     }
+
+    return this.toAuthenticatedUser(user);
   }
-  async login(email: string, password: string) {
+
+  private async issueTokens(user: AuthenticatedUser): Promise<LoginResult> {
+    const payload: JwtPayload = { sub: user.id, role: user.role };
+    const accessToken = await this.jwtService.signAsync(payload);
+    const refreshToken = this.refreshTokens.issue(user.id);
+
+    return { accessToken, refreshToken, user };
+  }
+
+  async login(email: string, password: string): Promise<LoginResult> {
     const user = await this.validateUser(email, password);
     if (!user) {
       throw new UnauthorizedException();
     }
 
-    const payload = { sub: user.id, role: user.role };
-    const accessToken = await this.jwtService.signAsync(payload);
-    return { accessToken, user };
+    return this.issueTokens(user);
+  }
+
+  async refresh(refreshToken: string): Promise<LoginResult> {
+    const userId = this.refreshTokens.consume(refreshToken);
+    if (!userId) {
+      throw new UnauthorizedException();
+    }
+
+    const user = this.getActiveUserById(userId);
+    if (!user) {
+      throw new UnauthorizedException();
+    }
+
+    return this.issueTokens(user);
   }
 }
