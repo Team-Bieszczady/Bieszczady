@@ -46,13 +46,33 @@ export class UsersService {
     });
   }
 
+  private normalizeEmail(email: string): string {
+    return email.trim().toLowerCase();
+  }
+
+  private async assertNotLastActiveDirector(
+    user: User,
+    action: string,
+  ): Promise<void> {
+    if (user.isDirector && user.accountStatus === 'ACTIVE') {
+      const activeDirectorCount = await this.prisma.user.count({
+        where: { isDirector: true, accountStatus: 'ACTIVE', deletedAt: null },
+      });
+      if (activeDirectorCount <= 1) {
+        throw new ConflictException(
+          `Cannot ${action} the last remaining active director`,
+        );
+      }
+    }
+  }
+
   async create(dto: CreateUserDto): Promise<{
     user: Omit<User, 'passwordHash'>;
     tempPassword: string;
   }> {
     const tempPassword = this.generateTempPassword();
     const passwordHash = await bcrypt.hash(tempPassword, 10);
-    const normalizedEmail = dto.email.trim().toLowerCase();
+    const normalizedEmail = this.normalizeEmail(dto.email);
 
     try {
       const user = await this.prisma.user.create({
@@ -96,8 +116,9 @@ export class UsersService {
   }
 
   async findByEmail(email: string): Promise<Omit<User, 'passwordHash'> | null> {
+    const normalizedEmail = this.normalizeEmail(email);
     const user = await this.prisma.user.findFirst({
-      where: { email, deletedAt: null },
+      where: { email: normalizedEmail, deletedAt: null },
     });
 
     return user ? this.excludePasswordHash(user) : null;
@@ -146,19 +167,8 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    if (
-      status === 'INACTIVE' &&
-      user.isDirector &&
-      user.accountStatus === 'ACTIVE'
-    ) {
-      const activeDirectorCount = await this.prisma.user.count({
-        where: { isDirector: true, accountStatus: 'ACTIVE', deletedAt: null },
-      });
-      if (activeDirectorCount <= 1) {
-        throw new ConflictException(
-          'Cannot deactivate the last remaining active director',
-        );
-      }
+    if (status === 'INACTIVE') {
+      await this.assertNotLastActiveDirector(user, 'deactivate');
     }
 
     const updated = await this.prisma.user.update({
@@ -189,14 +199,7 @@ export class UsersService {
     }
 
     if (!isDirector && target.isDirector) {
-      const activeDirectorCount = await this.prisma.user.count({
-        where: { isDirector: true, accountStatus: 'ACTIVE', deletedAt: null },
-      });
-      if (activeDirectorCount <= 1) {
-        throw new ConflictException(
-          'Cannot remove the last remaining active director',
-        );
-      }
+      await this.assertNotLastActiveDirector(target, 'remove');
     }
 
     const updated = await this.prisma.user.update({
@@ -245,16 +248,7 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    if (user.isDirector && user.accountStatus === 'ACTIVE') {
-      const activeDirectorCount = await this.prisma.user.count({
-        where: { isDirector: true, accountStatus: 'ACTIVE', deletedAt: null },
-      });
-      if (activeDirectorCount <= 1) {
-        throw new ConflictException(
-          'Cannot delete the last remaining active director',
-        );
-      }
-    }
+    await this.assertNotLastActiveDirector(user, 'delete');
 
     await this.prisma.user.update({
       where: { id },
