@@ -31,7 +31,7 @@ export interface LoginResult {
 
 @Injectable()
 export class AuthService {
-  // TODO(F0.3): tymczasowe dane, po zmergowaniu modelu User podmienić na Prismę.
+  // TODO(F0.3): mock data — replace with Prisma once the User model is merged.
 
   private readonly users: StoredUser[] = [
     {
