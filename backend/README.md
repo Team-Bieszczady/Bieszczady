@@ -97,6 +97,9 @@ The following are intentionally out of scope and marked with TODO(auth) comments
 ### Install dependencies
 ```bash
 npm install
+```
+
+### Set up the database
 
 Run migrations:
 ```bash
@@ -113,7 +116,7 @@ npx prisma db seed
 npm run start:dev
 ```
 
-The server starts on `http://localhost:3000`. Swagger documentation is available at `http://localhost:3000/api`.
+The server starts on `http://localhost:3000`. Swagger documentation is available at `http://localhost:3000/api/docs`.
 
 ### Run tests
 ```bash
