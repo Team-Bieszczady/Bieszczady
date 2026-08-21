@@ -10,8 +10,6 @@ How the frontend talks to the API. Read this before wiring up any request.
 | Stored in | **Memory only** (a variable / React state) | `httpOnly` cookie |
 | Frontend touches it? | Yes — you send it | **No** — you never see it |
 
-**Never put the access token in `localStorage` or `sessionStorage`.** Anything stored there can be read by any script running on the page, so a single XSS bug hands an attacker a working token. Keeping it in memory means it disappears on page refresh — that is the point, not a bug. See *Page refresh* below.
-
 The refresh token lives in an `httpOnly` cookie, which JavaScript cannot read at all. The browser attaches it automatically. There is nothing for you to store or manage.
 
 ## Sending requests
@@ -19,7 +17,7 @@ The refresh token lives in an `httpOnly` cookie, which JavaScript cannot read at
 Every authenticated request needs two things:
 
 ```js
-fetch('/api/v1/auth/me', {
+fetch(`${import.meta.env.VITE_API_URL}/api/v1/auth/me`, {
   headers: { Authorization: `Bearer ${accessToken}` },
   credentials: 'include',
 });

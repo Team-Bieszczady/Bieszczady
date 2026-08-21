@@ -10,10 +10,6 @@ describe('RefreshTokenService', () => {
     service = new RefreshTokenService();
   });
 
-  beforeEach(() => {
-    service = new RefreshTokenService();
-  });
-
   afterEach(() => {
     jest.useRealTimers();
   });
