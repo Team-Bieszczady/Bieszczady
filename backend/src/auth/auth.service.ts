@@ -45,6 +45,17 @@ export class AuthService {
       accountStatus: 'ACTIVE',
       mustChangePassword: false,
     },
+    {
+      id: '2',
+      firstName: 'Anna',
+      lastName: 'Nowak',
+      email: 'inactive@example.com',
+      passwordHash:
+        '$2b$10$4EhmxWW38ZDsw4eFtRKIZeQ1JKnzjdO4A8.qtUHhxqerUo6/fklmm',
+      isDirector: false,
+      accountStatus: 'INACTIVE',
+      mustChangePassword: false,
+    },
   ];
 
   constructor(
