@@ -10,20 +10,20 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
+import { type CookieOptions, type Request, type Response } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { type AuthenticatedUser, type AuthResponse } from './types/auth.types';
-import { type Request, type Response } from 'express';
 import { REFRESH_TOKEN_TTL_DAYS } from './refresh-token.service';
 
 const REFRESH_COOKIE = 'refresh_token';
 
-const REFRESH_COOKIE_OPTIONS = {
+const REFRESH_COOKIE_OPTIONS: CookieOptions = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
-  sameSite: 'strict' as const,
+  sameSite: 'strict',
   path: '/api/v1/auth/refresh',
   maxAge: REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000,
 };

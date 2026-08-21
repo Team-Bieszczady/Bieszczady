@@ -51,6 +51,23 @@ The access token is gone after a reload, so on app startup:
 
 Do this before rendering anything that requires a user, otherwise the app will flash the login screen for users who are still signed in.
 
+## Never call refresh twice at the same time
+
+Refresh tokens rotate: every successful refresh invalidates the token that was
+used and issues a new one. Using the same refresh token twice is treated as
+theft — the server revokes **every** session for that user.
+
+That means two parallel `/auth/refresh` calls with the same cookie will log the
+user out of everything. The first succeeds, the second looks like a stolen token.
+
+React's StrictMode runs effects twice in development, so the startup refresh
+from the previous section will fire twice out of the box. Guard against it:
+keep a single in-flight promise and have every caller await the same one,
+rather than starting a new request each time.
+
+This is also why the 401 retry logic belongs in one shared place — two failing
+requests must not trigger two refreshes.
+
 ## Endpoints
 
 ```

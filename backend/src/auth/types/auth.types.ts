@@ -4,7 +4,6 @@ export type AccountStatus = 'ACTIVE' | 'INACTIVE';
 
 export interface JwtPayload {
   sub: string;
-  role: UserRole;
 }
 
 export interface AuthenticatedUser {

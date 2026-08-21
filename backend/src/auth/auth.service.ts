@@ -34,7 +34,6 @@ export interface LoginResult {
 @Injectable()
 export class AuthService {
   // TODO(F0.3): mock data — replace with Prisma once the User model is merged.
-
   private readonly users: StoredUser[] = [
     {
       id: '1',
@@ -82,7 +81,7 @@ export class AuthService {
     return this.toAuthenticatedUser(user);
   }
 
-  async validateUser(
+  private async validateUser(
     email: string,
     password: string,
   ): Promise<AuthenticatedUser | null> {
@@ -101,7 +100,7 @@ export class AuthService {
   }
 
   private async issueTokens(user: AuthenticatedUser): Promise<LoginResult> {
-    const payload: JwtPayload = { sub: user.id, role: user.role };
+    const payload: JwtPayload = { sub: user.id };
     const accessToken = await this.jwtService.signAsync(payload);
     const refreshToken = this.refreshTokens.issue(user.id);
 

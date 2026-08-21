@@ -10,6 +10,14 @@ describe('RefreshTokenService', () => {
     service = new RefreshTokenService();
   });
 
+  beforeEach(() => {
+    service = new RefreshTokenService();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it('issues a 64 character token', () => {
     const token = service.issue('user-1');
 
@@ -69,7 +77,5 @@ describe('RefreshTokenService', () => {
     );
 
     expect(service.consume(token)).toBeNull();
-
-    jest.useRealTimers();
   });
 });
