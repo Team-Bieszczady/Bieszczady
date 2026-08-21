@@ -1,5 +1,3 @@
-export type UserRole = 'DIRECTOR' | 'COORDINATOR' | 'EXECUTOR' | 'PARTNER';
-
 export type AccountStatus = 'ACTIVE' | 'INACTIVE';
 
 export interface JwtPayload {
@@ -11,7 +9,7 @@ export interface AuthenticatedUser {
   email: string;
   firstName: string;
   lastName: string;
-  role: UserRole;
+  isDirector: boolean;
   accountStatus: AccountStatus;
   mustChangePassword: boolean;
 }

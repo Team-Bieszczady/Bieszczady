@@ -20,13 +20,15 @@ import { REFRESH_TOKEN_TTL_DAYS } from './refresh-token.service';
 
 const REFRESH_COOKIE = 'refresh_token';
 
-const REFRESH_COOKIE_OPTIONS: CookieOptions = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'strict',
-  path: '/api/v1/auth/refresh',
-  maxAge: REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000,
-};
+function refreshCookieOptions(): CookieOptions {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    path: '/api/v1/auth/refresh',
+    maxAge: REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000,
+  };
+}
 
 @Controller('auth')
 export class AuthController {
@@ -43,7 +45,7 @@ export class AuthController {
       dto.password,
     );
 
-    res.cookie(REFRESH_COOKIE, refreshToken, REFRESH_COOKIE_OPTIONS);
+    res.cookie(REFRESH_COOKIE, refreshToken, refreshCookieOptions());
 
     return { accessToken, user };
   }
@@ -64,7 +66,7 @@ export class AuthController {
     const { accessToken, refreshToken, user } =
       await this.authService.refresh(token);
 
-    res.cookie(REFRESH_COOKIE, refreshToken, REFRESH_COOKIE_OPTIONS);
+    res.cookie(REFRESH_COOKIE, refreshToken, refreshCookieOptions());
 
     return { accessToken, user };
   }

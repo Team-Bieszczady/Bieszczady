@@ -14,7 +14,6 @@ export class RefreshTokenService {
   // TODO(F1.1): in-memory store — replace with a database table.
   // Restarting the server logs everyone out and this breaks with more than one instance.
   // Used records are kept on purpose: consume() needs them to detect token reuse.
-
   private readonly store = new Map<string, StoredToken>();
 
   issue(userId: string): string {

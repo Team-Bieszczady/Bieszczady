@@ -5,7 +5,6 @@ import {
   AccountStatus,
   AuthenticatedUser,
   JwtPayload,
-  UserRole,
 } from './types/auth.types';
 import { RefreshTokenService } from './refresh-token.service';
 
@@ -15,7 +14,7 @@ interface StoredUser {
   lastName: string;
   email: string;
   passwordHash: string;
-  role: UserRole;
+  isDirector: boolean;
   accountStatus: AccountStatus;
   mustChangePassword: boolean;
 }
@@ -25,7 +24,7 @@ interface StoredUser {
 const DUMMY_PASSWORD_HASH =
   '$2b$10$.DnJAlyzBFH.ZiGkQiy5nuQSUoaSpZzPYaAMj59yL4PEcXo/2xflW';
 
-export interface LoginResult {
+interface LoginResult {
   accessToken: string;
   refreshToken: string;
   user: AuthenticatedUser;
@@ -33,7 +32,7 @@ export interface LoginResult {
 
 @Injectable()
 export class AuthService {
-  // TODO(F0.3): mock data — replace with Prisma once the User model is merged.
+  // TODO(F1.1): mock data — replace with Prisma and delete this account.
   private readonly users: StoredUser[] = [
     {
       id: '1',
@@ -42,7 +41,7 @@ export class AuthService {
       email: 'test@example.com',
       passwordHash:
         '$2b$10$4EhmxWW38ZDsw4eFtRKIZeQ1JKnzjdO4A8.qtUHhxqerUo6/fklmm',
-      role: 'DIRECTOR',
+      isDirector: true,
       accountStatus: 'ACTIVE',
       mustChangePassword: false,
     },
@@ -54,7 +53,8 @@ export class AuthService {
   ) {}
 
   private findByEmail(email: string): StoredUser | undefined {
-    return this.users.find((user) => user.email === email);
+    const normalized = email.trim().toLowerCase();
+    return this.users.find((user) => user.email === normalized);
   }
 
   private findById(id: string): StoredUser | undefined {
@@ -67,7 +67,7 @@ export class AuthService {
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
-      role: user.role,
+      isDirector: user.isDirector,
       accountStatus: user.accountStatus,
       mustChangePassword: user.mustChangePassword,
     };
