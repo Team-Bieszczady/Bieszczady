@@ -1,0 +1,425 @@
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Param,
+  HttpCode,
+  HttpStatus,
+  Patch,
+  Delete,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiHeader,
+} from '@nestjs/swagger';
+import { UsersService } from './users.service';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { UpdateAccountStatusDto } from './dto/update-account-status.dto';
+import { UpdateDirectorStatusDto } from './dto/update-director-status.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { ActorId } from '../common/decorators/actor-id.decorator';
+
+@ApiTags('users')
+@Controller('users')
+export class UserController {
+  constructor(private readonly usersService: UsersService) {}
+
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary: 'Create a new user',
+    description:
+      'Creates a new user with server-generated temporary password. Returns user object and tempPassword.',
+  })
+  @ApiBody({
+    type: CreateUserDto,
+    examples: {
+      withPhone: {
+        summary: 'Create user with phone',
+        value: {
+          firstName: 'John',
+          lastName: 'Doe',
+          email: 'john.doe@example.com',
+          phone: '+1-555-0123',
+        },
+      },
+      withoutPhone: {
+        summary: 'Create user without phone',
+        value: {
+          firstName: 'Jane',
+          lastName: 'Smith',
+          email: 'jane.smith@example.com',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'User successfully created',
+    example: {
+      user: {
+        id: '550e8400-e29b-41d4-a716-446655440000',
+        firstName: 'John',
+        lastName: 'Doe',
+        email: 'john.doe@example.com',
+        phone: '+1-555-0123',
+        avatar: null,
+        accountStatus: 'ACTIVE',
+        isDirector: false,
+        mustChangePassword: true,
+        lastLogin: null,
+        createdAt: '2026-08-20T10:30:00.000Z',
+        updatedAt: '2026-08-20T10:30:00.000Z',
+        deletedAt: null,
+      },
+      tempPassword: 'AZ9k7mL2pQ_wXfR5tN8vJ',
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid input or validation failed',
+  })
+  @ApiResponse({ status: 409, description: 'Email already in use' })
+  // TODO(auth): director-only. Add director guard once auth exists.
+  async create(@Body() createUserDto: CreateUserDto) {
+    return this.usersService.create(createUserDto);
+  }
+
+  @Get('me')
+  @ApiHeader({
+    name: 'x-user-id',
+    description:
+      'User ID (temporary header for testing - will use JWT once auth module exists)',
+    required: true,
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
+  @ApiOperation({
+    summary: 'Get current user',
+    description: 'Requires x-user-id header with user ID',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Current user data',
+    example: {
+      id: '550e8400-e29b-41d4-a716-446655440000',
+      firstName: 'John',
+      lastName: 'Doe',
+      email: 'john.doe@example.com',
+      phone: '+1-555-0123',
+      avatar: null,
+      accountStatus: 'ACTIVE',
+      isDirector: false,
+      mustChangePassword: false,
+      lastLogin: '2026-08-20T10:30:00.000Z',
+      createdAt: '2026-08-20T10:30:00.000Z',
+      updatedAt: '2026-08-20T10:30:00.000Z',
+      deletedAt: null,
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Missing x-user-id header' })
+  @ApiResponse({ status: 404, description: 'User not found or deleted' })
+  // TODO(auth): replace @ActorId() with real authenticated-user extraction once auth exists.
+  async getMe(@ActorId() actorId: string) {
+    return this.usersService.findById(actorId);
+  }
+
+  @Get(':id')
+  @ApiOperation({
+    summary: 'Get user by ID',
+    description: 'Returns user details excluding password hash',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'User found',
+    example: {
+      id: '550e8400-e29b-41d4-a716-446655440000',
+      firstName: 'John',
+      lastName: 'Doe',
+      email: 'john.doe@example.com',
+      phone: '+1-555-0123',
+      avatar: null,
+      accountStatus: 'ACTIVE',
+      isDirector: false,
+      mustChangePassword: false,
+      lastLogin: '2026-08-20T10:30:00.000Z',
+      createdAt: '2026-08-20T10:30:00.000Z',
+      updatedAt: '2026-08-20T10:30:00.000Z',
+      deletedAt: null,
+    },
+  })
+  @ApiResponse({ status: 404, description: 'User not found or deleted' })
+  // TODO(auth): access scope (any authenticated user? director/self only?) not fully specified; currently unguarded.
+  async getById(@Param('id') id: string) {
+    return this.usersService.findById(id);
+  }
+
+  @Patch(':id')
+  @HttpCode(HttpStatus.OK)
+  @ApiHeader({
+    name: 'x-user-id',
+    description:
+      'User ID (temporary header for testing - will use JWT once auth module exists)',
+    required: true,
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
+  @ApiOperation({
+    summary: 'Update own user profile',
+    description:
+      'Self-edit only: firstName, lastName, phone, avatar. Email, accountStatus, isDirector cannot be changed here.',
+  })
+  @ApiBody({
+    type: UpdateUserDto,
+    examples: {
+      fullUpdate: {
+        summary: 'Update all allowed fields',
+        value: {
+          firstName: 'Jonathan',
+          lastName: 'Smith',
+          phone: '+1-555-9999',
+          avatar: 'https://example.com/avatar.jpg',
+        },
+      },
+      partialUpdate: {
+        summary: 'Update only some fields',
+        value: {
+          firstName: 'Jonathan',
+          phone: '+1-555-9999',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Profile updated',
+    example: {
+      id: '550e8400-e29b-41d4-a716-446655440000',
+      firstName: 'Jonathan',
+      lastName: 'Smith',
+      email: 'john.doe@example.com',
+      phone: '+1-555-9999',
+      avatar: 'https://example.com/avatar.jpg',
+      accountStatus: 'ACTIVE',
+      isDirector: false,
+      mustChangePassword: false,
+      lastLogin: '2026-08-20T10:30:00.000Z',
+      createdAt: '2026-08-20T10:30:00.000Z',
+      updatedAt: '2026-08-20T10:35:00.000Z',
+      deletedAt: null,
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid input or missing x-user-id header',
+  })
+  @ApiResponse({ status: 403, description: 'Cannot edit another user' })
+  @ApiResponse({ status: 404, description: 'User not found or deleted' })
+  // TODO(auth): self-only. actorId currently from untrusted x-user-id header;
+  // must be verified user identity once auth exists.
+  async updateSelf(
+    @Param('id') id: string,
+    @Body() dto: UpdateUserDto,
+    @ActorId() actorId: string,
+  ) {
+    return await this.usersService.updateSelf(actorId, id, dto);
+  }
+
+  @Patch(':id/status')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Change user account status',
+    description:
+      'Toggle between ACTIVE and INACTIVE. Cannot deactivate last active director.',
+  })
+  @ApiBody({
+    type: UpdateAccountStatusDto,
+    examples: {
+      deactivate: {
+        summary: 'Deactivate user',
+        value: { accountStatus: 'INACTIVE' },
+      },
+      activate: {
+        summary: 'Activate user',
+        value: { accountStatus: 'ACTIVE' },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Status changed',
+    example: {
+      id: '550e8400-e29b-41d4-a716-446655440000',
+      firstName: 'John',
+      lastName: 'Doe',
+      email: 'john.doe@example.com',
+      phone: '+1-555-0123',
+      avatar: null,
+      accountStatus: 'INACTIVE',
+      isDirector: false,
+      mustChangePassword: false,
+      lastLogin: '2026-08-20T10:30:00.000Z',
+      createdAt: '2026-08-20T10:30:00.000Z',
+      updatedAt: '2026-08-20T10:40:00.000Z',
+      deletedAt: null,
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Invalid input' })
+  @ApiResponse({
+    status: 409,
+    description: 'Cannot deactivate last remaining active director',
+  })
+  @ApiResponse({ status: 404, description: 'User not found or deleted' })
+  // TODO(auth): director-only. Add director guard once auth exists.
+  async setAccountStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateAccountStatusDto,
+  ) {
+    return this.usersService.setAccountStatus(id, dto.accountStatus);
+  }
+
+  @Patch(':id/director-status')
+  @HttpCode(HttpStatus.OK)
+  @ApiHeader({
+    name: 'x-user-id',
+    description:
+      'User ID (temporary header for testing - will use JWT once auth module exists)',
+    required: true,
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
+  @ApiOperation({
+    summary: 'Grant or revoke director status',
+    description:
+      'Grant/revoke global admin privilege. Audit logged. Cannot self-revoke or remove last active director.',
+  })
+  @ApiBody({
+    type: UpdateDirectorStatusDto,
+    examples: {
+      grant: {
+        summary: 'Grant director status',
+        value: { isDirector: true },
+      },
+      revoke: {
+        summary: 'Revoke director status',
+        value: { isDirector: false },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Director status changed and audit logged',
+    example: {
+      id: '550e8400-e29b-41d4-a716-446655440000',
+      firstName: 'John',
+      lastName: 'Doe',
+      email: 'john.doe@example.com',
+      phone: '+1-555-0123',
+      avatar: null,
+      accountStatus: 'ACTIVE',
+      isDirector: true,
+      mustChangePassword: false,
+      lastLogin: '2026-08-20T10:30:00.000Z',
+      createdAt: '2026-08-20T10:30:00.000Z',
+      updatedAt: '2026-08-20T10:45:00.000Z',
+      deletedAt: null,
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid input or missing x-user-id header',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Cannot self-revoke or insufficient permissions',
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'Cannot remove last remaining active director',
+  })
+  @ApiResponse({ status: 404, description: 'User not found or deleted' })
+  // TODO(auth): director-only. actorId currently from untrusted x-user-id header;
+  // must be verified director once auth exists.
+  async setDirectorStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateDirectorStatusDto,
+    @ActorId() actorId: string,
+  ) {
+    return this.usersService.setDirectorStatus(actorId, id, dto.isDirector);
+  }
+
+  @Post('me/password')
+  @HttpCode(HttpStatus.OK)
+  @ApiHeader({
+    name: 'x-user-id',
+    description:
+      'User ID (temporary header for testing - will use JWT once auth module exists)',
+    required: true,
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
+  @ApiOperation({
+    summary: 'Change own password',
+    description:
+      'Change password after verifying current password. Sets mustChangePassword to false.',
+  })
+  @ApiBody({
+    type: ChangePasswordDto,
+    examples: {
+      passwordChange: {
+        summary: 'Change password',
+        value: {
+          currentPassword: 'OldPass123!',
+          newPassword: 'NewSecurePass456!',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Password changed successfully',
+    example: { success: true },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid input or missing x-user-id header',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Current password is incorrect',
+  })
+  @ApiResponse({ status: 404, description: 'User not found or deleted' })
+  // TODO(auth): replace @ActorId() with real authenticated-user extraction once auth exists.
+  async changeOwnPassword(
+    @ActorId() actorId: string,
+    @Body() dto: ChangePasswordDto,
+  ) {
+    await this.usersService.changeOwnPassword(actorId, dto);
+    return { success: true };
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Soft-delete user',
+    description:
+      'Mark user as deleted (sets deletedAt). User cannot be retrieved. Cannot delete last active director.',
+  })
+  @ApiResponse({
+    status: 204,
+    description: 'User deleted (no content)',
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'Cannot delete last remaining active director',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'User not found or already deleted',
+  })
+  // TODO(auth): director-only. Add director guard once auth exists.
+  async softDelete(@Param('id') id: string) {
+    await this.usersService.softDeleteUser(id);
+  }
+}
