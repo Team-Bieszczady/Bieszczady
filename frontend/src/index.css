@@ -1,10 +1,17 @@
-:root {
-  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
-  line-height: 1.5;
-  color-scheme: light dark;
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Plus Jakarta Sans', system-ui, 'Segoe UI', Roboto, sans-serif;
+  --breakpoint-500: 500px;
+  --breakpoint-700: 700px;
+
+
+  --color-dark: #101010;
+  --color-darkGreen: #18744E;
+  --color-darkGreenHover: #155a3d;
+  --color-lightGreen: #e4e8eC;
+  --color-white: #fff;
+
 }
 
-body {
-  margin: 0;
-  padding: 2rem;
-}
+
