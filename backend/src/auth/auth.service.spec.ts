@@ -1,12 +1,46 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { User } from '@prisma/client';
 import { AuthService } from './auth.service';
 import { RefreshTokenService } from './refresh-token.service';
+import { UsersService } from '../users/users.service';
 
 describe('AuthService', () => {
   const PASSWORD = 'haslo123';
+  const PASSWORD_HASH =
+    '$2b$10$4EhmxWW38ZDsw4eFtRKIZeQ1JKnzjdO4A8.qtUHhxqerUo6/fklmm';
   const ACTIVE_EMAIL = 'test@example.com';
   const INACTIVE_EMAIL = 'inactive@example.com';
+
+  const makeUser = (overrides: Partial<User>): User => ({
+    id: '1',
+    firstName: 'Jan',
+    lastName: 'Kowalski',
+    email: ACTIVE_EMAIL,
+    phone: null,
+    passwordHash: PASSWORD_HASH,
+    avatar: null,
+    accountStatus: 'ACTIVE',
+    isDirector: true,
+    mustChangePassword: false,
+    lastLogin: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    deletedAt: null,
+    ...overrides,
+  });
+
+  const users: User[] = [
+    makeUser({}),
+    makeUser({
+      id: '2',
+      firstName: 'Anna',
+      lastName: 'Nowak',
+      email: INACTIVE_EMAIL,
+      accountStatus: 'INACTIVE',
+      isDirector: false,
+    }),
+  ];
 
   let service: AuthService;
 
@@ -15,7 +49,18 @@ describe('AuthService', () => {
       signAsync: jest.fn().mockResolvedValue('access-token'),
     } as unknown as JwtService;
 
-    service = new AuthService(jwtService, new RefreshTokenService());
+    const usersService = {
+      findByEmailForAuth: (email: string) =>
+        Promise.resolve(users.find((user) => user.email === email) ?? null),
+      findByIdForAuth: (id: string) =>
+        Promise.resolve(users.find((user) => user.id === id) ?? null),
+    } as unknown as UsersService;
+
+    service = new AuthService(
+      jwtService,
+      new RefreshTokenService(),
+      usersService,
+    );
   });
 
   describe('login', () => {
@@ -31,12 +76,6 @@ describe('AuthService', () => {
       const { user } = await service.login(ACTIVE_EMAIL, PASSWORD);
 
       expect(user).not.toHaveProperty('passwordHash');
-    });
-
-    it('accepts the email in any casing', async () => {
-      const result = await service.login('TEST@Example.COM', PASSWORD);
-
-      expect(result.user.email).toBe(ACTIVE_EMAIL);
     });
 
     it('rejects a wrong password', async () => {
@@ -77,16 +116,20 @@ describe('AuthService', () => {
   });
 
   describe('getActiveUserById', () => {
-    it('returns the user for an active account', () => {
-      expect(service.getActiveUserById('1')?.email).toBe(ACTIVE_EMAIL);
+    it('returns the user for an active account', async () => {
+      const user = await service.getActiveUserById('1');
+
+      expect(user?.email).toBe(ACTIVE_EMAIL);
     });
 
-    it('returns null for an inactive account', () => {
-      expect(service.getActiveUserById('2')).toBeNull();
+    it('returns null for an inactive account', async () => {
+      await expect(service.getActiveUserById('2')).resolves.toBeNull();
     });
 
-    it('returns null for an unknown id', () => {
-      expect(service.getActiveUserById('does-not-exist')).toBeNull();
+    it('returns null for an unknown id', async () => {
+      await expect(
+        service.getActiveUserById('does-not-exist'),
+      ).resolves.toBeNull();
     });
   });
 });

@@ -1,23 +1,10 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
-import {
-  AccountStatus,
-  AuthenticatedUser,
-  JwtPayload,
-} from './types/auth.types';
+import { AuthenticatedUser, JwtPayload } from './types/auth.types';
 import { RefreshTokenService } from './refresh-token.service';
-
-interface StoredUser {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  passwordHash: string;
-  isDirector: boolean;
-  accountStatus: AccountStatus;
-  mustChangePassword: boolean;
-}
+import { User } from '@prisma/client';
+import { UsersService } from '../users/users.service';
 
 // Compared against when no user matches, so a failed login takes the same
 // time whether the account exists or not (prevents user enumeration).
@@ -32,63 +19,33 @@ interface LoginResult {
 
 @Injectable()
 export class AuthService {
-  // TODO(F1.1): mock data — replace with Prisma and delete this account.
-  private readonly users: StoredUser[] = [
-    {
-      id: '1',
-      firstName: 'Jan',
-      lastName: 'Kowalski',
-      email: 'test@example.com',
-      passwordHash:
-        '$2b$10$4EhmxWW38ZDsw4eFtRKIZeQ1JKnzjdO4A8.qtUHhxqerUo6/fklmm',
-      isDirector: true,
-      accountStatus: 'ACTIVE',
-      mustChangePassword: false,
-    },
-    {
-      id: '2',
-      firstName: 'Anna',
-      lastName: 'Nowak',
-      email: 'inactive@example.com',
-      passwordHash:
-        '$2b$10$4EhmxWW38ZDsw4eFtRKIZeQ1JKnzjdO4A8.qtUHhxqerUo6/fklmm',
-      isDirector: false,
-      accountStatus: 'INACTIVE',
-      mustChangePassword: false,
-    },
-  ];
-
   constructor(
     private readonly jwtService: JwtService,
     private readonly refreshTokens: RefreshTokenService,
+    private readonly usersService: UsersService,
   ) {}
 
-  private findByEmail(email: string): StoredUser | undefined {
-    const normalized = email.trim().toLowerCase();
-    return this.users.find((user) => user.email === normalized);
-  }
-
-  private findById(id: string): StoredUser | undefined {
-    return this.users.find((user) => user.id === id);
-  }
-
-  private toAuthenticatedUser(user: StoredUser): AuthenticatedUser {
+  private toAuthenticatedUser(
+    user: Omit<User, 'passwordHash'>,
+  ): AuthenticatedUser {
     return {
       id: user.id,
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
       isDirector: user.isDirector,
-      accountStatus: user.accountStatus,
+      accountStatus: user.accountStatus === 'ACTIVE' ? 'ACTIVE' : 'INACTIVE',
       mustChangePassword: user.mustChangePassword,
     };
   }
 
-  getActiveUserById(id: string): AuthenticatedUser | null {
-    const user = this.findById(id);
+  async getActiveUserById(id: string): Promise<AuthenticatedUser | null> {
+    const user = await this.usersService.findByIdForAuth(id);
+
     if (!user || user.accountStatus !== 'ACTIVE') {
       return null;
     }
+
     return this.toAuthenticatedUser(user);
   }
 
@@ -96,7 +53,7 @@ export class AuthService {
     email: string,
     password: string,
   ): Promise<AuthenticatedUser | null> {
-    const user = this.findByEmail(email);
+    const user = await this.usersService.findByEmailForAuth(email);
 
     const isPasswordValid = await bcrypt.compare(
       password,
@@ -133,7 +90,7 @@ export class AuthService {
       throw new UnauthorizedException();
     }
 
-    const user = this.getActiveUserById(userId);
+    const user = await this.getActiveUserById(userId);
     if (!user) {
       throw new UnauthorizedException();
     }
