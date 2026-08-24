@@ -1,0 +1,135 @@
+import { UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { User } from '@prisma/client';
+import { AuthService } from './auth.service';
+import { RefreshTokenService } from './refresh-token.service';
+import { UsersService } from '../users/users.service';
+
+describe('AuthService', () => {
+  const PASSWORD = 'haslo123';
+  const PASSWORD_HASH =
+    '$2b$10$4EhmxWW38ZDsw4eFtRKIZeQ1JKnzjdO4A8.qtUHhxqerUo6/fklmm';
+  const ACTIVE_EMAIL = 'test@example.com';
+  const INACTIVE_EMAIL = 'inactive@example.com';
+
+  const makeUser = (overrides: Partial<User>): User => ({
+    id: '1',
+    firstName: 'Jan',
+    lastName: 'Kowalski',
+    email: ACTIVE_EMAIL,
+    phone: null,
+    passwordHash: PASSWORD_HASH,
+    avatar: null,
+    accountStatus: 'ACTIVE',
+    isDirector: true,
+    mustChangePassword: false,
+    lastLogin: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    deletedAt: null,
+    ...overrides,
+  });
+
+  const users: User[] = [
+    makeUser({}),
+    makeUser({
+      id: '2',
+      firstName: 'Anna',
+      lastName: 'Nowak',
+      email: INACTIVE_EMAIL,
+      accountStatus: 'INACTIVE',
+      isDirector: false,
+    }),
+  ];
+
+  let service: AuthService;
+
+  beforeEach(() => {
+    const jwtService = {
+      signAsync: jest.fn().mockResolvedValue('access-token'),
+    } as unknown as JwtService;
+
+    const usersService = {
+      findByEmailForAuth: (email: string) =>
+        Promise.resolve(users.find((user) => user.email === email) ?? null),
+      findByIdForAuth: (id: string) =>
+        Promise.resolve(users.find((user) => user.id === id) ?? null),
+    } as unknown as UsersService;
+
+    service = new AuthService(
+      jwtService,
+      new RefreshTokenService(),
+      usersService,
+    );
+  });
+
+  describe('login', () => {
+    it('returns tokens and the user for correct credentials', async () => {
+      const result = await service.login(ACTIVE_EMAIL, PASSWORD);
+
+      expect(result.accessToken).toBe('access-token');
+      expect(result.refreshToken).toHaveLength(64);
+      expect(result.user.email).toBe(ACTIVE_EMAIL);
+    });
+
+    it('never exposes the password hash', async () => {
+      const { user } = await service.login(ACTIVE_EMAIL, PASSWORD);
+
+      expect(user).not.toHaveProperty('passwordHash');
+    });
+
+    it('rejects a wrong password', async () => {
+      await expect(
+        service.login(ACTIVE_EMAIL, 'wrong-password'),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('rejects an unknown email', async () => {
+      await expect(
+        service.login('nobody@example.com', PASSWORD),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('rejects an inactive account even with the right password', async () => {
+      await expect(service.login(INACTIVE_EMAIL, PASSWORD)).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+  });
+
+  describe('refresh', () => {
+    it('issues a new pair and invalidates the old refresh token', async () => {
+      const first = await service.login(ACTIVE_EMAIL, PASSWORD);
+      const second = await service.refresh(first.refreshToken);
+
+      expect(second.refreshToken).not.toBe(first.refreshToken);
+      await expect(service.refresh(first.refreshToken)).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('rejects an unknown token', async () => {
+      await expect(service.refresh('not-a-real-token')).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+  });
+
+  describe('getActiveUserById', () => {
+    it('returns the user for an active account', async () => {
+      const user = await service.getActiveUserById('1');
+
+      expect(user?.email).toBe(ACTIVE_EMAIL);
+    });
+
+    it('returns null for an inactive account', async () => {
+      await expect(service.getActiveUserById('2')).resolves.toBeNull();
+    });
+
+    it('returns null for an unknown id', async () => {
+      await expect(
+        service.getActiveUserById('does-not-exist'),
+      ).resolves.toBeNull();
+    });
+  });
+});

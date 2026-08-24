@@ -125,6 +125,24 @@ export class UsersService {
     return user ? this.excludePasswordHash(user) : null;
   }
 
+  async findByEmailForAuth(email: string): Promise<User | null> {
+    const normalizedEmail = this.normalizeEmail(email);
+
+    return this.prisma.user.findFirst({
+      where: { email: normalizedEmail, deletedAt: null },
+    });
+  }
+
+  async findByIdForAuth(
+    id: string,
+  ): Promise<Omit<User, 'passwordHash'> | null> {
+    const user = await this.prisma.user.findFirst({
+      where: { id, deletedAt: null },
+    });
+
+    return user ? this.excludePasswordHash(user) : null;
+  }
+
   async updateSelf(
     actorId: string,
     targetId: string,

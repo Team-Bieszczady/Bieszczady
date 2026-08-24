@@ -42,33 +42,35 @@ Records privilege-escalation events: who (actor) changed what (target) and when.
 
 ## Endpoints
 
-All endpoints exclude `passwordHash` from responses. Admin-only endpoints are marked with TODO(auth); see the controller file for decorator details.
+All endpoints live under the `/api/v1` prefix and exclude `passwordHash` from responses.
+
+Every route requires a valid access token sent as `Authorization: Bearer <token>`; the director-only routes additionally require `isDirector`. See `docs/auth.md` for how the frontend obtains and refreshes that token.
 
 ### User Management
 
-- **POST /users** — Create a new user. No password field; a temporary password is server-generated and returned once in the response body. User is created with `mustChangePassword: true` and `accountStatus: ACTIVE`. Body: `{ firstName, lastName, email, phone? }`. Returns: `{ user, tempPassword }`.
-  - Permission: Director-only (TODO(auth)).
+- **POST /api/v1/users** — Create a new user. No password field; a temporary password is server-generated and returned once in the response body. User is created with `mustChangePassword: true` and `accountStatus: ACTIVE`. Body: `{ firstName, lastName, email, phone? }`. Returns: `{ user, tempPassword }`.
+  - Permission: Director-only.
 
-- **GET /users/:id** — Retrieve a user by ID. Excludes soft-deleted users. Returns all user fields except `passwordHash`.
-  - Permission: Unguarded for now (TODO(auth) to restrict scope).
+- **GET /api/v1/users/:id** — Retrieve a user by ID. Excludes soft-deleted users. Returns all user fields except `passwordHash`.
+  - Permission: Any authenticated user. Open question: should this be director-or-self only?
 
-- **GET /users/me** — Retrieve the current authenticated user. Requires `x-user-id` header (placeholder for JWT). Excludes soft-deleted users.
+- **GET /api/v1/users/me** — Retrieve the current authenticated user. Excludes soft-deleted users.
   - Permission: Any authenticated user.
 
-- **PATCH /users/:id** — Update own profile (firstName, lastName, phone, avatar only). Self-only; actor ID must match target ID. Other fields (email, accountStatus, isDirector) are silently ignored even if sent. Requires `x-user-id` header. Body: `{ firstName?, lastName?, phone?, avatar? }`.
+- **PATCH /api/v1/users/:id** — Update own profile (firstName, lastName, phone, avatar only). Self-only; actor ID must match target ID. Other fields (email, accountStatus, isDirector) are silently ignored even if sent. Body: `{ firstName?, lastName?, phone?, avatar? }`.
   - Permission: Self-only.
 
-- **PATCH /users/:id/status** — Toggle account status between ACTIVE and INACTIVE. Prevents deactivating the last remaining active director. Body: `{ accountStatus: ACTIVE | INACTIVE }`.
-  - Permission: Director-only (TODO(auth)).
+- **PATCH /api/v1/users/:id/status** — Toggle account status between ACTIVE and INACTIVE. Prevents deactivating the last remaining active director. Body: `{ accountStatus: ACTIVE | INACTIVE }`.
+  - Permission: Director-only.
 
-- **PATCH /users/:id/director-status** — Grant or revoke director status. Audit-logged. Prevents self-revocation and prevents demoting the last active director. Requires `x-user-id` header. Body: `{ isDirector: boolean }`.
-  - Permission: Director-only (TODO(auth)); actor must not be target for revocation.
+- **PATCH /api/v1/users/:id/director-status** — Grant or revoke director status. Audit-logged. Prevents self-revocation and prevents demoting the last active director. Body: `{ isDirector: boolean }`.
+  - Permission: Director-only; actor must not be target for revocation.
 
-- **POST /users/me/password** — Change own password. Verifies current password; on success, sets the new password hash and clears `mustChangePassword`. Requires `x-user-id` header. Body: `{ currentPassword, newPassword }`. Password must be 8+ characters with at least one uppercase, one lowercase, one digit, and one special character (@$!%*?&).
+- **POST /api/v1/users/me/password** — Change own password. Verifies current password; on success, sets the new password hash and clears `mustChangePassword`. Body: `{ currentPassword, newPassword }`. Password must be 8+ characters with at least one uppercase, one lowercase, one digit, and one special character (@$!%*?&).
   - Permission: Any authenticated user.
 
-- **DELETE /users/:id** — Soft-delete a user (sets `deletedAt`). Prevents deleting the last remaining active director. Does not hard-delete; email remains reserved. HTTP 204 response.
-  - Permission: Director-only (TODO(auth)).
+- **DELETE /api/v1/users/:id** — Soft-delete a user (sets `deletedAt`). Prevents deleting the last remaining active director. Does not hard-delete; email remains reserved. HTTP 204 response.
+  - Permission: Director-only.
 
 ## Soft Delete
 
@@ -80,17 +82,17 @@ Currently, only director-status changes are audit-logged (grants and revocations
 
 ## Not Built Yet
 
-The following are intentionally out of scope and marked with TODO(auth) comments in the code:
+The following are intentionally out of scope:
 
-- **Authentication:** No JWT, no session module, no login endpoint. Identity is currently extracted from an `x-user-id` header (a placeholder for testing). Replace the `@ActorId()` decorator in `src/common/decorators/actor-id.decorator.ts` with real user extraction once an auth module exists.
+- **Logout and `lastLogin`:** the auth module issues and rotates tokens but has no logout endpoint, and successful logins are not recorded. Both belong to F1.1.
 
-- **Authorization guards:** Routes that should be director-only or self-only have no enforcement yet. Add guards to the controller methods once auth exists.
+- **Rate limiting:** `POST /api/v1/auth/login` accepts unlimited attempts.
 
 - **Project and member endpoints:** No `projects` table, no `project_members` table, no endpoints to assign users to projects or manage project roles.
 
 - **Email sending:** No SMTP, no email templates. Password creation currently returns the temp password in the API response only.
 
-- **Password reset:** No forgot-password flow. The only ways to set a password are (1) on account creation via admin, or (2) via the authenticated `POST /users/me/password` endpoint.
+- **Password reset:** No forgot-password flow. The only ways to set a password are (1) on account creation via admin, or (2) via the authenticated `POST /api/v1/users/me/password` endpoint.
 
 ## Getting Started
 
@@ -142,7 +144,7 @@ npm run start:prod
 
 - `src/users/` — User controller, service, DTOs, and tests.
 - `src/users/audit-log.service.ts` — Audit logging for director-status changes.
-- `src/common/decorators/actor-id.decorator.ts` — Placeholder for extracting actor identity from the `x-user-id` header.
+- `src/auth/` — Login, refresh, `/auth/me`, JWT strategy, and the JwtAuthGuard / DirectorGuard used across the API.
 - `src/common/enums/project-role.enum.ts` — TypeScript enum for future project roles (not persisted).
 - `prisma/schema.prisma` — Prisma schema (User and AuditLog models).
 - `prisma/migrations/` — Database migrations.
