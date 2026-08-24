@@ -8,13 +8,14 @@ import {
   HttpStatus,
   Patch,
   Delete,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiTags,
+  ApiBearerAuth,
   ApiOperation,
   ApiResponse,
   ApiBody,
-  ApiHeader,
 } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -22,13 +23,19 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateAccountStatusDto } from './dto/update-account-status.dto';
 import { UpdateDirectorStatusDto } from './dto/update-director-status.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
-import { ActorId } from '../common/decorators/actor-id.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { DirectorGuard } from '../auth/guards/director.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { type AuthenticatedUser } from '../auth/types/auth.types';
 
 @ApiTags('users')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
 @Controller('users')
 export class UserController {
   constructor(private readonly usersService: UsersService) {}
 
+  @UseGuards(DirectorGuard)
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
@@ -85,22 +92,13 @@ export class UserController {
     description: 'Invalid input or validation failed',
   })
   @ApiResponse({ status: 409, description: 'Email already in use' })
-  // TODO(auth): director-only. Add director guard once auth exists.
   async create(@Body() createUserDto: CreateUserDto) {
     return this.usersService.create(createUserDto);
   }
 
   @Get('me')
-  @ApiHeader({
-    name: 'x-user-id',
-    description:
-      'User ID (temporary header for testing - will use JWT once auth module exists)',
-    required: true,
-    example: '550e8400-e29b-41d4-a716-446655440000',
-  })
   @ApiOperation({
     summary: 'Get current user',
-    description: 'Requires x-user-id header with user ID',
   })
   @ApiResponse({
     status: 200,
@@ -121,11 +119,9 @@ export class UserController {
       deletedAt: null,
     },
   })
-  @ApiResponse({ status: 400, description: 'Missing x-user-id header' })
   @ApiResponse({ status: 404, description: 'User not found or deleted' })
-  // TODO(auth): replace @ActorId() with real authenticated-user extraction once auth exists.
-  async getMe(@ActorId() actorId: string) {
-    return this.usersService.findById(actorId);
+  async getMe(@CurrentUser() user: AuthenticatedUser) {
+    return this.usersService.findById(user.id);
   }
 
   @Get(':id')
@@ -160,18 +156,6 @@ export class UserController {
 
   @Patch(':id')
   @HttpCode(HttpStatus.OK)
-  @ApiHeader({
-    name: 'x-user-id',
-    description:
-      'User ID (temporary header for testing - will use JWT once auth module exists)',
-    required: true,
-    example: '550e8400-e29b-41d4-a716-446655440000',
-  })
-  @ApiOperation({
-    summary: 'Update own user profile',
-    description:
-      'Self-edit only: firstName, lastName, phone, avatar. Email, accountStatus, isDirector cannot be changed here.',
-  })
   @ApiBody({
     type: UpdateUserDto,
     examples: {
@@ -214,20 +198,19 @@ export class UserController {
   })
   @ApiResponse({
     status: 400,
-    description: 'Invalid input or missing x-user-id header',
+    description: 'Invalid input',
   })
   @ApiResponse({ status: 403, description: 'Cannot edit another user' })
   @ApiResponse({ status: 404, description: 'User not found or deleted' })
-  // TODO(auth): self-only. actorId currently from untrusted x-user-id header;
-  // must be verified user identity once auth exists.
   async updateSelf(
     @Param('id') id: string,
     @Body() dto: UpdateUserDto,
-    @ActorId() actorId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return await this.usersService.updateSelf(actorId, id, dto);
+    return await this.usersService.updateSelf(user.id, id, dto);
   }
 
+  @UseGuards(DirectorGuard)
   @Patch(':id/status')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -273,7 +256,6 @@ export class UserController {
     description: 'Cannot deactivate last remaining active director',
   })
   @ApiResponse({ status: 404, description: 'User not found or deleted' })
-  // TODO(auth): director-only. Add director guard once auth exists.
   async setAccountStatus(
     @Param('id') id: string,
     @Body() dto: UpdateAccountStatusDto,
@@ -281,32 +263,13 @@ export class UserController {
     return this.usersService.setAccountStatus(id, dto.accountStatus);
   }
 
+  @UseGuards(DirectorGuard)
   @Patch(':id/director-status')
   @HttpCode(HttpStatus.OK)
-  @ApiHeader({
-    name: 'x-user-id',
-    description:
-      'User ID (temporary header for testing - will use JWT once auth module exists)',
-    required: true,
-    example: '550e8400-e29b-41d4-a716-446655440000',
-  })
   @ApiOperation({
     summary: 'Grant or revoke director status',
     description:
       'Grant/revoke global admin privilege. Audit logged. Cannot self-revoke or remove last active director.',
-  })
-  @ApiBody({
-    type: UpdateDirectorStatusDto,
-    examples: {
-      grant: {
-        summary: 'Grant director status',
-        value: { isDirector: true },
-      },
-      revoke: {
-        summary: 'Revoke director status',
-        value: { isDirector: false },
-      },
-    },
   })
   @ApiResponse({
     status: 200,
@@ -329,7 +292,7 @@ export class UserController {
   })
   @ApiResponse({
     status: 400,
-    description: 'Invalid input or missing x-user-id header',
+    description: 'Invalid input',
   })
   @ApiResponse({
     status: 403,
@@ -340,25 +303,16 @@ export class UserController {
     description: 'Cannot remove last remaining active director',
   })
   @ApiResponse({ status: 404, description: 'User not found or deleted' })
-  // TODO(auth): director-only. actorId currently from untrusted x-user-id header;
-  // must be verified director once auth exists.
   async setDirectorStatus(
     @Param('id') id: string,
     @Body() dto: UpdateDirectorStatusDto,
-    @ActorId() actorId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.usersService.setDirectorStatus(actorId, id, dto.isDirector);
+    return this.usersService.setDirectorStatus(user.id, id, dto.isDirector);
   }
 
   @Post('me/password')
   @HttpCode(HttpStatus.OK)
-  @ApiHeader({
-    name: 'x-user-id',
-    description:
-      'User ID (temporary header for testing - will use JWT once auth module exists)',
-    required: true,
-    example: '550e8400-e29b-41d4-a716-446655440000',
-  })
   @ApiOperation({
     summary: 'Change own password',
     description:
@@ -377,28 +331,23 @@ export class UserController {
     },
   })
   @ApiResponse({
-    status: 200,
-    description: 'Password changed successfully',
-    example: { success: true },
-  })
-  @ApiResponse({
     status: 400,
-    description: 'Invalid input or missing x-user-id header',
+    description: 'Invalid input',
   })
   @ApiResponse({
     status: 401,
     description: 'Current password is incorrect',
   })
   @ApiResponse({ status: 404, description: 'User not found or deleted' })
-  // TODO(auth): replace @ActorId() with real authenticated-user extraction once auth exists.
   async changeOwnPassword(
-    @ActorId() actorId: string,
+    @CurrentUser() user: AuthenticatedUser,
     @Body() dto: ChangePasswordDto,
   ) {
-    await this.usersService.changeOwnPassword(actorId, dto);
+    await this.usersService.changeOwnPassword(user.id, dto);
     return { success: true };
   }
 
+  @UseGuards(DirectorGuard)
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
@@ -418,7 +367,6 @@ export class UserController {
     status: 404,
     description: 'User not found or already deleted',
   })
-  // TODO(auth): director-only. Add director guard once auth exists.
   async softDelete(@Param('id') id: string) {
     await this.usersService.softDeleteUser(id);
   }

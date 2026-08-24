@@ -26,6 +26,7 @@ async function bootstrap() {
     .setTitle('Bieszczady UL API')
     .setDescription('Virtual office management system')
     .setVersion('1.0.0')
+    .addBearerAuth()
     .addTag('users', 'User management')
     .build();
 
