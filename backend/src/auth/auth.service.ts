@@ -1,9 +1,9 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
+import { User } from '@prisma/client';
 import { AuthenticatedUser, JwtPayload } from './types/auth.types';
 import { RefreshTokenService } from './refresh-token.service';
-import { User } from '@prisma/client';
 import { UsersService } from '../users/users.service';
 
 // Compared against when no user matches, so a failed login takes the same

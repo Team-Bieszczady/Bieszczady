@@ -149,7 +149,8 @@ export class UserController {
     },
   })
   @ApiResponse({ status: 404, description: 'User not found or deleted' })
-  // TODO(auth): access scope (any authenticated user? director/self only?) not fully specified; currently unguarded.
+  // TODO(auth): open to any authenticated user; confirm whether it should be
+  // director-or-self only.
   async getById(@Param('id') id: string) {
     return this.usersService.findById(id);
   }
