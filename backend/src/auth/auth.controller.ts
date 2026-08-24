@@ -23,7 +23,7 @@ const REFRESH_COOKIE = 'refresh_token';
 function refreshCookieOptions(): CookieOptions {
   return {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: process.env.NODE_ENV !== 'development',
     sameSite: 'strict',
     path: '/api/v1/auth/refresh',
     maxAge: REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000,

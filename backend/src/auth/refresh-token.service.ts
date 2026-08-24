@@ -25,16 +25,19 @@ export class RefreshTokenService {
   }
 
   consume(token: string): string | null {
-    const record = this.store.get(this.hash(token));
+    const key = this.hash(token);
+    const record = this.store.get(key);
     if (!record) {
-      return null;
-    }
-    if (record.usedAt) {
-      this.revokeAllForUser(record.userId);
       return null;
     }
 
     if (record.expiresAt < new Date()) {
+      this.store.delete(key);
+      return null;
+    }
+
+    if (record.usedAt) {
+      this.revokeAllForUser(record.userId);
       return null;
     }
 

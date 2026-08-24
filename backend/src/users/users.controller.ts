@@ -157,6 +157,11 @@ export class UserController {
 
   @Patch(':id')
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Update own user profile',
+    description:
+      'Self-edit only: firstName, lastName, phone, avatar. Email, accountStatus, isDirector cannot be changed here.',
+  })
   @ApiBody({
     type: UpdateUserDto,
     examples: {
@@ -272,6 +277,19 @@ export class UserController {
     description:
       'Grant/revoke global admin privilege. Audit logged. Cannot self-revoke or remove last active director.',
   })
+  @ApiBody({
+    type: UpdateDirectorStatusDto,
+    examples: {
+      grant: {
+        summary: 'Grant director status',
+        value: { isDirector: true },
+      },
+      revoke: {
+        summary: 'Revoke director status',
+        value: { isDirector: false },
+      },
+    },
+  })
   @ApiResponse({
     status: 200,
     description: 'Director status changed and audit logged',
@@ -318,6 +336,11 @@ export class UserController {
     summary: 'Change own password',
     description:
       'Change password after verifying current password. Sets mustChangePassword to false.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Password changed successfully',
+    example: { success: true },
   })
   @ApiBody({
     type: ChangePasswordDto,
