@@ -80,13 +80,73 @@ Every route requires a valid access token sent as `Authorization: Bearer <token>
 
 Currently, only director-status changes are audit-logged (grants and revocations, with previous/new values in metadata). The `AuditLogService` writes to the database; there is no public API endpoint to retrieve audit logs yet. Future features (password resets, account deactivations, email changes if they become mutable) should log via the same service.
 
+## Security
+
+### Authentication
+
+Access tokens are JWTs valid for 15 minutes, sent as `Authorization: Bearer <token>`.
+The payload carries only `sub` — the user id. No roles, no permissions: the server looks
+the user up on every request, so revoking someone's access takes effect on the next call
+rather than whenever their token happens to expire.
+
+Refresh tokens are opaque random values valid for 7 days, delivered only as an `httpOnly`
+cookie. They are stored SHA-256 hashed, never in plaintext, and are single-use — every
+refresh issues a new one. Replaying a consumed token is treated as theft and revokes every
+session of that user.
+
+### Cookie settings
+
+`httpOnly`, `sameSite: strict`, `path` scoped to the auth endpoints, and `secure` unless
+`NODE_ENV=development`. The `secure` flag defaults to on — only an explicit `development`
+turns it off — so a missing or misspelled environment value fails safe.
+
+### Rate limiting
+
+`POST /api/v1/auth/login` allows 5 requests per minute per IP. Further requests get
+`429 Too Many Requests` before the password is even checked. Configured in `AuthModule`
+with `@nestjs/throttler`.
+
+Behind a reverse proxy this counts the proxy's IP unless Express is told to trust it.
+Check before the first deployment.
+
+### Login attempts
+
+Successful and failed logins are written to the application log by `AuthService`. Failures
+at `warn` with the submitted email, successes at `log` with the user id. Passwords and
+tokens are never logged.
+
+### Error messages
+
+A failed login always returns the same `401` body, whether the account exists or not. When
+no user matches, the submitted password is compared against a dummy bcrypt hash so the
+response takes the same time either way — otherwise a stopwatch would reveal which
+addresses are registered.
+
+### Passwords
+
+Stored as bcrypt hashes and never returned by any endpoint. `UsersService` strips
+`passwordHash` from every result; the single exception is `findByEmailForAuth`, which
+exists only so login can verify a password.
+
+### HTTPS
+
+Required in production. The refresh cookie carries `Secure` there, so it is not sent over
+plain HTTP at all — a deployment without TLS breaks session refresh rather than leaking
+the token.
+
+### Not covered yet
+
+- No account lockout after repeated failures. Rate limiting is per IP, not per account.
+- Password changes, deactivations and reactivations are not audit-logged; only
+  director-status changes are.
+- Environment variables are not validated at startup — a missing `CORS_ORIGIN` or `PORT`
+  silently falls back to a default.
+
 ## Not Built Yet
 
 The following are intentionally out of scope:
 
 - **Logout and `lastLogin`:** the auth module issues and rotates tokens but has no logout endpoint, and successful logins are not recorded. Both belong to F1.1.
-
-- **Rate limiting:** `POST /api/v1/auth/login` accepts unlimited attempts.
 
 - **Project and member endpoints:** No `projects` table, no `project_members` table, no endpoints to assign users to projects or manage project roles.
 

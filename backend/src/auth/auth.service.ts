@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { User } from '@prisma/client';
@@ -19,6 +19,7 @@ interface LoginResult {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   constructor(
     private readonly jwtService: JwtService,
     private readonly refreshTokens: RefreshTokenService,
@@ -78,8 +79,10 @@ export class AuthService {
   async login(email: string, password: string): Promise<LoginResult> {
     const user = await this.validateUser(email, password);
     if (!user) {
+      this.logger.warn(`Failed login attempt for ${email}`);
       throw new UnauthorizedException();
     }
+    this.logger.log(`User ${user.id} logged in`);
 
     return this.issueTokens(user);
   }
