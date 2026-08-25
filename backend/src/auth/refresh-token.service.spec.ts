@@ -37,6 +37,14 @@ describe('RefreshTokenService', () => {
     expect(service.consume('not-a-real-token')).toBeNull();
   });
 
+  it('makes a token unusable after logging out', () => {
+    const token = service.issue('user-1');
+
+    service.revoke(token);
+
+    expect(service.consume(token)).toBeNull();
+  });
+
   it('rejects a token used a second time', () => {
     const token = service.issue('user-1');
     service.consume(token);

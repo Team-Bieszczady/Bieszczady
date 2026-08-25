@@ -142,6 +142,12 @@ export class UsersService {
 
     return user ? this.excludePasswordHash(user) : null;
   }
+  async recordLogin(id: string): Promise<void> {
+    await this.prisma.user.updateMany({
+      where: { id, deletedAt: null },
+      data: { lastLogin: new Date() },
+    });
+  }
 
   async updateSelf(
     actorId: string,

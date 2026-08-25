@@ -72,6 +72,7 @@ requests must not trigger two refreshes.
 POST /api/v1/auth/login     { email, password }   →  { accessToken, user }
 POST /api/v1/auth/refresh   (no body)             →  { accessToken, user }
 GET  /api/v1/auth/me        (Bearer token)        →  user
+POST /api/v1/auth/logout    (no body)             →  204, no content
 ```
 
 `user` contains: `id`, `email`, `firstName`, `lastName`, `isDirector`, `accountStatus`, `mustChangePassword`.
@@ -79,7 +80,7 @@ GET  /api/v1/auth/me        (Bearer token)        →  user
 ## Things that will trip you up
 
 - **The refresh token never appears in a response body.** It only ever travels as a cookie. If you're looking for it in JSON, stop.
-- **The refresh cookie is scoped to `/api/v1/auth/refresh`.** The browser will not send it to any other path. That is deliberate.
+- **The refresh cookie is scoped to `/api/v1/auth`.** The browser sends it to the auth endpoints and nowhere else — never to `/api/v1/users/*`. That is deliberate. It has to cover both `/auth/refresh` and `/auth/logout`, otherwise logging out could not revoke the token server-side.
 - **CORS:** the API only accepts requests from the origin set in `CORS_ORIGIN` (`http://localhost:5173` in development). A different port means the request is rejected before it reaches any of this.
 - **`mustChangePassword: true`** means the user is still on an admin-issued password and must set their own before doing anything else.
 - **`isDirector` is not a role.** It is a global admin flag, and it is the only permission this endpoint returns. Project roles (coordinator, executor, partner) are per-project and will arrive on a separate endpoint once projects exist — do not expect them here.
