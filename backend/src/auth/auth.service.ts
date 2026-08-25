@@ -80,6 +80,7 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException();
     }
+
     await this.usersService.recordLogin(user.id);
 
     return this.issueTokens(user);
@@ -98,6 +99,7 @@ export class AuthService {
 
     return this.issueTokens(user);
   }
+
   logout(refreshToken: string): void {
     this.refreshTokens.revoke(refreshToken);
   }

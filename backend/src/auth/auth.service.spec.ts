@@ -99,6 +99,7 @@ describe('AuthService', () => {
         UnauthorizedException,
       );
     });
+
     it('records the login timestamp', async () => {
       await service.login(ACTIVE_EMAIL, PASSWORD);
 
