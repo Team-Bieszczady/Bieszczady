@@ -17,10 +17,6 @@ export default function Router() {
 
         <Route element={<MainLayout />}>
           <Route path="/profile" element={<ProfilePage />} />
-          {/* TODO(projects): project routes go here once built, e.g.
-          <Route path="/projects" element={<ProjectsListPage />} />
-          <Route path="/projects/:id" element={<ProjectDetailPage />} />
-          */}
         </Route>
 
         <Route path="*" element={<NotFoundPage />} />
