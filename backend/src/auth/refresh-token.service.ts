@@ -45,6 +45,10 @@ export class RefreshTokenService {
     return record.userId;
   }
 
+  revoke(token: string): void {
+    this.store.delete(this.hash(token));
+  }
+
   revokeAllForUser(userId: string): void {
     for (const [hash, record] of this.store.entries()) {
       if (record.userId === userId) {

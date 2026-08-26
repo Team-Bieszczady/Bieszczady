@@ -81,7 +81,10 @@ export class AuthService {
       throw new UnauthorizedException();
     }
 
-    return this.issueTokens(user);
+    const tokens = await this.issueTokens(user);
+    await this.usersService.recordLogin(user.id);
+
+    return tokens;
   }
 
   async refresh(refreshToken: string): Promise<LoginResult> {
@@ -96,5 +99,9 @@ export class AuthService {
     }
 
     return this.issueTokens(user);
+  }
+
+  logout(refreshToken: string): void {
+    this.refreshTokens.revoke(refreshToken);
   }
 }

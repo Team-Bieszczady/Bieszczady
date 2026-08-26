@@ -43,13 +43,17 @@ describe('AuthService', () => {
   ];
 
   let service: AuthService;
+  let recordLogin: jest.Mock;
 
   beforeEach(() => {
+    recordLogin = jest.fn();
+
     const jwtService = {
       signAsync: jest.fn().mockResolvedValue('access-token'),
     } as unknown as JwtService;
 
     const usersService = {
+      recordLogin,
       findByEmailForAuth: (email: string) =>
         Promise.resolve(users.find((user) => user.email === email) ?? null),
       findByIdForAuth: (id: string) =>
@@ -94,6 +98,20 @@ describe('AuthService', () => {
       await expect(service.login(INACTIVE_EMAIL, PASSWORD)).rejects.toThrow(
         UnauthorizedException,
       );
+    });
+
+    it('records the login timestamp', async () => {
+      await service.login(ACTIVE_EMAIL, PASSWORD);
+
+      expect(recordLogin).toHaveBeenCalledWith('1');
+    });
+
+    it('records nothing when the login fails', async () => {
+      await expect(
+        service.login(ACTIVE_EMAIL, 'wrong-password'),
+      ).rejects.toThrow(UnauthorizedException);
+
+      expect(recordLogin).not.toHaveBeenCalled();
     });
   });
 
