@@ -6,9 +6,8 @@ import { Button } from '../../../components/ui/Button';
 import { PasswordInput } from '../../../components/ui/PasswordInput';
 import { Spinner } from '../../../components/ui/Spinner';
 import { isApiError } from '../../../lib/api';
-import { useAuth } from '../../../context/AuthContext';
+import { useAuth } from '../../../context/useAuth';
 import { useLogin } from '../hooks/useLogin';
-import { useStickyErrorMessage } from '../hooks/useStickyErrorMessage';
 
 interface LoginFormInputs {
   email: string;
@@ -26,8 +25,6 @@ export default function LoginPage() {
   const { setSession } = useAuth();
   const navigate = useNavigate();
   const loginMutation = useLogin();
-  const emailErrorMsg = useStickyErrorMessage(errors.email?.message);
-  const passwordErrorMsg = useStickyErrorMessage(errors.password?.message);
 
   const onSubmit = (data: LoginFormInputs) => {
     loginMutation.mutate(
@@ -86,7 +83,7 @@ export default function LoginPage() {
                 errors.email ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-0.5'
               }`}
             >
-              {emailErrorMsg}
+              {errors.email?.message}
             </p>
           </div>
         </div>
@@ -103,7 +100,7 @@ export default function LoginPage() {
                 errors.password ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-0.5'
               }`}
             >
-              {passwordErrorMsg}
+              {errors.password?.message}
             </p>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { useLocation, useNavigate } from 'react-router';
 import toast from 'react-hot-toast';
 import { IoCheckmarkCircle } from 'react-icons/io5';
@@ -7,9 +7,8 @@ import { Button } from '../../../components/ui/Button';
 import { PasswordInput } from '../../../components/ui/PasswordInput';
 import { Spinner } from '../../../components/ui/Spinner';
 import { isApiError } from '../../../lib/api';
-import { useAuth } from '../../../context/AuthContext';
+import { useAuth } from '../../../context/useAuth';
 import { useSetPassword } from '../hooks/useSetPassword';
-import { useStickyErrorMessage } from '../hooks/useStickyErrorMessage';
 
 interface PasswordRule {
   label: string;
@@ -36,13 +35,11 @@ export default function SetPasswordPage() {
   const { user, accessToken } = useAuth();
   const { state } = useLocation() as { state: LocationState | null };
   const navigate = useNavigate();
-  const { register, handleSubmit, watch, formState: { errors } } = useForm<SetPasswordFormInputs>({
+  const { register, handleSubmit, control, formState: { errors } } = useForm<SetPasswordFormInputs>({
     mode: 'onChange',
   });
   const setPasswordMutation = useSetPassword({ accessToken: accessToken ?? '' });
-  const newPasswordErrorMsg = useStickyErrorMessage(errors.newPassword?.message);
-  const confirmPasswordErrorMsg = useStickyErrorMessage(errors.confirmPassword?.message);
-  const newPasswordValue = watch('newPassword') ?? '';
+  const newPasswordValue = useWatch({ control, name: 'newPassword' }) ?? '';
 
   const onSubmit = (data: SetPasswordFormInputs) => {
     if (!accessToken || !state?.tempPassword) {
@@ -101,7 +98,7 @@ export default function SetPasswordPage() {
                 errors.newPassword ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-0.5'
               }`}
             >
-              {newPasswordErrorMsg}
+              {errors.newPassword?.message}
             </p>
           </div>
 
@@ -150,7 +147,7 @@ export default function SetPasswordPage() {
                 errors.confirmPassword ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-0.5'
               }`}
             >
-              {confirmPasswordErrorMsg}
+              {errors.confirmPassword?.message}
             </p>
           </div>
         </div>
