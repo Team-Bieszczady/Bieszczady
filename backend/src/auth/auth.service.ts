@@ -84,7 +84,10 @@ export class AuthService {
     }
     this.logger.log(`User ${user.id} logged in`);
 
-    return this.issueTokens(user);
+    const tokens = await this.issueTokens(user);
+    await this.usersService.recordLogin(user.id);
+
+    return tokens;
   }
 
   async refresh(refreshToken: string): Promise<LoginResult> {
@@ -99,5 +102,9 @@ export class AuthService {
     }
 
     return this.issueTokens(user);
+  }
+
+  logout(refreshToken: string): void {
+    this.refreshTokens.revoke(refreshToken);
   }
 }

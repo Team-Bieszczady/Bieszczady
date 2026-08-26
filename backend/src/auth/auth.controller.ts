@@ -20,13 +20,14 @@ import { REFRESH_TOKEN_TTL_DAYS } from './refresh-token.service';
 import { ThrottlerGuard } from '@nestjs/throttler';
 
 const REFRESH_COOKIE = 'refresh_token';
+const REFRESH_COOKIE_PATH = '/api/v1/auth';
 
 function refreshCookieOptions(): CookieOptions {
   return {
     httpOnly: true,
     secure: process.env.NODE_ENV !== 'development',
     sameSite: 'strict',
-    path: '/api/v1/auth/refresh',
+    path: REFRESH_COOKIE_PATH,
     maxAge: REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000,
   };
 }
@@ -71,6 +72,19 @@ export class AuthController {
     res.cookie(REFRESH_COOKIE, refreshToken, refreshCookieOptions());
 
     return { accessToken, user };
+  }
+
+  @Post('logout')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  logout(@Req() req: Request, @Res({ passthrough: true }) res: Response): void {
+    const cookies = req.cookies as Record<string, string | undefined>;
+    const token = cookies?.[REFRESH_COOKIE];
+
+    if (token) {
+      this.authService.logout(token);
+    }
+
+    res.clearCookie(REFRESH_COOKIE, refreshCookieOptions());
   }
 
   @UseGuards(JwtAuthGuard)
