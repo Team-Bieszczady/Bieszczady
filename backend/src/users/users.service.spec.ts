@@ -253,9 +253,20 @@ describe('UsersService', () => {
         accountStatus: 'INACTIVE',
       });
 
-      const result = await service.setAccountStatus('user-123', 'INACTIVE');
+      const result = await service.setAccountStatus(
+        'director-123',
+        'user-123',
+        'INACTIVE',
+      );
 
       expect(result.accountStatus).toBe('INACTIVE');
+      expect(auditLog.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actorId: 'director-123',
+          targetId: 'user-123',
+          action: 'ACCOUNT_DEACTIVATED',
+        }),
+      );
     });
 
     it('should block deactivating last active director', async () => {
@@ -266,7 +277,7 @@ describe('UsersService', () => {
       jest.spyOn(prisma.user, 'count').mockResolvedValue(1);
 
       await expect(
-        service.setAccountStatus('director-123', 'INACTIVE'),
+        service.setAccountStatus('director-123', 'director-123', 'INACTIVE'),
       ).rejects.toThrow(ConflictException);
     });
 
@@ -277,7 +288,11 @@ describe('UsersService', () => {
         accountStatus: 'INACTIVE',
       });
 
-      const result = await service.setAccountStatus('user-123', 'INACTIVE');
+      const result = await service.setAccountStatus(
+        'director-123',
+        'user-123',
+        'INACTIVE',
+      );
 
       expect(result.accountStatus).toBe('INACTIVE');
       expect(prisma.user.count).not.toHaveBeenCalled();
@@ -287,7 +302,7 @@ describe('UsersService', () => {
       jest.spyOn(prisma.user, 'findFirst').mockResolvedValue(null);
 
       await expect(
-        service.setAccountStatus('user-123', 'INACTIVE'),
+        service.setAccountStatus('director-123', 'user-123', 'INACTIVE'),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -393,6 +408,13 @@ describe('UsersService', () => {
           }),
         }),
       );
+      expect(auditLog.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actorId: 'user-123',
+          targetId: 'user-123',
+          action: 'PASSWORD_CHANGED',
+        }),
+      );
     });
 
     it('should reject incorrect current password', async () => {
@@ -429,12 +451,19 @@ describe('UsersService', () => {
         deletedAt: new Date(),
       });
 
-      await service.softDeleteUser('user-123');
+      await service.softDeleteUser('director-123', 'user-123');
 
       expect(prisma.user.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: 'user-123' },
           data: { deletedAt: expect.any(Date) },
+        }),
+      );
+      expect(auditLog.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actorId: 'director-123',
+          targetId: 'user-123',
+          action: 'ACCOUNT_DELETED',
         }),
       );
     });
@@ -446,9 +475,9 @@ describe('UsersService', () => {
       });
       jest.spyOn(prisma.user, 'count').mockResolvedValue(1);
 
-      await expect(service.softDeleteUser('director-123')).rejects.toThrow(
-        ConflictException,
-      );
+      await expect(
+        service.softDeleteUser('director-123', 'user-123'),
+      ).rejects.toThrow(ConflictException);
     });
 
     it('should allow deleting non-director', async () => {
@@ -458,7 +487,7 @@ describe('UsersService', () => {
         deletedAt: new Date(),
       });
 
-      await service.softDeleteUser('user-123');
+      await service.softDeleteUser('director-123', 'user-123');
 
       expect(prisma.user.update).toHaveBeenCalled();
       expect(prisma.user.count).not.toHaveBeenCalled();
@@ -467,9 +496,9 @@ describe('UsersService', () => {
     it('should throw NotFoundException for already-deleted user', async () => {
       jest.spyOn(prisma.user, 'findFirst').mockResolvedValue(null);
 
-      await expect(service.softDeleteUser('user-123')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.softDeleteUser('director-123', 'user-123'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 });

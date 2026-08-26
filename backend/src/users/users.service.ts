@@ -175,6 +175,7 @@ export class UsersService {
   }
 
   async setAccountStatus(
+    actorId: string,
     id: string,
     status: string,
   ): Promise<Omit<User, 'passwordHash'>> {
@@ -203,7 +204,12 @@ export class UsersService {
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
-
+    await this.auditLog.record({
+      actorId,
+      targetId: id,
+      action:
+        status === 'INACTIVE' ? 'ACCOUNT_DEACTIVATED' : 'ACCOUNT_ACTIVATED',
+    });
     return this.excludePasswordHash(updated);
   }
 
@@ -279,9 +285,14 @@ export class UsersService {
     }
 
     await this.setPassword(userId, dto.newPassword);
+    await this.auditLog.record({
+      actorId: userId,
+      targetId: userId,
+      action: 'PASSWORD_CHANGED',
+    });
   }
 
-  async softDeleteUser(id: string): Promise<void> {
+  async softDeleteUser(actorId: string, id: string): Promise<void> {
     await this.prisma.$transaction(
       async (tx) => {
         const user = await tx.user.findFirst({
@@ -305,5 +316,10 @@ export class UsersService {
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
+    await this.auditLog.record({
+      actorId,
+      targetId: id,
+      action: 'ACCOUNT_DELETED',
+    });
   }
 }

@@ -78,7 +78,7 @@ Every route requires a valid access token sent as `Authorization: Bearer <token>
 
 ## Audit Log
 
-Currently, only director-status changes are audit-logged (grants and revocations, with previous/new values in metadata). The `AuditLogService` writes to the database; there is no public API endpoint to retrieve audit logs yet. Future features (password resets, account deactivations, email changes if they become mutable) should log via the same service.
+Every privileged change to a user is recorded: director-status grants and revocations (with previous and new values in metadata), password changes, account deactivations and reactivations, and soft deletions. The `AuditLogService` writes to the database; there is no public API endpoint to retrieve audit logs yet. Password resets will log through the same service once they exist (F1.4, F1.5).
 
 ## Security
 
@@ -137,8 +137,8 @@ the token.
 ### Not covered yet
 
 - No account lockout after repeated failures. Rate limiting is per IP, not per account.
-- Password changes, deactivations and reactivations are not audit-logged; only
-  director-status changes are.
+- The audit entry is written after the transaction commits, not inside it. If the audit
+  write fails, the change itself has already happened but leaves no trace in `audit_logs`.
 - Environment variables are not validated at startup — a missing `CORS_ORIGIN` or `PORT`
   silently falls back to a default.
 
@@ -203,7 +203,7 @@ npm run start:prod
 ## Code Organization
 
 - `src/users/` — User controller, service, DTOs, and tests.
-- `src/users/audit-log.service.ts` — Audit logging for director-status changes.
+- `src/users/audit-log.service.ts` — Writes audit entries for privileged user changes.
 - `src/auth/` — Login, refresh, `/auth/me`, JWT strategy, and the JwtAuthGuard / DirectorGuard used across the API.
 - `src/common/enums/project-role.enum.ts` — TypeScript enum for future project roles (not persisted).
 - `prisma/schema.prisma` — Prisma schema (User and AuditLog models).
