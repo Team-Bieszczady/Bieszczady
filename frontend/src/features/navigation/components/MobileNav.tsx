@@ -1,5 +1,4 @@
 import { useState } from 'react';
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 import { slide as Slide } from 'react-burger-menu';
 import Logo from './Logo';
 import SectionLabel from './SectionLabel';
@@ -39,7 +38,7 @@ export default function MobileNav() {
       height: '24px',
       left: '20px',
       top: '20px',
-      zIndex: 40,
+      zIndex: '40',
     },
     bmBurgerBars: {
       background: 'var(--color-dark)',
@@ -76,7 +75,9 @@ export default function MobileNav() {
     <div className="lg:hidden">
       <Slide
         isOpen={isMenuOpen}
-        onStateChange={(state: { isOpen: boolean }) => setIsMenuOpen(state.isOpen)}
+        onStateChange={(state: { isOpen: boolean }) =>
+          setIsMenuOpen(state.isOpen)
+        }
         styles={burgerStyles}
         customBurgerIcon={customBurgerIcon}
         customCrossIcon={customCrossIcon}
@@ -95,7 +96,6 @@ export default function MobileNav() {
               <UserFooter
                 initials={MOCK_USER.initials}
                 name={MOCK_USER.name}
-                className="mx-4"
               />
             </div>
           </div>

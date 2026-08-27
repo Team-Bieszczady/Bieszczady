@@ -35,8 +35,8 @@ export default function OrgNavList({
                   ? 'px-2.5 py-1.5 text-darkGreen bg-lightGreen border-l-2 border-darkGreen'
                   : 'px-2.5 py-1.5 text-dark border-l-2 border-transparent hover:border-dark/60'
                 : isActive
-                  ? 'px-3 py-2 text-darkGreen bg-lightGreen border-l-4 border-darkGreen'
-                  : 'px-3 py-2 text-dark'
+                  ? 'px-3 py-2 text-sm font-medium text-darkGreen bg-green-100 border-l-4 border-darkGreen'
+                  : 'px-3 py-2 text-sm text-dark'
             }`
           }
         >
