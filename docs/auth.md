@@ -85,4 +85,3 @@ POST /api/v1/auth/logout    (no body)             →  204, no content
 - **`mustChangePassword: true`** means the user is still on an admin-issued password and must set their own before doing anything else.
 - **`isDirector` is not a role.** It is a global admin flag, and it is the only permission this endpoint returns. Project roles (coordinator, executor, partner) are per-project and will arrive on a separate endpoint once projects exist — do not expect them here.
 - **`sameSite: 'strict'` and production domains:** the refresh cookie is only sent when the request comes from the same site. This is fine in development (`localhost:5173` → `localhost:3000`). If the frontend and the API ever end up on genuinely different domains, the browser will silently stop sending the cookie and session refresh will break with no error anywhere. Check this before the first deployment.
-

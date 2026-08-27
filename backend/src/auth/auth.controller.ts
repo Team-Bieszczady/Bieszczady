@@ -13,10 +13,10 @@ import {
 import { type CookieOptions, type Request, type Response } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
+import { REFRESH_TOKEN_TTL_DAYS } from './refresh-token.service';
+import { type AuthenticatedUser, type AuthResponse } from './types/auth.types';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
-import { type AuthenticatedUser, type AuthResponse } from './types/auth.types';
-import { REFRESH_TOKEN_TTL_DAYS } from './refresh-token.service';
 
 const REFRESH_COOKIE = 'refresh_token';
 const REFRESH_COOKIE_PATH = '/api/v1/auth';
