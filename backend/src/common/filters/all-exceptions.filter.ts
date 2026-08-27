@@ -20,10 +20,18 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     let status: number;
     let message: string;
-    const fields: Record<string, string[]> | null = null;
+    let fields: Record<string, string[]> | null = null;
     if (exception instanceof HttpException) {
+      const body = exception.getResponse()
       status = exception.getStatus();
-      message = exception.message;
+      
+      if (typeof body === 'object' && body !== null && 'fields' in body) {
+      const typedBody = body as {message: string; fields: Record<string, string[]> | null}
+      message = typedBody.message
+      fields = typedBody.fields
+      } else {
+       message = exception.message;
+      }
     } else {
       status = 500;
       message = 'Wystąpił błąd serwera';

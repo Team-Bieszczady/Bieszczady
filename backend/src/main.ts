@@ -1,8 +1,15 @@
 import { NestFactory } from '@nestjs/core';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import { ValidationPipe } from '@nestjs/common';
+import { BadRequestException, ValidationPipe } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { ValidationError } from 'class-validator';
+
+function formatValidationErrors(errors: ValidationError[]): Record<string, string[]>{
+ const pairs = errors.map((error) => [error.property, Object.values(error.constraints ?? {})]);
+return Object.fromEntries(pairs);
+}
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -14,8 +21,17 @@ async function bootstrap() {
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
+      exceptionFactory: (errors) => {
+        return new BadRequestException({
+          message: "Nieprawidłowe dane",
+          fields: formatValidationErrors(errors),
+        })
+      }
     }),
+    
   );
+
+  app.useGlobalFilters(new AllExceptionsFilter());
 
   app.enableCors({
     origin: process.env.CORS_ORIGIN ?? 'http://localhost:5173',
