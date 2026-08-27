@@ -1,11 +1,36 @@
-import { ArgumentsHost, Catch, ExceptionFilter } from '@nestjs/common';
+import {
+  ArgumentsHost,
+  Catch,
+  ExceptionFilter,
+  HttpException,
+} from '@nestjs/common';
 import { Response } from 'express';
+
+const ERROR_CODES: Record<number, string> = {
+  400: 'BAD_REQUEST',
+  401: 'UNAUTHORIZED',
+  403: 'FORBIDDEN',
+  404: 'NOT_FOUND',
+};
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost): void {
     const response = host.switchToHttp().getResponse<Response>();
 
-    response.status(500).json({ code: 'TEST', message: 'filtr dziala' });
+    let status: number;
+    let message: string;
+    const fields: Record<string, string[]> | null = null;
+    if (exception instanceof HttpException) {
+      status = exception.getStatus();
+      message = exception.message;
+    } else {
+      status = 500;
+      message = 'Wystąpił błąd serwera';
+    }
+
+    const code = ERROR_CODES[status] ?? 'INTERNAL_ERROR';
+
+    response.status(status).json({ code, message, fields });
   }
 }
