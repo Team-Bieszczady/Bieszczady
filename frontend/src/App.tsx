@@ -1,35 +1,18 @@
-import { useEffect, useState } from 'react';
+import { Toaster } from 'react-hot-toast';
+import { AuthProvider } from './context/AuthContext';
+import Router from './Router';
 
-type HealthStatus = 'loading' | 'ok' | 'error';
-
-function App() {
-  const [status, setStatus] = useState<HealthStatus>('loading');
-
-  useEffect(() => {
-    const checkHealth = async () => {
-      try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/health`);
-        if (!res.ok) throw new Error(`backend returned ${res.status}`);
-        const data = await res.json();
-        setStatus(data.status === 'ok' ? 'ok' : 'error');
-      } catch {
-        setStatus('error');
-      }
-    };
-
-    checkHealth();
-  }, []);
-
+export default function App() {
   return (
-    <div>
-      <h1>Hello World</h1>
-      <p>
-        Backend: {status === 'loading' && 'sprawdzam...'}
-        {status === 'ok' && '✅ połączono'}
-        {status === 'error' && '❌ brak połączenia'}
-      </p>
-    </div>
+    <AuthProvider>
+      <Router />
+      <Toaster
+        position="top-center"
+        toastOptions={{
+          success: { duration: 3000 },
+          error: { duration: 5000 },
+        }}
+      />
+    </AuthProvider>
   );
 }
-
-export default App;
