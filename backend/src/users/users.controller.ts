@@ -266,8 +266,9 @@ export class UserController {
   async setAccountStatus(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateAccountStatusDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.usersService.setAccountStatus(id, dto.accountStatus);
+    return this.usersService.setAccountStatus(user.id, id, dto.accountStatus);
   }
 
   @UseGuards(DirectorGuard)
@@ -392,7 +393,11 @@ export class UserController {
     status: 404,
     description: 'User not found or already deleted',
   })
-  async softDelete(@Param('id', ParseUUIDPipe) id: string) {
-    await this.usersService.softDeleteUser(id);
+  async softDelete(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    await this.usersService.softDeleteUser(user.id, id);
+
   }
 }

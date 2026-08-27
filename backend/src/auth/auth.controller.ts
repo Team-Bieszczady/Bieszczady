@@ -17,6 +17,7 @@ import { REFRESH_TOKEN_TTL_DAYS } from './refresh-token.service';
 import { type AuthenticatedUser, type AuthResponse } from './types/auth.types';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
+import { ThrottlerGuard } from '@nestjs/throttler';
 
 const REFRESH_COOKIE = 'refresh_token';
 const REFRESH_COOKIE_PATH = '/api/v1/auth';
@@ -35,6 +36,7 @@ function refreshCookieOptions(): CookieOptions {
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @UseGuards(ThrottlerGuard)
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(
