@@ -128,6 +128,46 @@ Stored as bcrypt hashes and never returned by any endpoint. `UsersService` strip
 `passwordHash` from every result; the single exception is `findByEmailForAuth`, which
 exists only so login can verify a password.
 
+### Input validation
+
+Every request body is checked by a global `ValidationPipe` against the endpoint's DTO
+before a handler runs: required fields, types, email format, and maximum lengths. Route
+parameters go through `ParseUUIDPipe`, so a malformed id is rejected with `400` and never
+reaches the database. `whitelist` and `forbidNonWhitelisted` mean unknown properties are
+rejected rather than silently ignored, which is what keeps a request from setting a field
+the DTO does not list.
+
+### SQL injection
+
+Prisma builds every query as a parameterised statement, so values coming from a request
+are always sent as data and never spliced into SQL text. Ordinary calls
+(`findFirst`, `create`, `update`, `updateMany`, `count`) carry no injection risk.
+
+The single raw query in the codebase is `` $queryRaw`SELECT 1` `` in the health check. It
+is a fixed string with no interpolation, and it uses the tagged-template form, which
+parameterises any `${}` it is given. The `Unsafe` variants (`$queryRawUnsafe`,
+`$executeRawUnsafe`), which concatenate strings directly, are not used anywhere.
+
+### Error responses
+
+All errors share one shape, produced by `AllExceptionsFilter`:
+
+```json
+{
+  "code": "BAD_REQUEST",
+  "message": "Nieprawidłowe dane",
+  "fields": { "firstName": ["firstName must be shorter than or equal to 60 characters"] }
+}
+```
+
+`code` is a stable identifier the frontend can branch on without parsing prose, derived
+from the HTTP status: `BAD_REQUEST`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`,
+`TOO_MANY_REQUESTS`, `SERVICE_UNAVAILABLE`, and `INTERNAL_ERROR` for anything else. `message` is always a string. `fields` maps a field
+name to its problems, or is `null` when the error is not about a specific field.
+
+Unrecognised exceptions become `500` with a generic message; the real error goes to the
+server log only, so stack traces and internal details never reach the client.
+
 ### HTTPS
 
 Required in production. The refresh cookie carries `Secure` there, so it is not sent over
@@ -139,8 +179,10 @@ the token.
 - No account lockout after repeated failures. Rate limiting is per IP, not per account.
 - The audit entry is written after the transaction commits, not inside it. If the audit
   write fails, the change itself has already happened but leaves no trace in `audit_logs`.
-- Environment variables are not validated at startup — a missing `CORS_ORIGIN` or `PORT`
-  silently falls back to a default.
+- `validateEnv` only checks that required variables are present, not that their values are
+  sensible. A short or reused `JWT_ACCESS_SECRET` passes.
+- Optional variables still fall back to defaults: a missing `CORS_ORIGIN` silently becomes
+  `http://localhost:5173`, which is wrong in production but does not stop startup.
 
 ## Not Built Yet
 

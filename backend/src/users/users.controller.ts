@@ -9,6 +9,7 @@ import {
   Patch,
   Delete,
   UseGuards,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -151,7 +152,7 @@ export class UserController {
   @ApiResponse({ status: 404, description: 'User not found or deleted' })
   // TODO(auth): open to any authenticated user; confirm whether it should be
   // director-or-self only.
-  async getById(@Param('id') id: string) {
+  async getById(@Param('id', ParseUUIDPipe) id: string) {
     return this.usersService.findById(id);
   }
 
@@ -209,7 +210,7 @@ export class UserController {
   @ApiResponse({ status: 403, description: 'Cannot edit another user' })
   @ApiResponse({ status: 404, description: 'User not found or deleted' })
   async updateSelf(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateUserDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
@@ -263,7 +264,7 @@ export class UserController {
   })
   @ApiResponse({ status: 404, description: 'User not found or deleted' })
   async setAccountStatus(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateAccountStatusDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
@@ -324,7 +325,7 @@ export class UserController {
   })
   @ApiResponse({ status: 404, description: 'User not found or deleted' })
   async setDirectorStatus(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateDirectorStatusDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
@@ -393,7 +394,7 @@ export class UserController {
     description: 'User not found or already deleted',
   })
   async softDelete(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: AuthenticatedUser,
   ) {
     await this.usersService.softDeleteUser(user.id, id);
