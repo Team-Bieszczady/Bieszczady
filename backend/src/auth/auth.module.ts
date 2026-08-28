@@ -18,12 +18,17 @@ import { UsersModule } from '../users/users.module';
         signOptions: { expiresIn: '15m' },
       }),
     }),
-    ThrottlerModule.forRoot([
-      {
-        ttl: 60000,
-        limit: 5,
-      },
-    ]),
+    ThrottlerModule.forRoot({
+      // The default message is 'ThrottlerException: Too Many Requests', which
+      // leaks the internal class name to the client.
+      errorMessage: 'Too many requests',
+      throttlers: [
+        {
+          ttl: 60000,
+          limit: 5,
+        },
+      ],
+    }),
     PassportModule,
     UsersModule,
   ],

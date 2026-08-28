@@ -8,12 +8,28 @@ import { ValidationError } from 'class-validator';
 
 function formatValidationErrors(
   errors: ValidationError[],
+  parentPath = '',
 ): Record<string, string[]> {
-  const pairs = errors.map((error): [string, string[]] => [
-    error.property,
-    Object.values(error.constraints ?? {}),
-  ]);
-  return Object.fromEntries(pairs);
+  const fields: Record<string, string[]> = {};
+
+  for (const error of errors) {
+    const path = parentPath
+      ? parentPath + '.' + error.property
+      : error.property;
+    const messages = Object.values(error.constraints ?? {});
+
+    if (messages.length > 0) {
+      fields[path] = messages;
+    }
+
+    // A DTO nested inside another DTO reports its own failures here, not in
+    // constraints. Without this the child messages are lost.
+    if (error.children && error.children.length > 0) {
+      Object.assign(fields, formatValidationErrors(error.children, path));
+    }
+  }
+
+  return fields;
 }
 
 async function bootstrap() {
