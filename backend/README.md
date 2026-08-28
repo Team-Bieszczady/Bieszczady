@@ -161,8 +161,8 @@ All errors share one shape, produced by `AllExceptionsFilter`:
 ```
 
 `code` is a stable identifier the frontend can branch on without parsing prose, derived
-from the HTTP status: `BAD_REQUEST`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, and
-`INTERNAL_ERROR` for anything else. `message` is always a string. `fields` maps a field
+from the HTTP status: `BAD_REQUEST`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`,
+`TOO_MANY_REQUESTS`, `SERVICE_UNAVAILABLE`, and `INTERNAL_ERROR` for anything else. `message` is always a string. `fields` maps a field
 name to its problems, or is `null` when the error is not about a specific field.
 
 Unrecognised exceptions become `500` with a generic message; the real error goes to the
