@@ -6,9 +6,14 @@ import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { ValidationError } from 'class-validator';
 
-function formatValidationErrors(errors: ValidationError[]): Record<string, string[]>{
- const pairs = errors.map((error) => [error.property, Object.values(error.constraints ?? {})]);
-return Object.fromEntries(pairs);
+function formatValidationErrors(
+  errors: ValidationError[],
+): Record<string, string[]> {
+  const pairs = errors.map((error): [string, string[]] => [
+    error.property,
+    Object.values(error.constraints ?? {}),
+  ]);
+  return Object.fromEntries(pairs);
 }
 
 async function bootstrap() {
@@ -23,12 +28,11 @@ async function bootstrap() {
       transform: true,
       exceptionFactory: (errors) => {
         return new BadRequestException({
-          message: "Nieprawidłowe dane",
+          message: 'Nieprawidłowe dane',
           fields: formatValidationErrors(errors),
-        })
-      }
+        });
+      },
     }),
-    
   );
 
   app.useGlobalFilters(new AllExceptionsFilter());

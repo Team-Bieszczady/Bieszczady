@@ -9,7 +9,7 @@ import {
   Patch,
   Delete,
   UseGuards,
-  ParseUUIDPipe
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -398,6 +398,5 @@ export class UserController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     await this.usersService.softDeleteUser(user.id, id);
-
   }
 }
