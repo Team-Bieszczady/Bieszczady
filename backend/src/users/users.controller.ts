@@ -8,6 +8,7 @@ import {
   HttpStatus,
   Patch,
   Delete,
+  Query,
   UseGuards,
   ParseUUIDPipe,
 } from '@nestjs/common';
@@ -17,21 +18,26 @@ import {
   ApiOperation,
   ApiResponse,
   ApiBody,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { ListUsersQueryDto } from './dto/list-users-query.dto';
 import { UpdateAccountStatusDto } from './dto/update-account-status.dto';
 import { UpdateDirectorStatusDto } from './dto/update-director-status.dto';
+import { UpdateUserModulesDto } from './dto/update-user-modules.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { DirectorGuard } from '../auth/guards/director.guard';
+import { ModuleAccessGuard } from '../auth/guards/module-access.guard';
+import { RequireModule } from '../auth/decorators/require-module.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { type AuthenticatedUser } from '../auth/types/auth.types';
 
 @ApiTags('users')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, ModuleAccessGuard)
 @Controller('users')
 export class UserController {
   constructor(private readonly usersService: UsersService) {}
@@ -42,7 +48,7 @@ export class UserController {
   @ApiOperation({
     summary: 'Create a new user',
     description:
-      'Creates a new user with server-generated temporary password. Returns user object and tempPassword.',
+      'Director-only. The director supplies the initial password; it is hashed and mustChangePassword is set, so the user must replace it on first login. Default module access is granted, plus anything in `modules`.',
   })
   @ApiBody({
     type: CreateUserDto,
@@ -54,6 +60,7 @@ export class UserController {
           lastName: 'Doe',
           email: 'john.doe@example.com',
           phone: '+1-555-0123',
+          password: 'SecurePass123!',
         },
       },
       withoutPhone: {
@@ -62,6 +69,7 @@ export class UserController {
           firstName: 'Jane',
           lastName: 'Smith',
           email: 'jane.smith@example.com',
+          password: 'SecurePass456!',
         },
       },
     },
@@ -70,22 +78,19 @@ export class UserController {
     status: 201,
     description: 'User successfully created',
     example: {
-      user: {
-        id: '550e8400-e29b-41d4-a716-446655440000',
-        firstName: 'John',
-        lastName: 'Doe',
-        email: 'john.doe@example.com',
-        phone: '+1-555-0123',
-        avatar: null,
-        accountStatus: 'ACTIVE',
-        isDirector: false,
-        mustChangePassword: true,
-        lastLogin: null,
-        createdAt: '2026-08-20T10:30:00.000Z',
-        updatedAt: '2026-08-20T10:30:00.000Z',
-        deletedAt: null,
-      },
-      tempPassword: 'AZ9k7mL2pQ_wXfR5tN8vJ',
+      id: '550e8400-e29b-41d4-a716-446655440000',
+      firstName: 'John',
+      lastName: 'Doe',
+      email: 'john.doe@example.com',
+      phone: '+1-555-0123',
+      avatar: null,
+      accountStatus: 'ACTIVE',
+      isDirector: false,
+      mustChangePassword: true,
+      lastLogin: null,
+      createdAt: '2026-08-20T10:30:00.000Z',
+      updatedAt: '2026-08-20T10:30:00.000Z',
+      deletedAt: null,
     },
   })
   @ApiResponse({
@@ -93,8 +98,35 @@ export class UserController {
     description: 'Invalid input or validation failed',
   })
   @ApiResponse({ status: 409, description: 'Email already in use' })
-  async create(@Body() createUserDto: CreateUserDto) {
-    return this.usersService.create(createUserDto);
+  async create(
+    @Body() createUserDto: CreateUserDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.usersService.create(actor.id, createUserDto);
+  }
+
+  @RequireModule('PEOPLE')
+  @Get()
+  @ApiOperation({
+    summary: 'Get all users',
+    description:
+      'Soft-deleted users are excluded by default. Directors may pass ?includeDeleted=true to get them as well (each carries a non-null deletedAt); for anyone else the flag is ignored.',
+  })
+  @ApiQuery({
+    name: 'includeDeleted',
+    required: false,
+    type: Boolean,
+    description: 'Director-only. Include soft-deleted users in the response.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'List of all users',
+  })
+  async getAll(
+    @Query() query: ListUsersQueryDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.usersService.findAll(user.isDirector && !!query.includeDeleted);
   }
 
   @Get('me')
@@ -125,6 +157,7 @@ export class UserController {
     return this.usersService.findById(user.id);
   }
 
+  @RequireModule('PEOPLE')
   @Get(':id')
   @ApiOperation({
     summary: 'Get user by ID',
@@ -150,8 +183,6 @@ export class UserController {
     },
   })
   @ApiResponse({ status: 404, description: 'User not found or deleted' })
-  // TODO(auth): open to any authenticated user; confirm whether it should be
-  // director-or-self only.
   async getById(@Param('id', ParseUUIDPipe) id: string) {
     return this.usersService.findById(id);
   }
@@ -266,9 +297,9 @@ export class UserController {
   async setAccountStatus(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateAccountStatusDto,
-    @CurrentUser() user: AuthenticatedUser,
+    @CurrentUser() actor: AuthenticatedUser,
   ) {
-    return this.usersService.setAccountStatus(user.id, id, dto.accountStatus);
+    return this.usersService.setAccountStatus(actor.id, id, dto.accountStatus);
   }
 
   @UseGuards(DirectorGuard)
@@ -330,6 +361,41 @@ export class UserController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.usersService.setDirectorStatus(user.id, id, dto.isDirector);
+  }
+
+  @UseGuards(DirectorGuard)
+  @Patch(':id/modules')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Update user module access',
+    description:
+      'Grant or revoke module access for a user. Full-replace semantics: submit the complete set of modules.',
+  })
+  @ApiBody({
+    type: UpdateUserModulesDto,
+    examples: {
+      example: {
+        summary: 'Grant multiple modules',
+        value: { modules: ['OVERVIEW', 'TASKS', 'CALENDAR', 'PEOPLE'] },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Module access updated and audit logged',
+    example: { modules: ['OVERVIEW', 'TASKS', 'CALENDAR', 'PEOPLE'] },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid input',
+  })
+  @ApiResponse({ status: 404, description: 'User not found or deleted' })
+  async setModuleAccess(
+    @Param('id') id: string,
+    @Body() dto: UpdateUserModulesDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.usersService.setModuleAccess(actor.id, id, dto.modules);
   }
 
   @Post('me/password')
@@ -395,8 +461,8 @@ export class UserController {
   })
   async softDelete(
     @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser() user: AuthenticatedUser,
+    @CurrentUser() actor: AuthenticatedUser,
   ) {
-    await this.usersService.softDeleteUser(user.id, id);
+    await this.usersService.softDeleteUser(actor.id, id);
   }
 }

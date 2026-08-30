@@ -1,9 +1,12 @@
 import { UnauthorizedException } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
 import { User } from '@prisma/client';
 import { AuthService } from './auth.service';
 import { RefreshTokenService } from './refresh-token.service';
 import { UsersService } from '../users/users.service';
+import { ModuleAccessService } from '../users/module-access.service';
+import { Module } from '../common/enums/module.enum';
 
 describe('AuthService', () => {
   const PASSWORD = 'haslo123';
@@ -42,29 +45,46 @@ describe('AuthService', () => {
     }),
   ];
 
+  const GRANTED_MODULES: Module[] = ['OVERVIEW', 'TASKS', 'CALENDAR'];
+
   let service: AuthService;
   let recordLogin: jest.Mock;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     recordLogin = jest.fn();
 
-    const jwtService = {
-      signAsync: jest.fn().mockResolvedValue('access-token'),
-    } as unknown as JwtService;
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        AuthService,
+        RefreshTokenService,
+        {
+          provide: JwtService,
+          useValue: {
+            signAsync: jest.fn().mockResolvedValue('access-token'),
+          },
+        },
+        {
+          provide: UsersService,
+          useValue: {
+            recordLogin,
+            findByEmailForAuth: (email: string) =>
+              Promise.resolve(
+                users.find((user) => user.email === email) ?? null,
+              ),
+            findByIdForAuth: (id: string) =>
+              Promise.resolve(users.find((user) => user.id === id) ?? null),
+          },
+        },
+        {
+          provide: ModuleAccessService,
+          useValue: {
+            getEffectiveModules: jest.fn().mockResolvedValue(GRANTED_MODULES),
+          },
+        },
+      ],
+    }).compile();
 
-    const usersService = {
-      recordLogin,
-      findByEmailForAuth: (email: string) =>
-        Promise.resolve(users.find((user) => user.email === email) ?? null),
-      findByIdForAuth: (id: string) =>
-        Promise.resolve(users.find((user) => user.id === id) ?? null),
-    } as unknown as UsersService;
-
-    service = new AuthService(
-      jwtService,
-      new RefreshTokenService(),
-      usersService,
-    );
+    service = module.get<AuthService>(AuthService);
   });
 
   describe('login', () => {
@@ -74,6 +94,12 @@ describe('AuthService', () => {
       expect(result.accessToken).toBe('access-token');
       expect(result.refreshToken).toHaveLength(64);
       expect(result.user.email).toBe(ACTIVE_EMAIL);
+    });
+
+    it('carries the effective module list on the returned user', async () => {
+      const { user } = await service.login(ACTIVE_EMAIL, PASSWORD);
+
+      expect(user.modules).toEqual(GRANTED_MODULES);
     });
 
     it('never exposes the password hash', async () => {

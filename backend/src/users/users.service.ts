@@ -11,10 +11,11 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
-import { User, Prisma, PrismaClient } from '@prisma/client';
+import { User, Prisma } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
-import { randomBytes } from 'node:crypto';
 import { AuditLogService } from './audit-log.service';
+import { ModuleAccessService } from './module-access.service';
+import { Module } from '../common/enums/module.enum';
 
 @Injectable()
 export class UsersService {
@@ -23,16 +24,13 @@ export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditLog: AuditLogService,
+    private readonly moduleAccess: ModuleAccessService,
   ) {}
 
   private excludePasswordHash(user: User): Omit<User, 'passwordHash'> {
     return Object.fromEntries(
       Object.entries(user).filter(([key]) => key !== 'passwordHash'),
     ) as Omit<User, 'passwordHash'>;
-  }
-
-  private generateTempPassword(): string {
-    return randomBytes(16).toString('base64url');
   }
 
   private async setPassword(
@@ -51,7 +49,7 @@ export class UsersService {
   }
 
   private async assertNotLastActiveDirector(
-    tx: PrismaClient,
+    tx: Prisma.TransactionClient,
     user: User,
     action: string,
   ): Promise<void> {
@@ -67,32 +65,45 @@ export class UsersService {
     }
   }
 
-  async create(dto: CreateUserDto): Promise<{
-    user: Omit<User, 'passwordHash'>;
-    tempPassword: string;
-  }> {
-    const tempPassword = this.generateTempPassword();
-    const passwordHash = await bcrypt.hash(tempPassword, 10);
+  async create(
+    actorId: string,
+    dto: CreateUserDto,
+  ): Promise<Omit<User, 'passwordHash'>> {
+    const passwordHash = await bcrypt.hash(dto.password, 10);
     const normalizedEmail = this.normalizeEmail(dto.email);
 
     try {
-      const user = await this.prisma.user.create({
-        data: {
-          firstName: dto.firstName,
-          lastName: dto.lastName,
-          email: normalizedEmail,
-          phone: dto.phone,
-          passwordHash,
-          isDirector: false,
-          accountStatus: 'ACTIVE',
-          mustChangePassword: true,
-        },
+      const user = await this.prisma.$transaction(async (tx) => {
+        const newUser = await tx.user.create({
+          data: {
+            firstName: dto.firstName,
+            lastName: dto.lastName,
+            email: normalizedEmail,
+            phone: dto.phone,
+            passwordHash,
+            isDirector: false,
+            accountStatus: 'ACTIVE',
+            mustChangePassword: true,
+          },
+        });
+        const grantedModules = await this.moduleAccess.seedDefaultModules(
+          tx,
+          newUser.id,
+          dto.modules ?? [],
+          actorId,
+        );
+
+        await this.auditLog.recordInTransaction(tx, {
+          actorId,
+          targetId: newUser.id,
+          action: 'USER_CREATED',
+          metadata: { email: newUser.email, modules: grantedModules },
+        });
+
+        return newUser;
       });
 
-      return {
-        user: this.excludePasswordHash(user),
-        tempPassword,
-      };
+      return this.excludePasswordHash(user);
     } catch (error) {
       this.logger.error('Error creating user:', error);
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -141,6 +152,14 @@ export class UsersService {
     });
 
     return user ? this.excludePasswordHash(user) : null;
+  }
+  async findAll(includeDeleted = false): Promise<Omit<User, 'passwordHash'>[]> {
+    const users = await this.prisma.user.findMany({
+      where: includeDeleted ? {} : { deletedAt: null },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return users.map((user) => this.excludePasswordHash(user));
   }
 
   async recordLogin(id: string): Promise<void> {
@@ -197,26 +216,27 @@ export class UsersService {
         }
 
         if (status === 'INACTIVE') {
-          await this.assertNotLastActiveDirector(
-            tx as PrismaClient,
-            user,
-            'deactivate',
-          );
+          await this.assertNotLastActiveDirector(tx, user, 'deactivate');
         }
 
-        return tx.user.update({
+        const result = await tx.user.update({
           where: { id },
           data: { accountStatus: status },
         });
+
+        await this.auditLog.recordInTransaction(tx, {
+          actorId,
+          targetId: id,
+          action:
+            status === 'INACTIVE' ? 'ACCOUNT_DEACTIVATED' : 'ACCOUNT_ACTIVATED',
+          metadata: { from: user.accountStatus, to: status },
+        });
+
+        return result;
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
-    await this.auditLog.record({
-      actorId,
-      targetId: id,
-      action:
-        status === 'INACTIVE' ? 'ACCOUNT_DEACTIVATED' : 'ACCOUNT_ACTIVATED',
-    });
+
     return this.excludePasswordHash(updated);
   }
 
@@ -242,11 +262,7 @@ export class UsersService {
         }
 
         if (!isDirector && target.isDirector) {
-          await this.assertNotLastActiveDirector(
-            tx as PrismaClient,
-            target,
-            'remove',
-          );
+          await this.assertNotLastActiveDirector(tx, target, 'remove');
         }
 
         const updated = await tx.user.update({
@@ -254,24 +270,24 @@ export class UsersService {
           data: { isDirector },
         });
 
-        return { updated, previousIsDirector: target.isDirector };
+        await this.auditLog.recordInTransaction(tx, {
+          actorId,
+          targetId,
+          action: isDirector
+            ? 'DIRECTOR_STATUS_GRANTED'
+            : 'DIRECTOR_STATUS_REVOKED',
+          metadata: {
+            previousValue: target.isDirector,
+            newValue: isDirector,
+          },
+        });
+
+        return updated;
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
 
-    await this.auditLog.record({
-      actorId,
-      targetId,
-      action: isDirector
-        ? 'DIRECTOR_STATUS_GRANTED'
-        : 'DIRECTOR_STATUS_REVOKED',
-      metadata: {
-        previousValue: result.previousIsDirector,
-        newValue: isDirector,
-      },
-    });
-
-    return this.excludePasswordHash(result.updated);
+    return this.excludePasswordHash(result);
   }
 
   async changeOwnPassword(
@@ -310,23 +326,29 @@ export class UsersService {
           throw new NotFoundException('User not found');
         }
 
-        await this.assertNotLastActiveDirector(
-          tx as PrismaClient,
-          user,
-          'delete',
-        );
+        await this.assertNotLastActiveDirector(tx, user, 'delete');
 
         await tx.user.update({
           where: { id },
           data: { deletedAt: new Date() },
         });
+
+        await this.auditLog.recordInTransaction(tx, {
+          actorId,
+          targetId: id,
+          action: 'ACCOUNT_DELETED',
+          metadata: { email: user.email },
+        });
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
-    await this.auditLog.record({
-      actorId,
-      targetId: id,
-      action: 'ACCOUNT_DELETED',
-    });
+  }
+
+  async setModuleAccess(
+    actorId: string,
+    targetId: string,
+    modules: Module[],
+  ): Promise<Module[]> {
+    return this.moduleAccess.setModules(actorId, targetId, modules);
   }
 }
