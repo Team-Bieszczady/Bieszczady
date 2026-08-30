@@ -4,10 +4,11 @@ import Logo from './Logo';
 import SectionLabel from './SectionLabel';
 import OrgNavList from './OrgNavList';
 import UserFooter from './UserFooter';
-import { ORG_NAV_ITEMS, MOCK_USER } from '../data';
+import { useNavData } from '../hooks/useNavData';
 
 export default function MobileNav() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { initials, name, avatarSrc, isDirector, orgNavItems } = useNavData();
 
   const customBurgerIcon = (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -89,13 +90,16 @@ export default function MobileNav() {
             <Logo />
             <SectionLabel label="Organizacja" />
             <OrgNavList
-              items={ORG_NAV_ITEMS}
+              items={orgNavItems}
               onNavigate={() => setIsMenuOpen(false)}
             />
             <div className="mt-auto">
               <UserFooter
-                initials={MOCK_USER.initials}
-                name={MOCK_USER.name}
+                initials={initials}
+                name={name}
+                avatarSrc={avatarSrc}
+                isDirector={isDirector}
+                onNavigate={() => setIsMenuOpen(false)}
               />
             </div>
           </div>

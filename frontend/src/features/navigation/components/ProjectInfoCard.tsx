@@ -1,21 +1,30 @@
 interface ProjectInfoCardProps {
   name: string;
   status: string;
+  description: string;
+  stage: string;
 }
 
-export default function ProjectInfoCard({ name, status }: ProjectInfoCardProps) {
+export default function ProjectInfoCard({ name, status, description, stage }: ProjectInfoCardProps) {
   return (
-    <div className="mx-4 mb-4 p-3 border border-gray rounded-lg">
-      <div className="mb-2">
-        <p className="text-xs font-semibold uppercase text-gray mb-1">
-          Wybrany projekt
-        </p>
-        <p className="font-bold text-dark text-sm">{name}</p>
-      </div>
-      <div className="inline-block px-2 py-0.5 rounded bg-lightGreen">
-        <p className="text-xs font-semibold uppercase text-darkGreen">
+    <div className="mx-4 my-3 p-3 border border-gray-200 rounded-lg bg-white">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-1.5">
+        Wybrany projekt
+      </p>
+      <h3 className="text-sm font-bold text-dark leading-snug mb-1.5">
+        {name}
+      </h3>
+      <p
+        className="text-[11px] text-gray-400 leading-snug mb-2.5 line-clamp-2"
+        title={description}
+      >
+        {description}
+      </p>
+      <div className="flex items-center gap-2">
+        <span className="bg-lightGreen text-darkGreen rounded-full text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5">
           {status}
-        </p>
+        </span>
+        <span className="text-[10px] text-gray-500">{stage}</span>
       </div>
     </div>
   );

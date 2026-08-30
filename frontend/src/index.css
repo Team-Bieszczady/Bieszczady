@@ -9,9 +9,114 @@
   --color-dark: #101010;
   --color-darkGreen: #18744E;
   --color-darkGreenHover: #155a3d;
-  --color-lightGreen: #e4e8eC;
+  --color-lightGreen: #dcfce7;
   --color-white: #fff;
+  --color-darkRed: #A33A2A;
 
+  --animate-fade-in: fade-in 220ms ease-out;
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  --animate-pop-in: pop-in 160ms ease-out;
+
+  @keyframes pop-in {
+    from {
+      opacity: 0;
+      transform: translateY(-4px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-pop-in {
+    animation: none;
+  }
+}
+
+.nav-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-darkGreen) transparent;
+}
+
+.nav-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.nav-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.nav-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--color-darkGreen);
+  border-radius: 9999px;
+}
+
+.nav-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-darkGreenHover);
+}
+
+.table-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db transparent;
+}
+
+.table-scrollbar::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+
+.table-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.table-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #d1d5db;
+  border-radius: 9999px;
+}
+
+.table-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #9ca3af;
+}
+
+.modal-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-darkGreen) transparent;
+}
+
+.modal-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modal-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--color-darkGreen);
+  border-radius: 9999px;
+}
+
+.modal-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-darkGreenHover);
+}
+
+.modal-scrollbar::-webkit-scrollbar-button {
+  display: none;
+  height: 0;
+  width: 0;
+}
 
