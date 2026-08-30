@@ -3,6 +3,8 @@ import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
+const DEFAULT_USER_MODULES = ['OVERVIEW', 'TASKS', 'CALENDAR'];
+
 async function main() {
   const passwordHash = await bcrypt.hash('ChangeMe123!', 10);
 
@@ -24,8 +26,10 @@ async function main() {
     },
   ];
 
+  let director1Id: string;
+
   for (const d of directors) {
-    await prisma.user.upsert({
+    const created = await prisma.user.upsert({
       where: { email: d.email },
       update: {},
       create: {
@@ -33,8 +37,12 @@ async function main() {
         passwordHash,
         isDirector: true,
         accountStatus: 'ACTIVE',
+        mustChangePassword: false,
       },
     });
+    if (d.email === 'director1@bieszczady.local') {
+      director1Id = created.id;
+    }
   }
 
   const regularUsers = [
@@ -60,14 +68,28 @@ async function main() {
   ];
 
   for (const u of regularUsers) {
-    await prisma.user.upsert({
+    const user = await prisma.user.upsert({
       where: { email: u.email },
       update: {},
-      create: { ...u, passwordHash, isDirector: false },
+      create: {
+        ...u,
+        passwordHash,
+        isDirector: false,
+        mustChangePassword: false,
+      },
     });
+    for (const module of DEFAULT_USER_MODULES) {
+      await prisma.userModuleAccess.upsert({
+        where: { userId_module: { userId: user.id, module } },
+        update: {},
+        create: {
+          userId: user.id,
+          module,
+          grantedById: director1Id!,
+        },
+      });
+    }
   }
-
-  console.log('Seed completed. Created 3 directors and 3 regular users.');
 }
 
 main()

@@ -21,7 +21,7 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
           <input
             ref={ref}
             type={showPassword ? 'text' : 'password'}
-            className="text-xs w-full h-10 pl-10 pr-10 bg-white border border-lightGreen transition-all hover:border-darkGreen/60 rounded-lg text-dark placeholder-dark placeholder-opacity-30 focus:outline-none focus:ring-1 focus:ring-darkGreen/60 focus:border-transparent"
+            className="text-xs w-full h-10 pl-10 pr-10 bg-white border border-gray-100 transition-all hover:border-darkGreen/60 rounded-lg text-dark placeholder-dark placeholder-opacity-30 focus:outline-none focus:ring-1 focus:ring-darkGreen/60 focus:border-transparent"
             {...props}
           />
           <button

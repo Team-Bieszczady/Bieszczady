@@ -5,7 +5,6 @@ import { IoCheckmarkCircle } from 'react-icons/io5';
 import { GoCircle } from 'react-icons/go';
 import { Button } from '../../../components/ui/Button';
 import { PasswordInput } from '../../../components/ui/PasswordInput';
-import { Spinner } from '../../../components/ui/Spinner';
 import { isApiError } from '../../../lib/api';
 import { useAuth } from '../../../context/useAuth';
 import { useSetPassword } from '../hooks/useSetPassword';
@@ -158,16 +157,11 @@ export default function SetPasswordPage() {
             variant="primary"
             size="small"
             className="px-3 py-2.5"
-            disabled={setPasswordMutation.isPending}
+            isPending={setPasswordMutation.isPending}
           >
-            {setPasswordMutation.isPending ? (
-              <span className="flex items-center gap-2">
-                <Spinner variant="light" size="16" />
-                Ustawianie hasła...
-              </span>
-            ) : (
-              'Ustaw hasło i zaloguj się'
-            )}
+            {setPasswordMutation.isPending
+              ? 'Ustawianie hasła...'
+              : 'Ustaw hasło i zaloguj się'}
           </Button>
         </div>
       </form>

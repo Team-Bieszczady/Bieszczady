@@ -1,3 +1,5 @@
+import { Module } from '../../common/enums/module.enum';
+
 export type AccountStatus = 'ACTIVE' | 'INACTIVE';
 
 export interface JwtPayload {
@@ -12,6 +14,7 @@ export interface AuthenticatedUser {
   isDirector: boolean;
   accountStatus: AccountStatus;
   mustChangePassword: boolean;
+  modules: Module[];
 }
 
 export interface AuthResponse {
