@@ -1,10 +1,10 @@
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router';
 import toast from 'react-hot-toast';
 import { GoMail } from 'react-icons/go';
 import { Button } from '../../../components/ui/Button';
 import { PasswordInput } from '../../../components/ui/PasswordInput';
-import { Spinner } from '../../../components/ui/Spinner';
 import { isApiError } from '../../../lib/api';
 import { useAuth } from '../../../context/useAuth';
 import { useLogin } from '../hooks/useLogin';
@@ -25,26 +25,42 @@ export default function LoginPage() {
   const { setSession } = useAuth();
   const navigate = useNavigate();
   const loginMutation = useLogin();
+  const [failedAttempts, setFailedAttempts] = useState(0);
 
   const onSubmit = (data: LoginFormInputs) => {
     loginMutation.mutate(
       { email: data.email, password: data.password },
       {
         onSuccess: (response) => {
+          setFailedAttempts(0);
           setSession(response.accessToken, response.user);
           toast.success('Zalogowano pomyślnie');
+          const forcePasswordChange =
+            response.user.mustChangePassword && !response.user.isDirector;
           navigate(
-            response.user.mustChangePassword ? '/set-password' : '/profile',
-            response.user.mustChangePassword
+            forcePasswordChange ? '/set-password' : '/profile',
+            forcePasswordChange
               ? { state: { tempPassword: data.password } }
               : undefined,
           );
         },
         onError: (error) => {
-          if (isApiError(error) && error.status === 401) {
-            toast.error('Nieprawidłowy e-mail lub hasło');
+          const attempt = failedAttempts + 1;
+          setFailedAttempts(attempt);
+          const options = { id: 'login-error' };
+
+          if (!isApiError(error) || error.status !== 401) {
+            toast.error('Coś poszło nie tak. Spróbuj ponownie.', options);
+            return;
+          }
+
+          if (attempt >= 3) {
+            toast.error(
+              `Nieudana próba logowania (${attempt}). Sprawdź dane logowania lub skontaktuj się z administratorem.`,
+              options,
+            );
           } else {
-            toast.error('Coś poszło nie tak. Spróbuj ponownie.');
+            toast.error('Nieprawidłowy e-mail lub hasło', options);
           }
         },
       },
@@ -67,7 +83,7 @@ export default function LoginPage() {
             <input
               type="email"
               placeholder="Podaj e-mail..."
-              className="text-xs w-full h-10 pl-10 pr-4 bg-white border border-lightGreen transition-all hover:border-darkGreen/60 rounded-lg text-dark placeholder-dark placeholder-opacity-30 focus:outline-none focus:ring-1 focus:ring-darkGreen/60 focus:border-transparent"
+              className="text-xs w-full h-10 pl-10 pr-4 bg-white border border-gray-100 transition-all hover:border-darkGreen/60 rounded-lg text-dark placeholder-dark placeholder-opacity-30 focus:outline-none focus:ring-1 focus:ring-darkGreen/60 focus:border-transparent"
               {...register('email', {
                 required: 'E-mail jest wymagany',
                 pattern: {
@@ -120,15 +136,9 @@ export default function LoginPage() {
             variant="primary"
             size="small"
             className="px-3 py-2.5"
-            disabled={loginMutation.isPending}
+            isPending={loginMutation.isPending}
           >
-            {loginMutation.isPending ? (
-              <span className="flex items-center gap-2">
-                <Spinner variant="light" size="16" />
-              </span>
-            ) : (
-              'Zaloguj się'
-            )}
+            Zaloguj się
           </Button>
         </div>
       </form>

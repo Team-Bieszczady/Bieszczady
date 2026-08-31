@@ -5,9 +5,8 @@ import { User } from '@prisma/client';
 import { AuthenticatedUser, JwtPayload } from './types/auth.types';
 import { RefreshTokenService } from './refresh-token.service';
 import { UsersService } from '../users/users.service';
+import { ModuleAccessService } from '../users/module-access.service';
 
-// Compared against when no user matches, so a failed login takes the same
-// time whether the account exists or not (prevents user enumeration).
 const DUMMY_PASSWORD_HASH =
   '$2b$10$.DnJAlyzBFH.ZiGkQiy5nuQSUoaSpZzPYaAMj59yL4PEcXo/2xflW';
 
@@ -24,11 +23,17 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly refreshTokens: RefreshTokenService,
     private readonly usersService: UsersService,
+    private readonly moduleAccess: ModuleAccessService,
   ) {}
 
-  private toAuthenticatedUser(
+  private async toAuthenticatedUser(
     user: Omit<User, 'passwordHash'>,
-  ): AuthenticatedUser {
+  ): Promise<AuthenticatedUser> {
+    const modules = await this.moduleAccess.getEffectiveModules({
+      id: user.id,
+      isDirector: user.isDirector,
+    });
+
     return {
       id: user.id,
       email: user.email,
@@ -37,6 +42,7 @@ export class AuthService {
       isDirector: user.isDirector,
       accountStatus: user.accountStatus === 'ACTIVE' ? 'ACTIVE' : 'INACTIVE',
       mustChangePassword: user.mustChangePassword,
+      modules,
     };
   }
 
@@ -47,7 +53,7 @@ export class AuthService {
       return null;
     }
 
-    return this.toAuthenticatedUser(user);
+    return await this.toAuthenticatedUser(user);
   }
 
   private async validateUser(
@@ -65,7 +71,7 @@ export class AuthService {
       return null;
     }
 
-    return this.toAuthenticatedUser(user);
+    return await this.toAuthenticatedUser(user);
   }
 
   private async issueTokens(user: AuthenticatedUser): Promise<LoginResult> {

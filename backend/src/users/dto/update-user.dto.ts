@@ -3,25 +3,30 @@ import {
   IsNotEmpty,
   IsOptional,
   MaxLength,
+  Matches,
   ValidateIf,
 } from 'class-validator';
+import {
+  NAME_MAX_LENGTH,
+  NAME_PATTERN,
+  NAME_PATTERN_MESSAGE,
+} from '../../common/validation/name';
 
 export class UpdateUserDto {
-  // ValidateIf instead of IsOptional: IsOptional also skips null, which would
-  // reach Prisma and fail on a NOT NULL column with a 500.
   @ValidateIf((_, value) => value !== undefined)
   @IsString()
   @IsNotEmpty()
-  @MaxLength(60)
+  @MaxLength(NAME_MAX_LENGTH)
+  @Matches(NAME_PATTERN, { message: NAME_PATTERN_MESSAGE })
   firstName?: string;
 
   @ValidateIf((_, value) => value !== undefined)
   @IsString()
   @IsNotEmpty()
-  @MaxLength(60)
+  @MaxLength(NAME_MAX_LENGTH)
+  @Matches(NAME_PATTERN, { message: NAME_PATTERN_MESSAGE })
   lastName?: string;
 
-  // phone and avatar are nullable columns, so null is a valid way to clear them.
   @IsString()
   @IsOptional()
   @MaxLength(20)
@@ -29,6 +34,6 @@ export class UpdateUserDto {
 
   @IsString()
   @IsOptional()
-  @MaxLength(1000)
+  @MaxLength(150_000)
   avatar?: string;
 }

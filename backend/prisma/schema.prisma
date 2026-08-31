@@ -17,7 +17,7 @@ model User {
   email              String   @unique
   phone              String?
   passwordHash       String   @map("password_hash")
-  avatar             String?
+  avatar             String?  @db.NVarChar(Max)
   accountStatus      String   @default("ACTIVE") @map("account_status")
   isDirector         Boolean       @default(false) @map("is_director")
   mustChangePassword Boolean       @default(true) @map("must_change_password")
@@ -26,7 +26,24 @@ model User {
   updatedAt          DateTime      @updatedAt @map("updated_at")
   deletedAt          DateTime?     @map("deleted_at")
 
+  moduleAccess        UserModuleAccess[] @relation("UserModuleAccessUser")
+  grantedModuleAccess UserModuleAccess[] @relation("UserModuleAccessGrantedBy")
+
   @@map("users")
+}
+
+model UserModuleAccess {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  module      String
+  grantedAt   DateTime @default(now()) @map("granted_at")
+  grantedById String   @map("granted_by_id")
+
+  user        User @relation("UserModuleAccessUser", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  grantedBy   User @relation("UserModuleAccessGrantedBy", fields: [grantedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([userId, module])
+  @@map("user_module_access")
 }
 
 model AuditLog {
