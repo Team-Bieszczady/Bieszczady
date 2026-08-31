@@ -78,7 +78,10 @@ Every route requires a valid access token sent as `Authorization: Bearer <token>
 
 ## Audit Log
 
-Every privileged change to a user is recorded: director-status grants and revocations (with previous and new values in metadata), password changes, account deactivations and reactivations, and soft deletions. The `AuditLogService` writes to the database; there is no public API endpoint to retrieve audit logs yet. Password resets will log through the same service once they exist (F1.4, F1.5).
+Every privileged change to a user is recorded: director-status grants and revocations (with previous and new values in metadata), password changes, account deactivations and reactivations, and soft deletions. The `AuditLogService` writes to the database; there is no public API endpoint to retrieve audit logs yet. Self-service password resets (`/auth/password-reset/*`) are **not** logged there yet, even
+though they change a password; the request is anonymous, so there is no actor to record
+until that is decided. A director-initiated reset (F1.5) should log through the same
+service once it exists.
 
 ## Security
 
@@ -102,9 +105,9 @@ turns it off — so a missing or misspelled environment value fails safe.
 
 ### Rate limiting
 
-`POST /api/v1/auth/login` allows 5 requests per minute per IP. Further requests get
-`429 Too Many Requests` before the password is even checked. Configured in `AuthModule`
-with `@nestjs/throttler`.
+`POST /api/v1/auth/login` and both `/auth/password-reset/*` endpoints allow 5 requests per
+minute per IP. Further requests get `429 Too Many Requests` before the password or token is
+even checked. Configured in `AuthModule` with `@nestjs/throttler`.
 
 Behind a reverse proxy this counts the proxy's IP unless Express is told to trust it.
 Check before the first deployment.
@@ -127,6 +130,34 @@ addresses are registered.
 Stored as bcrypt hashes and never returned by any endpoint. `UsersService` strips
 `passwordHash` from every result; the single exception is `findByEmailForAuth`, which
 exists only so login can verify a password.
+
+### Password reset
+
+`POST /auth/password-reset/request` takes an email and always answers `200` with
+the same message. An unknown address, a soft-deleted account and a deactivated
+one all produce that identical response, and no token is created for them — so
+the endpoint cannot be used to find out which addresses have accounts here.
+
+For an active account it mints an opaque 32-byte random token, stores only its
+SHA-256 hash in `password_reset_tokens`, and emails the plaintext token as a
+link. The token is therefore recoverable from the email and from nowhere else:
+someone reading the database sees hashes and cannot reverse them.
+
+`POST /auth/password-reset/confirm` takes the token plus the new password twice.
+It checks in order: do the two passwords match, does the token exist, has it
+expired, has it already been used. Every failure after the first returns the
+same message, so a caller cannot tell an expired token from a fabricated one.
+
+Tokens live 60 minutes (`PASSWORD_RESET_TTL_MINUTES`) and are single-use —
+`consume` stamps `usedAt` before the password is changed. Unlike a replayed
+refresh token, a replayed reset link only fails; it does not revoke the user's
+sessions, because clicking a link twice is ordinary behaviour rather than
+evidence of theft.
+
+Both endpoints sit behind the same rate limiter as login.
+
+Used and expired rows are kept rather than deleted, so the table also serves as
+a record of who asked for a reset and when. Nothing prunes them yet.
 
 ### Input validation
 
@@ -183,18 +214,26 @@ the token.
   sensible. A short or reused `JWT_ACCESS_SECRET` passes.
 - Optional variables still fall back to defaults: a missing `CORS_ORIGIN` silently becomes
   `http://localhost:5173`, which is wrong in production but does not stop startup.
+- Reset tokens are written before the email is sent. If the mail server rejects the
+  message, the row stays behind for its full hour although nobody ever received the link.
+- Nothing deletes old rows from `password_reset_tokens`. The table only grows.
+- Requesting a reset does not invalidate earlier unused tokens for the same account, so
+  several live links can exist at once.
+- Password resets are not written to `audit_logs`, unlike other privileged changes.
 
 ## Not Built Yet
 
 The following are intentionally out of scope:
 
-- **Logout and `lastLogin`:** the auth module issues and rotates tokens but has no logout endpoint, and successful logins are not recorded. Both belong to F1.1.
-
 - **Project and member endpoints:** No `projects` table, no `project_members` table, no endpoints to assign users to projects or manage project roles.
 
-- **Email sending:** No SMTP, no email templates. Password creation currently returns the temp password in the API response only.
+- **Director-initiated password reset (F1.5):** a director cannot yet reset someone else's password from the People page. The self-service flow over email exists; the administrative one does not.
 
-- **Password reset:** No forgot-password flow. The only ways to set a password are (1) on account creation via admin, or (2) via the authenticated `POST /api/v1/users/me/password` endpoint.
+- **Forced first-password change (F1.3):** `mustChangePassword` is set and returned, but nothing enforces it. A user carrying the flag can still use the rest of the API, and there is no `POST /auth/set-password`.
+
+- **Email templates:** messages are plain text built in `MailService`. There is no HTML version and no templating engine.
+
+- **Refresh tokens in the database:** `RefreshTokenService` still keeps them in memory, so a restart signs everyone out and a second instance would not see them. `PasswordResetTokenService` shows the pattern to follow when this is fixed.
 
 ## Getting Started
 
@@ -246,9 +285,12 @@ npm run start:prod
 
 - `src/users/` — User controller, service, DTOs, and tests.
 - `src/users/audit-log.service.ts` — Writes audit entries for privileged user changes.
-- `src/auth/` — Login, refresh, `/auth/me`, JWT strategy, and the JwtAuthGuard / DirectorGuard used across the API.
+- `src/auth/` — Login, refresh, logout, `/auth/me`, password reset, JWT strategy, and the JwtAuthGuard / DirectorGuard / ModuleAccessGuard used across the API.
+- `src/auth/password-reset-token.service.ts` — Issues and consumes single-use reset tokens, stored hashed in the database.
+- `src/mail/` — `MailService`, the only place that talks to the SMTP server.
+- `src/prisma/prisma.module.ts` — Global module providing `PrismaService` to the whole app.
 - `src/common/enums/project-role.enum.ts` — TypeScript enum for future project roles (not persisted).
-- `prisma/schema.prisma` — Prisma schema (User and AuditLog models).
+- `prisma/schema.prisma` — Prisma schema (User, AuditLog, UserModuleAccess and PasswordResetToken models).
 - `prisma/migrations/` — Database migrations.
 - `prisma/seed.ts` — Test data seeding script.
 
