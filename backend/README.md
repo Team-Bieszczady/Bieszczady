@@ -154,6 +154,11 @@ refresh token, a replayed reset link only fails; it does not revoke the user's
 sessions, because clicking a link twice is ordinary behaviour rather than
 evidence of theft.
 
+Asking for a second link invalidates the first: `issue` marks every unused token for that
+user as used before creating the new one, so exactly one link is live at a time. Without
+that, a person who clicked "forgot password" three times would leave three working links
+scattered across their inbox for an hour.
+
 Both endpoints sit behind the same rate limiter as login.
 
 Used and expired rows are kept rather than deleted, so the table also serves as
@@ -217,8 +222,8 @@ the token.
 - Reset tokens are written before the email is sent. If the mail server rejects the
   message, the row stays behind for its full hour although nobody ever received the link.
 - Nothing deletes old rows from `password_reset_tokens`. The table only grows.
-- Requesting a reset does not invalidate earlier unused tokens for the same account, so
-  several live links can exist at once.
+- Reset links are not delivered over a channel the app controls once they leave the SMTP
+  server, so a forwarded or intercepted email is as good as the token itself for its hour.
 - Password resets are not written to `audit_logs`, unlike other privileged changes.
 
 ## Not Built Yet

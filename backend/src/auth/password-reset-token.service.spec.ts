@@ -54,6 +54,21 @@ function createFakePrisma() {
         }
         return Promise.resolve(row);
       },
+      updateMany: ({
+        where,
+        data,
+      }: {
+        where: { userId: string; usedAt: null };
+        data: { usedAt: Date };
+      }) => {
+        const matched = rows.filter(
+          (row) => row.userId === where.userId && row.usedAt === null,
+        );
+        for (const row of matched) {
+          row.usedAt = data.usedAt;
+        }
+        return Promise.resolve({ count: matched.length });
+      },
     },
   };
 }
@@ -107,6 +122,29 @@ describe('PasswordResetTokenService', () => {
       await service.issue('user-1');
 
       expect(prisma.rows[0].usedAt).toBeNull();
+    });
+
+    it('kills the previous token when a new one is issued', async () => {
+      const first = await service.issue('user-1');
+      await service.issue('user-1');
+
+      // Asking for a second link must leave only one usable one, so a stolen
+      // or forwarded older email stops working the moment the user tries again.
+      await expect(service.consume(first)).resolves.toBeNull();
+    });
+
+    it('leaves the newest token usable', async () => {
+      await service.issue('user-1');
+      const second = await service.issue('user-1');
+
+      await expect(service.consume(second)).resolves.toBe('user-1');
+    });
+
+    it('does not touch tokens belonging to other users', async () => {
+      const other = await service.issue('user-2');
+      await service.issue('user-1');
+
+      await expect(service.consume(other)).resolves.toBe('user-2');
     });
   });
 
