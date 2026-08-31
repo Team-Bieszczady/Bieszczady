@@ -1,4 +1,4 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
 import { User } from '@prisma/client';
@@ -51,9 +51,17 @@ describe('AuthService', () => {
 
   let service: AuthService;
   let recordLogin: jest.Mock;
+  let issueResetToken: jest.Mock;
+  let consumeResetToken: jest.Mock;
+  let sendPasswordReset: jest.Mock;
+  let setPassword: jest.Mock;
 
   beforeEach(async () => {
     recordLogin = jest.fn();
+    issueResetToken = jest.fn().mockResolvedValue('reset-token');
+    consumeResetToken = jest.fn();
+    sendPasswordReset = jest.fn();
+    setPassword = jest.fn();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -69,7 +77,12 @@ describe('AuthService', () => {
           provide: UsersService,
           useValue: {
             recordLogin,
+            setPassword,
             findByEmailForAuth: (email: string) =>
+              Promise.resolve(
+                users.find((user) => user.email === email) ?? null,
+              ),
+            findByEmail: (email: string) =>
               Promise.resolve(
                 users.find((user) => user.email === email) ?? null,
               ),
@@ -86,14 +99,14 @@ describe('AuthService', () => {
         {
           provide: PasswordResetTokenService,
           useValue: {
-            issue: jest.fn().mockResolvedValue('reset-token'),
-            consume: jest.fn(),
+            issue: issueResetToken,
+            consume: consumeResetToken,
           },
         },
         {
           provide: MailService,
           useValue: {
-            sendPasswordReset: jest.fn(),
+            sendPasswordReset,
           },
         },
       ],
@@ -189,6 +202,89 @@ describe('AuthService', () => {
       await expect(
         service.getActiveUserById('does-not-exist'),
       ).resolves.toBeNull();
+    });
+  });
+
+  describe('requestPasswordReset', () => {
+    it('issues a token and sends the link for an active account', async () => {
+      await service.requestPasswordReset(ACTIVE_EMAIL);
+
+      expect(issueResetToken).toHaveBeenCalledWith('1');
+      expect(sendPasswordReset).toHaveBeenCalledWith(
+        ACTIVE_EMAIL,
+        'reset-token',
+      );
+    });
+
+    it('does nothing for an unknown address', async () => {
+      await service.requestPasswordReset('nobody@example.com');
+
+      expect(issueResetToken).not.toHaveBeenCalled();
+      expect(sendPasswordReset).not.toHaveBeenCalled();
+    });
+
+    it('does nothing for an inactive account', async () => {
+      await service.requestPasswordReset(INACTIVE_EMAIL);
+
+      expect(issueResetToken).not.toHaveBeenCalled();
+      expect(sendPasswordReset).not.toHaveBeenCalled();
+    });
+
+    it('resolves without throwing for an unknown address', async () => {
+      // The caller must not be able to tell an existing account from a missing
+      // one, so this path stays silent rather than raising NotFound.
+      await expect(
+        service.requestPasswordReset('nobody@example.com'),
+      ).resolves.toBeUndefined();
+    });
+  });
+
+  describe('confirmPasswordReset', () => {
+    const VALID = {
+      token: 'a-token',
+      newPassword: 'NoweHaslo1!',
+      confirmPassword: 'NoweHaslo1!',
+    };
+
+    it('sets the new password for a valid token', async () => {
+      consumeResetToken.mockResolvedValue('1');
+
+      await service.confirmPasswordReset(VALID);
+
+      expect(setPassword).toHaveBeenCalledWith('1', 'NoweHaslo1!');
+    });
+
+    it('rejects mismatched passwords', async () => {
+      await expect(
+        service.confirmPasswordReset({
+          ...VALID,
+          confirmPassword: 'InneHaslo1!',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('does not consume the token when the passwords differ', async () => {
+      await service
+        .confirmPasswordReset({ ...VALID, confirmPassword: 'InneHaslo1!' })
+        .catch(() => undefined);
+
+      expect(consumeResetToken).not.toHaveBeenCalled();
+    });
+
+    it('rejects an invalid, expired or already used token', async () => {
+      consumeResetToken.mockResolvedValue(null);
+
+      await expect(service.confirmPasswordReset(VALID)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('does not touch the password when the token is rejected', async () => {
+      consumeResetToken.mockResolvedValue(null);
+
+      await service.confirmPasswordReset(VALID).catch(() => undefined);
+
+      expect(setPassword).not.toHaveBeenCalled();
     });
   });
 });
