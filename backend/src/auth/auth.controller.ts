@@ -13,6 +13,7 @@ import {
 import { type CookieOptions, type Request, type Response } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
+import { RequestPasswordResetDto } from './dto/request-password-reset.dto';
 import { REFRESH_TOKEN_TTL_DAYS } from './refresh-token.service';
 import { type AuthenticatedUser, type AuthResponse } from './types/auth.types';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
@@ -85,6 +86,16 @@ export class AuthController {
     }
 
     res.clearCookie(REFRESH_COOKIE, refreshCookieOptions());
+  }
+
+  @UseGuards(ThrottlerGuard)
+  @Post('password-reset/request')
+  @HttpCode(HttpStatus.OK)
+  async requestPasswordReset(
+    @Body() dto: RequestPasswordResetDto,
+  ): Promise<{ message: string }> {
+    await this.authService.requestPasswordReset(dto.email);
+    return { message: 'Jeśli konto istnieje, wysłaliśmy link do resetu hasła' };
   }
 
   @UseGuards(JwtAuthGuard)
