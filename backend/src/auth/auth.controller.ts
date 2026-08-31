@@ -19,6 +19,7 @@ import { type AuthenticatedUser, type AuthResponse } from './types/auth.types';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { ThrottlerGuard } from '@nestjs/throttler';
+import { ConfirmPasswordResetDto } from './dto/confirm-password-reset.dto';
 
 const REFRESH_COOKIE = 'refresh_token';
 const REFRESH_COOKIE_PATH = '/api/v1/auth';
@@ -96,6 +97,16 @@ export class AuthController {
   ): Promise<{ message: string }> {
     await this.authService.requestPasswordReset(dto.email);
     return { message: 'Jeśli konto istnieje, wysłaliśmy link do resetu hasła' };
+  }
+
+  @UseGuards(ThrottlerGuard)
+  @Post('password-reset/confirm')
+  @HttpCode(HttpStatus.OK)
+  async confirmPasswordReset(
+    @Body() dto: ConfirmPasswordResetDto,
+  ): Promise<{ message: string }> {
+    await this.authService.confirmPasswordReset(dto);
+    return { message: 'Hasło zostało zmienione' };
   }
 
   @UseGuards(JwtAuthGuard)

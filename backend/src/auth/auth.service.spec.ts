@@ -6,6 +6,8 @@ import { AuthService } from './auth.service';
 import { RefreshTokenService } from './refresh-token.service';
 import { UsersService } from '../users/users.service';
 import { ModuleAccessService } from '../users/module-access.service';
+import { PasswordResetTokenService } from './password-reset-token.service';
+import { MailService } from '../mail/mail.service';
 import { Module } from '../common/enums/module.enum';
 
 describe('AuthService', () => {
@@ -79,6 +81,19 @@ describe('AuthService', () => {
           provide: ModuleAccessService,
           useValue: {
             getEffectiveModules: jest.fn().mockResolvedValue(GRANTED_MODULES),
+          },
+        },
+        {
+          provide: PasswordResetTokenService,
+          useValue: {
+            issue: jest.fn().mockResolvedValue('reset-token'),
+            consume: jest.fn(),
+          },
+        },
+        {
+          provide: MailService,
+          useValue: {
+            sendPasswordReset: jest.fn(),
           },
         },
       ],
