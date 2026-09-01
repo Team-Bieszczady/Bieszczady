@@ -236,6 +236,14 @@ the token.
 - `consume` reads the row and marks it used in two separate statements, so two requests
   arriving at the same instant could both pass the `usedAt` check. A conditional
   `updateMany` on `usedAt: null` would close that window.
+- `issue` invalidates the previous tokens and creates the new one in two separate
+  statements rather than one transaction. Two requests arriving together can interleave
+  so that both rows end up unused, leaving two working links instead of one.
+- `PasswordResetToken` has no Prisma relation to `User`, unlike `UserModuleAccess` in the
+  same schema. There is no foreign key, so nothing stops a token row from outliving the
+  account it belongs to. `confirmPasswordReset` re-checks the account before setting a
+  password, so this cannot be used to revive a deleted user, but the rows accumulate
+  unreferenced.
 
 ## Not Built Yet
 
