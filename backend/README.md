@@ -225,6 +225,17 @@ the token.
 - Reset links are not delivered over a channel the app controls once they leave the SMTP
   server, so a forwarded or intercepted email is as good as the token itself for its hour.
 - Password resets are not written to `audit_logs`, unlike other privileged changes.
+- The reset link is built from `CORS_ORIGIN`, which is the wrong variable for the job: it
+  is optional everywhere else (`main.ts` falls back to `http://localhost:5173`) and it may
+  legitimately hold a comma-separated allow-list, which would produce a broken link. This
+  needs its own `FRONTEND_URL` before the first deployment.
+- `password_reset_tokens.user_id` has no index, so `invalidateAllForUser` scans the table
+  on every reset request — and the table only grows.
+- `@types/nodemailer` is pinned to `^8` while `nodemailer` is `^9`, so `MailService` is
+  type-checked against the previous major's API.
+- `consume` reads the row and marks it used in two separate statements, so two requests
+  arriving at the same instant could both pass the `usedAt` check. A conditional
+  `updateMany` on `usedAt: null` would close that window.
 
 ## Not Built Yet
 
