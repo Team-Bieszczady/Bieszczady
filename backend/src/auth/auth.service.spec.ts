@@ -1,4 +1,8 @@
-import { BadRequestException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
 import { User } from '@prisma/client';
@@ -236,6 +240,23 @@ describe('AuthService', () => {
       await expect(
         service.requestPasswordReset('nobody@example.com'),
       ).resolves.toBeUndefined();
+    });
+
+    it('resolves without throwing when the mailer fails', async () => {
+      const logged = jest
+        .spyOn(Logger.prototype, 'error')
+        .mockImplementation(() => undefined);
+      sendPasswordReset.mockRejectedValue(new Error('smtp down'));
+
+      // A dead mail server must not turn into a 500: the difference between a
+      // silent 200 and an error would reveal which addresses have accounts.
+      await expect(
+        service.requestPasswordReset(ACTIVE_EMAIL),
+      ).resolves.toBeUndefined();
+
+      // Silent to the caller, but never silent to us.
+      expect(logged).toHaveBeenCalled();
+      logged.mockRestore();
     });
   });
 
