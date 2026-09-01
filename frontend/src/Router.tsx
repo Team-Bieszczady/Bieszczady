@@ -19,6 +19,7 @@ import ProjectTasksPage from './pages/ProjectTasksPage';
 import ProjectBudgetPage from './pages/ProjectBudgetPage';
 import ProjectDocumentsPage from './pages/ProjectDocumentsPage';
 import NotFoundPage from './pages/NotFoundPage';
+import ForgotPasswordPage from './features/auth/pages/ForgotPasswordPage';
 
 export default function Router() {
   return (
@@ -27,13 +28,14 @@ export default function Router() {
         <Route element={<AuthLayout />}>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/set-password" element={<SetPasswordPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         </Route>
 
         <Route element={<RequireAuth />}>
           <Route element={<MainLayout />}>
             <Route path="/" element={<DashboardPage />} />
             <Route path="/profile" element={<ProfilePage />} />
-        
+
             <Route path="/notifications" element={<NotificationsPage />} />
             <Route element={<RequireModule module="PROJECTS" />}>
               <Route path="/projects" element={<ProjectsPage />} />
@@ -52,7 +54,10 @@ export default function Router() {
               <Route path="/settings" element={<SettingsPage />} />
             </Route>
             <Route element={<RequireModule module="OVERVIEW" />}>
-              <Route path="/project/overview" element={<ProjectOverviewPage />} />
+              <Route
+                path="/project/overview"
+                element={<ProjectOverviewPage />}
+              />
             </Route>
             <Route element={<RequireModule module="TASKS" />}>
               <Route path="/project/tasks" element={<ProjectTasksPage />} />
@@ -61,7 +66,10 @@ export default function Router() {
               <Route path="/project/budget" element={<ProjectBudgetPage />} />
             </Route>
             <Route element={<RequireModule module="DOCUMENTS" />}>
-              <Route path="/project/documents" element={<ProjectDocumentsPage />} />
+              <Route
+                path="/project/documents"
+                element={<ProjectDocumentsPage />}
+              />
             </Route>
           </Route>
         </Route>
