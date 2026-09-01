@@ -33,10 +33,7 @@ export class UsersService {
     ) as Omit<User, 'passwordHash'>;
   }
 
-  private async setPassword(
-    userId: string,
-    plainPassword: string,
-  ): Promise<void> {
+  async setPassword(userId: string, plainPassword: string): Promise<void> {
     const passwordHash = await bcrypt.hash(plainPassword, 10);
     await this.prisma.user.update({
       where: { id: userId },

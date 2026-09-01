@@ -8,6 +8,8 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { RefreshTokenService } from './refresh-token.service';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { UsersModule } from '../users/users.module';
+import { PasswordResetTokenService } from './password-reset-token.service';
+import { MailModule } from '../mail/mail.module';
 
 @Module({
   imports: [
@@ -29,11 +31,17 @@ import { UsersModule } from '../users/users.module';
         },
       ],
     }),
+    MailModule,
     PassportModule,
     UsersModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, RefreshTokenService],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    RefreshTokenService,
+    PasswordResetTokenService,
+  ],
   exports: [AuthService],
 })
 export class AuthModule {}

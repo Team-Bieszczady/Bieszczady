@@ -1,4 +1,9 @@
-import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  Logger,
+  BadRequestException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { User } from '@prisma/client';
@@ -6,6 +11,9 @@ import { AuthenticatedUser, JwtPayload } from './types/auth.types';
 import { RefreshTokenService } from './refresh-token.service';
 import { UsersService } from '../users/users.service';
 import { ModuleAccessService } from '../users/module-access.service';
+import { PasswordResetTokenService } from './password-reset-token.service';
+import { MailService } from '../mail/mail.service';
+import { ConfirmPasswordResetDto } from './dto/confirm-password-reset.dto';
 
 const DUMMY_PASSWORD_HASH =
   '$2b$10$.DnJAlyzBFH.ZiGkQiy5nuQSUoaSpZzPYaAMj59yL4PEcXo/2xflW';
@@ -24,6 +32,8 @@ export class AuthService {
     private readonly refreshTokens: RefreshTokenService,
     private readonly usersService: UsersService,
     private readonly moduleAccess: ModuleAccessService,
+    private readonly passwordResetTokens: PasswordResetTokenService,
+    private readonly mail: MailService,
   ) {}
 
   private async toAuthenticatedUser(
@@ -112,5 +122,36 @@ export class AuthService {
 
   logout(refreshToken: string): void {
     this.refreshTokens.revoke(refreshToken);
+  }
+
+  async requestPasswordReset(email: string): Promise<void> {
+    const user = await this.usersService.findByEmail(email);
+    if (!user || user.accountStatus !== 'ACTIVE') {
+      return;
+    }
+
+    const token = await this.passwordResetTokens.issue(user.id);
+    try {
+      await this.mail.sendPasswordReset(user.email, token);
+    } catch (error) {
+      this.logger.error('Failed to send password reset email', error);
+    }
+  }
+  async confirmPasswordReset(dto: ConfirmPasswordResetDto): Promise<void> {
+    if (dto.newPassword !== dto.confirmPassword) {
+      throw new BadRequestException('Hasła nie są takie same');
+    }
+    const userId = await this.passwordResetTokens.consume(dto.token);
+
+    if (!userId) {
+      throw new BadRequestException('Link jest nieprawidłowy lub wygasł');
+    }
+    const user = await this.getActiveUserById(userId);
+    if (!user) {
+      throw new BadRequestException('Link jest nieprawidłowy lub wygasł');
+    }
+
+    await this.usersService.setPassword(userId, dto.newPassword);
+    this.refreshTokens.revokeAllForUser(userId);
   }
 }
