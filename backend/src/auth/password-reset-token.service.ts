@@ -12,9 +12,9 @@ export class PasswordResetTokenService {
   }
 
   async issue(userId: string): Promise<string> {
+    await this.invalidateAllForUser(userId);
     const token = randomBytes(32).toString('hex');
     const expiresAt = new Date();
-    await this.invalidateAllForUser(userId);
     expiresAt.setMinutes(expiresAt.getMinutes() + PASSWORD_RESET_TTL_MINUTES);
     await this.prisma.passwordResetToken.create({
       data: { tokenHash: this.hash(token), userId, expiresAt },

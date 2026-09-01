@@ -129,17 +129,29 @@ export class AuthService {
     if (!user || user.accountStatus !== 'ACTIVE') {
       return;
     }
+
     const token = await this.passwordResetTokens.issue(user.id);
-    await this.mail.sendPasswordReset(email, token);
+    try {
+      await this.mail.sendPasswordReset(user.email, token);
+    } catch (error) {
+      this.logger.error('Failed to send password reset email', error);
+    }
   }
   async confirmPasswordReset(dto: ConfirmPasswordResetDto): Promise<void> {
     if (dto.newPassword !== dto.confirmPassword) {
       throw new BadRequestException('Hasła nie są takie same');
     }
     const userId = await this.passwordResetTokens.consume(dto.token);
+
     if (!userId) {
       throw new BadRequestException('Link jest nieprawidłowy lub wygasł');
     }
+    const user = await this.getActiveUserById(userId);
+    if (!user) {
+      throw new BadRequestException('Link jest nieprawidłowy lub wygasł');
+    }
+
     await this.usersService.setPassword(userId, dto.newPassword);
+    this.refreshTokens.revokeAllForUser(userId);
   }
 }
