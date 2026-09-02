@@ -22,7 +22,7 @@ function passwordResetHtml(link: string): string {
     <!-- Inbox preview line. Hidden in the message itself; the padding stops the
          heading from being pulled in after it. -->
     <div style="display:none;max-height:0;overflow:hidden;opacity:0;">
-      Link do ustawienia nowego hasła. Ważny godzinę, działa tylko raz.
+      Link do ustawienia nowego hasła. Ważny przez godzinę, działa tylko raz.
       ${'&#8199;&#65279;'.repeat(60)}
     </div>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f4f4f5;padding:24px 0;">
