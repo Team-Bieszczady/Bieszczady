@@ -1,4 +1,5 @@
 import { useForm, useWatch } from 'react-hook-form';
+import { useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import toast from 'react-hot-toast';
 import { IoCheckmarkCircle } from 'react-icons/io5';
@@ -7,6 +8,7 @@ import { Button } from '../../../components/ui/Button';
 import { PasswordInput } from '../../../components/ui/PasswordInput';
 import { isApiError } from '../../../lib/api';
 import { useConfirmPasswordReset } from '../hooks/useConfirmPasswordReset';
+import { useAuth } from '../../../context/useAuth';
 import { useState } from 'react';
 
 interface PasswordRule {
@@ -31,6 +33,8 @@ interface ResetPasswordFormInputs {
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate();
+  const { clearSession } = useAuth();
+  const queryClient = useQueryClient();
   const {
     register,
     handleSubmit,
@@ -100,6 +104,10 @@ export default function ResetPasswordPage() {
       {
         onSuccess: () => {
           toast.success('Hasło zostało ustawione');
+          // The backend just revoked every session for this user; drop ours too,
+          // so a logged-in visitor cannot keep browsing on the old one.
+          clearSession();
+          queryClient.clear();
           navigate('/login');
         },
         onError: (error) => {
@@ -137,6 +145,7 @@ export default function ResetPasswordPage() {
                   'Hasło nie spełnia wymagań'
                 );
               },
+              deps: ['confirmPassword'],
             })}
           />
           <div className="min-h-4 mt-0.5">

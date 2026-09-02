@@ -4,6 +4,8 @@ import { Link, useNavigate } from 'react-router';
 import { useRequestPasswordReset } from '../hooks/useRequestPasswordReset';
 import { GoMail } from 'react-icons/go';
 import { Button } from '../../../components/ui/Button';
+import { isApiError } from '../../../lib/api';
+import toast from 'react-hot-toast';
 
 interface FormInputs {
   email: string;
@@ -22,15 +24,29 @@ export default function ForgotPasswordPage() {
   });
 
   const passwordReset = useRequestPasswordReset();
+  const onError = (error: Error) => {
+    const options = { id: 'reset-error' };
 
+    if (!isApiError(error) || error.status !== 429) {
+      toast.error('Coś poszło nie tak. Spróbuj ponownie.', options);
+      return;
+    }
+
+    toast.error(
+      'Zbyt wiele prób. Odczekaj chwilę i spróbuj ponownie.',
+      options,
+    );
+  };
   const onSubmit = (data: FormInputs) => {
     passwordReset.mutate(data.email, {
       onSuccess: () => {
         setEmail(data.email);
         setSent(true);
       },
+      onError,
     });
   };
+
   if (sent) {
     return (
       <>
@@ -67,7 +83,12 @@ export default function ForgotPasswordPage() {
             type="button"
             className="cursor-pointer text-darkGreen transition-all duration-300 hover:text-darkGreenHover hover:underline disabled:opacity-50 disabled:cursor-not-allowed disabled:no-underline"
             disabled={passwordReset.isPending}
-            onClick={() => passwordReset.mutate(email)}
+            onClick={() =>
+              passwordReset.mutate(email, {
+                onSuccess: () => toast.success('Wysłaliśmy nowy link'),
+                onError,
+              })
+            }
           >
             Wyślij link ponownie
           </button>
