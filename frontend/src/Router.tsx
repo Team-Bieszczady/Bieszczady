@@ -20,6 +20,7 @@ import ProjectBudgetPage from './pages/ProjectBudgetPage';
 import ProjectDocumentsPage from './pages/ProjectDocumentsPage';
 import NotFoundPage from './pages/NotFoundPage';
 import ForgotPasswordPage from './features/auth/pages/ForgotPasswordPage';
+import ResetPasswordPage from './features/auth/pages/ResetPasswordPage';
 
 export default function Router() {
   return (
@@ -29,6 +30,7 @@ export default function Router() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/set-password" element={<SetPasswordPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
         </Route>
 
         <Route element={<RequireAuth />}>
