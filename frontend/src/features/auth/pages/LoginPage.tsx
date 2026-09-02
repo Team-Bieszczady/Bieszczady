@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import toast from 'react-hot-toast';
 import { GoMail } from 'react-icons/go';
 import { Button } from '../../../components/ui/Button';
@@ -96,7 +96,9 @@ export default function LoginPage() {
           <div className="min-h-4 mt-0.5">
             <p
               className={`text-red-500 text-xs transition duration-200 ease-out ${
-                errors.email ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-0.5'
+                errors.email
+                  ? 'opacity-100 translate-y-0'
+                  : 'opacity-0 -translate-y-0.5'
               }`}
             >
               {errors.email?.message}
@@ -113,7 +115,9 @@ export default function LoginPage() {
           <div className="min-h-4 mt-0.5">
             <p
               className={`text-red-500 text-xs transition duration-200 ease-out ${
-                errors.password ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-0.5'
+                errors.password
+                  ? 'opacity-100 translate-y-0'
+                  : 'opacity-0 -translate-y-0.5'
               }`}
             >
               {errors.password?.message}
@@ -122,12 +126,12 @@ export default function LoginPage() {
         </div>
 
         <div className="text-right">
-          <a
-            href="#"
+          <Link
+            to="/forgot-password"
             className="text-darkGreen text-xs font-medium transition-all duration-300 hover:text-darkGreenHover hover:underline"
           >
             Nie pamiętasz hasła?
-          </a>
+          </Link>
         </div>
 
         <div className="flex justify-center">

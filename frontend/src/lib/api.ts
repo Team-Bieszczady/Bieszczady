@@ -289,6 +289,26 @@ export const api = {
       );
     }
   },
+
+  async requestPasswordReset(email: string): Promise<{ message: string }> {
+    return request<{ message: string }>('/api/v1/auth/password-reset/request', {
+      method: 'POST',
+      body: { email },
+      fallbackMessage: 'Nie udało się wysłać linku',
+    });
+  },
+
+  async confirmPasswordReset(
+    token: string,
+    newPassword: string,
+    confirmPassword: string,
+  ): Promise<{ message: string }> {
+    return request<{ message: string }>('/api/v1/auth/password-reset/confirm', {
+      method: 'POST',
+      body: { token, newPassword, confirmPassword },
+      fallbackMessage: 'Nie udało się zmienić hasła',
+    });
+  },
 };
 
 export { isApiError };
