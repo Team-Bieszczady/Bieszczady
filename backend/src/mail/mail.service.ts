@@ -13,7 +13,18 @@ const DARK = '#101010';
 function passwordResetHtml(link: string): string {
   return `<!doctype html>
 <html lang="pl">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Reset hasła</title>
+  </head>
   <body style="margin:0;padding:0;background-color:#f4f4f5;">
+    <!-- Inbox preview line. Hidden in the message itself; the padding stops the
+         heading from being pulled in after it. -->
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;">
+      Link do ustawienia nowego hasła. Ważny godzinę, działa tylko raz.
+      ${'&#8199;&#65279;'.repeat(60)}
+    </div>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f4f4f5;padding:24px 0;">
       <tr>
         <td align="center">
@@ -24,7 +35,7 @@ function passwordResetHtml(link: string): string {
               </td>
             </tr>
             <tr>
-              <td style="font-size:20px;font-weight:bold;color:${DARK};padding-bottom:16px;">
+              <td align="center" style="font-size:20px;font-weight:bold;color:${DARK};padding-bottom:16px;">
                 Reset hasła
               </td>
             </tr>
