@@ -34,10 +34,12 @@ import { ModuleAccessGuard } from '../auth/guards/module-access.guard';
 import { RequireModule } from '../auth/decorators/require-module.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { type AuthenticatedUser } from '../auth/types/auth.types';
+import { PasswordChangeGuard } from '../auth/guards/password-change.guard';
+import { SkipPasswordChange } from '../auth/decorators/skip-password-change.decorator';
 
 @ApiTags('users')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, ModuleAccessGuard)
+@UseGuards(JwtAuthGuard, PasswordChangeGuard, ModuleAccessGuard)
 @Controller('users')
 export class UserController {
   constructor(private readonly usersService: UsersService) {}
@@ -398,6 +400,7 @@ export class UserController {
     return this.usersService.setModuleAccess(actor.id, id, dto.modules);
   }
 
+  @SkipPasswordChange()
   @Post('me/password')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
