@@ -44,8 +44,6 @@ describe('PasswordChangeGuard', () => {
   it('allows a marked route even when the flag is set', () => {
     getAllAndOverride.mockReturnValue(true);
 
-    // Without this the flagged user would be locked out of the one endpoint
-    // that can clear the flag, with no way back.
     expect(
       guard.canActivate(contextFor({ id: '1', mustChangePassword: true })),
     ).toBe(true);
@@ -54,8 +52,6 @@ describe('PasswordChangeGuard', () => {
   it('allows a request that carries no user', () => {
     getAllAndOverride.mockReturnValue(undefined);
 
-    // Authentication is JwtAuthGuard's job; an unauthenticated route is simply
-    // none of this guard's business.
     expect(guard.canActivate(contextFor(undefined))).toBe(true);
   });
 });

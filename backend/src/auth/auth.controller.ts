@@ -116,14 +116,14 @@ export class AuthController {
     return user;
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, ThrottlerGuard)
   @Post('set-password')
   @HttpCode(HttpStatus.OK)
   async setInitial(
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: SetPasswordDto,
   ): Promise<{ message: string }> {
-    await this.authService.setInitialPassword(user.id, dto);
+    await this.authService.setInitialPassword(user, dto);
     return { message: 'Hasło zostało zmienione' };
   }
 }

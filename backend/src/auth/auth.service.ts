@@ -3,6 +3,7 @@ import {
   UnauthorizedException,
   Logger,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
@@ -155,10 +156,17 @@ export class AuthService {
     await this.usersService.setPassword(userId, dto.newPassword);
     this.refreshTokens.revokeAllForUser(userId);
   }
-  async setInitialPassword(userId: string, dto: SetPasswordDto): Promise<void> {
+  async setInitialPassword(
+    user: AuthenticatedUser,
+    dto: SetPasswordDto,
+  ): Promise<void> {
+    if (!user.mustChangePassword) {
+      throw new ForbiddenException('Hasło zostało już ustawione');
+    }
     if (dto.newPassword !== dto.confirmPassword) {
       throw new BadRequestException('Hasła nie są takie same');
     }
-    await this.usersService.setPassword(userId, dto.newPassword);
+    await this.usersService.setPassword(user.id, dto.newPassword);
+    this.refreshTokens.revokeAllForUser(user.id);
   }
 }

@@ -131,6 +131,7 @@ export class UserController {
     return this.usersService.findAll(user.isDirector && !!query.includeDeleted);
   }
 
+  @SkipPasswordChange()
   @Get('me')
   @ApiOperation({
     summary: 'Get current user',
