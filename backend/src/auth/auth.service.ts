@@ -14,6 +14,7 @@ import { ModuleAccessService } from '../users/module-access.service';
 import { PasswordResetTokenService } from './password-reset-token.service';
 import { MailService } from '../mail/mail.service';
 import { ConfirmPasswordResetDto } from './dto/confirm-password-reset.dto';
+import { SetPasswordDto } from './dto/set-password.dto';
 
 const DUMMY_PASSWORD_HASH =
   '$2b$10$.DnJAlyzBFH.ZiGkQiy5nuQSUoaSpZzPYaAMj59yL4PEcXo/2xflW';
@@ -153,5 +154,11 @@ export class AuthService {
 
     await this.usersService.setPassword(userId, dto.newPassword);
     this.refreshTokens.revokeAllForUser(userId);
+  }
+  async setInitialPassword(userId: string, dto: SetPasswordDto): Promise<void> {
+    if (dto.newPassword !== dto.confirmPassword) {
+      throw new BadRequestException('Hasła nie są takie same');
+    }
+    await this.usersService.setPassword(userId, dto.newPassword);
   }
 }

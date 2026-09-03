@@ -20,6 +20,7 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { ConfirmPasswordResetDto } from './dto/confirm-password-reset.dto';
+import { SetPasswordDto } from './dto/set-password.dto';
 
 const REFRESH_COOKIE = 'refresh_token';
 const REFRESH_COOKIE_PATH = '/api/v1/auth';
@@ -113,5 +114,16 @@ export class AuthController {
   @Get('me')
   getMe(@CurrentUser() user: AuthenticatedUser): AuthenticatedUser {
     return user;
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('set-password')
+  @HttpCode(HttpStatus.OK)
+  async setInitial(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: SetPasswordDto,
+  ): Promise<{ message: string }> {
+    await this.authService.setInitialPassword(user.id, dto);
+    return { message: 'Hasło zostało zmienione' };
   }
 }
