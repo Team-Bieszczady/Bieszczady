@@ -21,6 +21,8 @@ import { CurrentUser } from './decorators/current-user.decorator';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { ConfirmPasswordResetDto } from './dto/confirm-password-reset.dto';
 import { SetPasswordDto } from './dto/set-password.dto';
+import { PasswordChangeGuard } from './guards/password-change.guard';
+import { SkipPasswordChange } from './decorators/skip-password-change.decorator';
 
 const REFRESH_COOKIE = 'refresh_token';
 const REFRESH_COOKIE_PATH = '/api/v1/auth';
@@ -35,6 +37,7 @@ function refreshCookieOptions(): CookieOptions {
   };
 }
 
+@UseGuards(PasswordChangeGuard)
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -110,12 +113,14 @@ export class AuthController {
     return { message: 'Hasło zostało zmienione' };
   }
 
+  @SkipPasswordChange()
   @UseGuards(JwtAuthGuard)
   @Get('me')
   getMe(@CurrentUser() user: AuthenticatedUser): AuthenticatedUser {
     return user;
   }
 
+  @SkipPasswordChange()
   @UseGuards(JwtAuthGuard, ThrottlerGuard)
   @Post('set-password')
   @HttpCode(HttpStatus.OK)
