@@ -308,4 +308,44 @@ describe('AuthService', () => {
       expect(setPassword).not.toHaveBeenCalled();
     });
   });
+
+  describe('setInitialPassword', () => {
+    const VALID = {
+      newPassword: 'NoweHaslo1!',
+      confirmPassword: 'NoweHaslo1!',
+    };
+
+    it('sets the password when both fields match', async () => {
+      await service.setInitialPassword('1', VALID);
+
+      expect(setPassword).toHaveBeenCalledWith('1', 'NoweHaslo1!');
+    });
+
+    it('rejects mismatched passwords', async () => {
+      await expect(
+        service.setInitialPassword('1', {
+          ...VALID,
+          confirmPassword: 'InneHaslo1!',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('does not touch the password when the fields differ', async () => {
+      await service
+        .setInitialPassword('1', { ...VALID, confirmPassword: 'InneHaslo1!' })
+        .catch(() => undefined);
+
+      expect(setPassword).not.toHaveBeenCalled();
+    });
+
+    it('leaves other sessions alone', async () => {
+      const { refreshToken } = await service.login(ACTIVE_EMAIL, PASSWORD);
+
+      await service.setInitialPassword('1', VALID);
+
+      // Unlike a reset, this is a logged-in user deliberately replacing the
+      // password they were given, so their current session must survive.
+      await expect(service.refresh(refreshToken)).resolves.toBeDefined();
+    });
+  });
 });
