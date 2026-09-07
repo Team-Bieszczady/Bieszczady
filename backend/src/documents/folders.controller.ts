@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   UseGuards,
 } from '@nestjs/common';
@@ -13,6 +14,7 @@ import { PasswordChangeGuard } from '../auth/guards/password-change.guard';
 import { CreateFolderDto } from './dto/create-folder.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { type AuthenticatedUser } from '../auth/types/auth.types';
+import { UpdateFolderDto } from './dto/update-folder.dto';
 
 @Controller('/projects/:projectId/folders')
 export class FoldersController {
@@ -32,5 +34,20 @@ export class FoldersController {
     @Body() dto: CreateFolderDto,
   ) {
     return await this.foldersServie.createFolder(projectId, user.id, dto);
+  }
+
+  @UseGuards(JwtAuthGuard, PasswordChangeGuard)
+  @Patch('/:folderId')
+  async UpdateFolder(
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('folderId', ParseUUIDPipe) folderId: string,
+    @Body() dto: UpdateFolderDto,
+  ) {
+    return await this.foldersServie.updateFolder(
+      folderId,
+      projectId,
+
+      dto,
+    );
   }
 }
