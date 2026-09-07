@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
@@ -38,7 +39,7 @@ export class FoldersController {
 
   @UseGuards(JwtAuthGuard, PasswordChangeGuard)
   @Patch('/:folderId')
-  async UpdateFolder(
+  async updateFolder(
     @Param('projectId', ParseUUIDPipe) projectId: string,
     @Param('folderId', ParseUUIDPipe) folderId: string,
     @Body() dto: UpdateFolderDto,
@@ -49,5 +50,14 @@ export class FoldersController {
 
       dto,
     );
+  }
+
+  @UseGuards(JwtAuthGuard, PasswordChangeGuard)
+  @Delete('/:folderId')
+  async deleteFolder(
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('folderId', ParseUUIDPipe) folderId: string,
+  ) {
+    return await this.foldersServie.deleteFolder(folderId, projectId);
   }
 }

@@ -58,4 +58,30 @@ export class FoldersService {
       data: { name, parentId },
     });
   }
+  async deleteFolder(id: string, projectId: string) {
+    const folder = await this.prisma.folder.findFirst({
+      where: { id: id, projectId: projectId },
+    });
+    if (!folder) {
+      throw new NotFoundException(
+        'Wskazany folder nie należy do tego projektu',
+      );
+    }
+
+    const childrenFolders = await this.prisma.folder.findFirst({
+      where: { parentId: id, deletedAt: null },
+    });
+    const childrenDocuments = await this.prisma.document.findFirst({
+      where: { folderId: id, deletedAt: null },
+    });
+
+    if (childrenFolders || childrenDocuments) {
+      throw new BadRequestException('usun podfolder lub dokument');
+    } else {
+      return await this.prisma.folder.update({
+        where: { id: id },
+        data: { deletedAt: new Date() },
+      });
+    }
+  }
 }
