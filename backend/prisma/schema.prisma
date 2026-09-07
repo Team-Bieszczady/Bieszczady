@@ -11,25 +11,27 @@ datasource db {
 }
 
 model User {
-  id                 String   @id @default(uuid())
-  firstName          String   @map("first_name")
-  lastName           String   @map("last_name")
-  email              String   @unique
+  id                 String    @id @default(uuid())
+  firstName          String    @map("first_name")
+  lastName           String    @map("last_name")
+  email              String    @unique
   phone              String?
-  passwordHash       String   @map("password_hash")
-  avatar             String?  @db.NVarChar(Max)
-  accountStatus      String   @default("ACTIVE") @map("account_status")
-  isDirector         Boolean       @default(false) @map("is_director")
-  mustChangePassword Boolean       @default(true) @map("must_change_password")
-  lastLogin          DateTime?     @map("last_login")
-  createdAt          DateTime      @default(now()) @map("created_at")
-  updatedAt          DateTime      @updatedAt @map("updated_at")
-  deletedAt          DateTime?     @map("deleted_at")
+  passwordHash       String    @map("password_hash")
+  avatar             String?   @db.NVarChar(Max)
+  accountStatus      String    @default("ACTIVE") @map("account_status")
+  isDirector         Boolean   @default(false) @map("is_director")
+  mustChangePassword Boolean   @default(true) @map("must_change_password")
+  lastLogin          DateTime? @map("last_login")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+  deletedAt          DateTime? @map("deleted_at")
 
   moduleAccess        UserModuleAccess[] @relation("UserModuleAccessUser")
   grantedModuleAccess UserModuleAccess[] @relation("UserModuleAccessGrantedBy")
-  ownedDocuments   Document[]        @relation("DocumentOwner")
-  uploadedVersions DocumentVersion[] @relation("VersionUploader")
+  ownedDocuments      Document[]         @relation("DocumentOwner")
+  ownedFolders        Folder[]           @relation("FolderOwner")
+  uploadedVersions    DocumentVersion[]  @relation("VersionUploader")
+
   @@map("users")
 }
 
@@ -40,8 +42,8 @@ model UserModuleAccess {
   grantedAt   DateTime @default(now()) @map("granted_at")
   grantedById String   @map("granted_by_id")
 
-  user        User @relation("UserModuleAccessUser", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  grantedBy   User @relation("UserModuleAccessGrantedBy", fields: [grantedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user      User @relation("UserModuleAccessUser", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  grantedBy User @relation("UserModuleAccessGrantedBy", fields: [grantedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([userId, module])
   @@map("user_module_access")
@@ -67,19 +69,19 @@ model PasswordResetToken {
   createdAt DateTime  @default(now()) @map("created_at")
 
   @@map("password_reset_tokens")
-
-
-  
 }
+
 model Folder {
   id        String    @id @default(uuid())
   projectId String    @map("project_id")
   parentId  String?   @map("parent_id")
   name      String
+  ownerId   String    @map("owner_id")
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
 
+  owner     User       @relation("FolderOwner", fields: [ownerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   parent    Folder?    @relation("FolderTree", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   children  Folder[]   @relation("FolderTree")
   documents Document[]

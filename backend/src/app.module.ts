@@ -5,7 +5,7 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { validateEnv } from './config/env.validation';
 import { PrismaModule } from './prisma/prisma.module';
-import {DocumentsModule} from './documents/documents.module'
+import { DocumentsModule } from './documents/documents.module';
 
 @Module({
   imports: [
@@ -16,7 +16,7 @@ import {DocumentsModule} from './documents/documents.module'
     PrismaModule,
     AuthModule,
     UsersModule,
-DocumentsModule
+    DocumentsModule,
   ],
   controllers: [AppController],
 })
