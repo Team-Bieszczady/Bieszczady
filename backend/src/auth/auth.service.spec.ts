@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Logger,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -13,6 +14,7 @@ import { ModuleAccessService } from '../users/module-access.service';
 import { PasswordResetTokenService } from './password-reset-token.service';
 import { MailService } from '../mail/mail.service';
 import { Module } from '../common/enums/module.enum';
+import { AuthenticatedUser } from './types/auth.types';
 
 describe('AuthService', () => {
   const PASSWORD = 'haslo123';
@@ -306,6 +308,69 @@ describe('AuthService', () => {
       await service.confirmPasswordReset(VALID).catch(() => undefined);
 
       expect(setPassword).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('setInitialPassword', () => {
+    const VALID = {
+      newPassword: 'NoweHaslo1!',
+      confirmPassword: 'NoweHaslo1!',
+    };
+
+    const flagged: AuthenticatedUser = {
+      id: '1',
+      email: ACTIVE_EMAIL,
+      firstName: 'Jan',
+      lastName: 'Kowalski',
+      isDirector: false,
+      accountStatus: 'ACTIVE',
+      mustChangePassword: true,
+      modules: GRANTED_MODULES,
+    };
+
+    it('refuses a user who has already set their own password', async () => {
+      await expect(
+        service.setInitialPassword(
+          { ...flagged, mustChangePassword: false },
+          VALID,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+      expect(setPassword).not.toHaveBeenCalled();
+    });
+
+    it('sets the password when both fields match', async () => {
+      await service.setInitialPassword(flagged, VALID);
+
+      expect(setPassword).toHaveBeenCalledWith('1', 'NoweHaslo1!');
+    });
+
+    it('rejects mismatched passwords', async () => {
+      await expect(
+        service.setInitialPassword(flagged, {
+          ...VALID,
+          confirmPassword: 'InneHaslo1!',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('does not touch the password when the fields differ', async () => {
+      await service
+        .setInitialPassword(flagged, {
+          ...VALID,
+          confirmPassword: 'InneHaslo1!',
+        })
+        .catch(() => undefined);
+
+      expect(setPassword).not.toHaveBeenCalled();
+    });
+
+    it('revokes existing sessions', async () => {
+      const { refreshToken } = await service.login(ACTIVE_EMAIL, PASSWORD);
+
+      await service.setInitialPassword(flagged, VALID);
+      await expect(service.refresh(refreshToken)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
   });
 });

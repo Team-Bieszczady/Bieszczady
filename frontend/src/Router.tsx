@@ -21,16 +21,21 @@ import ProjectDocumentsPage from './pages/ProjectDocumentsPage';
 import NotFoundPage from './pages/NotFoundPage';
 import ForgotPasswordPage from './features/auth/pages/ForgotPasswordPage';
 import ResetPasswordPage from './features/auth/pages/ResetPasswordPage';
+import RequireGuest from './components/RequireGuest';
 
 export default function Router() {
   return (
     <BrowserRouter>
       <Routes>
         <Route element={<AuthLayout />}>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/set-password" element={<SetPasswordPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route element={<RequireAuth />}>
+            <Route path="/set-password" element={<SetPasswordPage />} />
+          </Route>
+          <Route element={<RequireGuest />}>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
+          </Route>
         </Route>
 
         <Route element={<RequireAuth />}>
