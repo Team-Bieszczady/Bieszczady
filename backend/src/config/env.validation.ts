@@ -1,4 +1,9 @@
-const REQUIRED = ['DATABASE_URL', 'JWT_ACCESS_SECRET', 'NODE_ENV'];
+const REQUIRED = [
+  'DATABASE_URL',
+  'JWT_ACCESS_SECRET',
+  'NODE_ENV',
+  'AZURE_STORAGE_CONNECTION_STRING',
+];
 export function validateEnv(config: Record<string, unknown>) {
   const missing = REQUIRED.filter((key) => !config[key]);
 
