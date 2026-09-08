@@ -7,6 +7,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateFolderDto } from './dto/create-folder.dto';
 import { UpdateFolderDto } from './dto/update-folder.dto';
 
+const MAX_FOLDER_DEPTH = 50;
+
 @Injectable()
 export class FoldersService {
   constructor(private readonly prisma: PrismaService) {}
@@ -39,15 +41,15 @@ export class FoldersService {
           'Wskazany folder nadrzędny nie należy do tego projektu',
         );
       }
+
+      await this.assertNoCycle(parentId, id);
     }
 
     const folder = await this.prisma.folder.findFirst({
       where: { id: id, projectId: projectId },
     });
     if (!folder) {
-      throw new NotFoundException(
-        'Wskazany folder nie należy do tego projektu',
-      );
+      throw new NotFoundException('Nie znaleziono folderu');
     }
 
     return await this.prisma.folder.update({
@@ -76,12 +78,44 @@ export class FoldersService {
     });
 
     if (childrenFolders || childrenDocuments) {
-      throw new BadRequestException('usun podfolder lub dokument');
+      throw new BadRequestException(
+        'Folder nie jest pusty. Usuń najpierw jego zawartość.',
+      );
     } else {
       return await this.prisma.folder.update({
         where: { id: id },
         data: { deletedAt: new Date() },
       });
+    }
+  }
+
+  private async assertNoCycle(
+    parentId: string,
+    folderId: string,
+  ): Promise<void> {
+    let currentId: string | null = parentId;
+    let steps = 0;
+
+    while (currentId) {
+      const cursor: string = currentId;
+      if (cursor === folderId) {
+        throw new BadRequestException(
+          'Nie można przenieść folderu do jego własnego podfolderu',
+        );
+      }
+
+      if (steps++ > MAX_FOLDER_DEPTH) {
+        throw new BadRequestException(
+          'Struktura folderów jest uszkodzona: wykryto zapętlenie',
+        );
+      }
+
+      const current = await this.prisma.folder.findFirst({
+        where: { id: cursor },
+        select: { parentId: true },
+      });
+
+      currentId = current?.parentId ?? null;
     }
   }
 }
