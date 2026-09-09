@@ -22,6 +22,6 @@ export class CreateDocumentDto {
   kind!: DocumentKind;
 
   @IsOptional()
-  @IsIn(DOCUMENT_STATUSES) 
+  @IsIn(DOCUMENT_STATUSES)
   status?: DocumentStatus;
 }
