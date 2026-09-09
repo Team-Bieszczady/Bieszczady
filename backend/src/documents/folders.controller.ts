@@ -19,12 +19,12 @@ import { UpdateFolderDto } from './dto/update-folder.dto';
 
 @Controller('/projects/:projectId/folders')
 export class FoldersController {
-  constructor(private readonly foldersServie: FoldersService) {}
+  constructor(private readonly foldersService: FoldersService) {}
 
   @UseGuards(JwtAuthGuard, PasswordChangeGuard)
   @Get()
   async getFolders(@Param('projectId', ParseUUIDPipe) projectId: string) {
-    return await this.foldersServie.findAllForProject(projectId);
+    return await this.foldersService.findAllForProject(projectId);
   }
 
   @UseGuards(JwtAuthGuard, PasswordChangeGuard)
@@ -34,7 +34,7 @@ export class FoldersController {
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: CreateFolderDto,
   ) {
-    return await this.foldersServie.createFolder(projectId, user.id, dto);
+    return await this.foldersService.createFolder(projectId, user.id, dto);
   }
 
   @UseGuards(JwtAuthGuard, PasswordChangeGuard)
@@ -44,7 +44,7 @@ export class FoldersController {
     @Param('folderId', ParseUUIDPipe) folderId: string,
     @Body() dto: UpdateFolderDto,
   ) {
-    return await this.foldersServie.updateFolder(
+    return await this.foldersService.updateFolder(
       folderId,
       projectId,
 
@@ -58,6 +58,6 @@ export class FoldersController {
     @Param('projectId', ParseUUIDPipe) projectId: string,
     @Param('folderId', ParseUUIDPipe) folderId: string,
   ) {
-    return await this.foldersServie.deleteFolder(folderId, projectId);
+    return await this.foldersService.deleteFolder(folderId, projectId);
   }
 }
