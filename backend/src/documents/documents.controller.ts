@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   Param,
   Post,
   UploadedFile,
@@ -36,5 +37,14 @@ export class DocumentsController {
       dto,
       file,
     );
+  }
+
+  @Get()
+  @UseGuards(JwtAuthGuard, PasswordChangeGuard)
+  async getDocument(
+    @Param('projectId') projectId: string,
+    @Param('folderId') folderId: string,
+  ) {
+    return await this.documentService.getDocuments(projectId, folderId);
   }
 }
