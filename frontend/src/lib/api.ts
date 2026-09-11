@@ -30,6 +30,44 @@ export interface BackendUser {
   deletedAt: string | null;
 }
 
+export interface BackendFolder {
+  id: string;
+  projectId: string;
+  parentId: string | null;
+  name: string;
+  ownerId: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
+export interface BackendDocumentVersion {
+  id: string;
+  documentId: string;
+  versionNo: number;
+  storageKey: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  changeNote: string | null;
+  uploadedById: string;
+  createdAt: string;
+}
+
+export interface BackendDocument {
+  id: string;
+  projectId: string;
+  folderId: string;
+  name: string;
+  kind: string;
+  status: string;
+  ownerId: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+  versions: BackendDocumentVersion[];
+}
+
 export interface AuthResponse {
   accessToken: string;
   user: AuthenticatedUser;
@@ -308,6 +346,30 @@ export const api = {
       body: { token, newPassword, confirmPassword },
       fallbackMessage: 'Nie udało się zmienić hasła',
     });
+  },
+  async getFolders(
+    accessToken: string,
+    projectId: string,
+  ): Promise<BackendFolder[]> {
+    return request<BackendFolder[]>(`/api/v1/projects/${projectId}/folders`, {
+      method: 'GET',
+      accessToken,
+      fallbackMessage: 'Nie udało się pobrać folderów',
+    });
+  },
+  async getDocuments(
+    accessToken: string,
+    projectId: string,
+    folderId: string
+  ): Promise<BackendDocument[]> {
+    return request<BackendDocument[]>(
+      `/api/v1/projects/${projectId}/folders/${folderId}/documents`,
+      {
+        method: 'GET',
+        accessToken,
+        fallbackMessage: 'Nie udało się pobrać dokumentów',
+      },
+    );
   },
 };
 
