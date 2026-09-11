@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from './storage.service';
 import { randomUUID } from 'crypto';
 import { CreateDocumentDto } from './dto/create-document.dto';
+import { buffer } from 'stream/consumers';
 
 @Injectable()
 export class DocumentsService {
@@ -79,5 +80,20 @@ export class DocumentsService {
       orderBy: { updatedAt: 'desc' },
     });
     return documents;
+  }
+
+  async downloadDocument(projectId: string, documentId: string, versionNo: number) {
+    const version = await this.prisma.documentVersion.findFirst({
+      where: {
+        document: { projectId, id: documentId, deletedAt: null },
+        versionNo: versionNo,
+      },
+    });
+if (!version) {
+  throw new NotFoundException('Nie znaleziono wskazanej wersji dokumentu');
+}
+    const buffer = await this.storage.read(version.storageKey);
+    return {buffer, fileName: version.fileName, mimeType: version.mimeType}
+
   }
 }

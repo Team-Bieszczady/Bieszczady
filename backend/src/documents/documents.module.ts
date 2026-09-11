@@ -4,9 +4,10 @@ import { FoldersController } from './folders.controller';
 import { StorageService } from './storage.service';
 import { DocumentsController } from './documents.controller';
 import { DocumentsService } from './documents.service';
+import { DocumentVersionsController } from './document-versions.controller';
 
 @Module({
-  controllers: [FoldersController, DocumentsController],
+  controllers: [FoldersController, DocumentsController, DocumentVersionsController],
   providers: [FoldersService, StorageService, DocumentsService],
 })
 export class DocumentsModule {}
