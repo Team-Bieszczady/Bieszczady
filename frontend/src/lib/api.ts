@@ -371,6 +371,27 @@ export const api = {
       },
     );
   },
+
+async downloadVersion(accessToken: string, projectId:string, documentId: string, versionNo: number): Promise<Blob>{
+ const response = await fetch(
+   `${API_BASE_URL}/api/v1/projects/${projectId}/documents/${documentId}/versions/${versionNo}/download`,
+   {
+     headers: {
+       Authorization: `Bearer ${accessToken}`,
+     },
+     method: 'GET',
+     credentials: 'include',
+   },
+ );
+
+    if (!response.ok) {
+      throw createApiError(response.status, 'Nie udało się pobrać pliku');
+    }
+
+    return response.blob();
+}
+
 };
+
 
 export { isApiError };
