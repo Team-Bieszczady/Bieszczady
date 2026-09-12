@@ -389,9 +389,32 @@ async downloadVersion(accessToken: string, projectId:string, documentId: string,
     }
 
     return response.blob();
+},
+
+async uploadDocument(accessToken: string, projectId: string, folderId: string, formData: FormData): Promise<BackendDocument> {
+ const response = await fetch(
+   `${API_BASE_URL}/api/v1/projects/${projectId}/folders/${folderId}/documents`,
+   {
+     headers: {
+       Authorization: `Bearer ${accessToken}`,
+     },
+     method: 'POST',
+     credentials: 'include',
+     body: formData,
+   },
+ );
+
+ if (!response.ok) {
+   throw createApiError(response.status, 'Nie udało się pobrać pliku');
+ }
+
+ return response.json();
+
+
 }
 
 };
+
 
 
 export { isApiError };
