@@ -73,9 +73,46 @@ POST /api/v1/auth/login     { email, password }   →  { accessToken, user }
 POST /api/v1/auth/refresh   (no body)             →  { accessToken, user }
 GET  /api/v1/auth/me        (Bearer token)        →  user
 POST /api/v1/auth/logout    (no body)             →  204, no content
+
+POST /api/v1/auth/password-reset/request
+                            { email }             →  { message }
+POST /api/v1/auth/password-reset/confirm
+                            { token, newPassword, confirmPassword }
+                                                  →  { message }
 ```
 
-`user` contains: `id`, `email`, `firstName`, `lastName`, `isDirector`, `accountStatus`, `mustChangePassword`.
+`user` contains: `id`, `email`, `firstName`, `lastName`, `isDirector`, `accountStatus`, `mustChangePassword`, `modules`.
+
+## Password reset
+
+Two steps, and neither one requires a token in the `Authorization` header — the
+whole point is that the person cannot log in.
+
+**Step 1 — the user asks for a link.** Post their address to
+`password-reset/request`. The response is always `200` with the same `message`,
+whether or not an account exists, whether or not it is active. **Do not try to
+tell the user which case they hit** — the endpoint deliberately gives you no way
+to know, so that nobody can use this form to discover which addresses have
+accounts here.
+
+**Step 2 — the user follows the link.** The email contains
+`<frontend>/reset-password?token=…`. Read `token` from the query string, show
+the new-password form straight away, and post all three fields together. There
+is no separate "is this token valid?" call: the token is checked when the
+password is submitted.
+
+A rejected token comes back as `400` with
+`code: "BAD_REQUEST"` and the message *"Link jest nieprawidłowy lub wygasł"*.
+That one message covers a token that never existed, one that expired, and one
+that was already used — again on purpose, so the response cannot be used to
+probe. Show it as-is and offer to request a new link.
+
+Tokens last 60 minutes and work exactly once. A second submit of the same link
+fails, which matters if the user double-clicks: disable the button while the
+request is in flight.
+
+Both endpoints are rate limited to 5 requests per minute per IP, so a `429`
+here means the same thing as on login.
 
 ## Things that will trip you up
 

@@ -41,6 +41,32 @@ On macOS/Linux use `cp` instead of `Copy-Item`.
 
 > ⚠️ If you change any `DB_*` value in the root `.env`, you must update `DATABASE_URL` in `backend/.env` to match — the root file configures the SQL Server container, `backend/.env` tells Prisma how to reach it. Mismatched values are the most common cause of "backend won't connect".
 
+#### Email (password reset)
+
+Password reset sends a real email, so `backend/.env` needs SMTP credentials.
+For development we use [Mailtrap](https://mailtrap.io), which captures messages
+in a web inbox instead of delivering them, so no address ever receives anything
+by accident.
+
+Create a free account, open **Email Testing → Inboxes → your sandbox →
+Integration → SMTP**, and copy `Username` and `Password` into `backend/.env`:
+
+```
+SMTP_HOST=sandbox.smtp.mailtrap.io
+SMTP_PORT=2525
+SMTP_USER=<from Mailtrap>
+SMTP_PASS=<from Mailtrap>
+SMTP_FROM=noreply@bieszczady.local
+```
+
+Take the credentials from **Email Testing**, not from *Email Sending* — the two
+sections look identical and the wrong pair fails with
+`535 5.7.0 Invalid credentials`.
+
+`SMTP_FROM` is only a label here; Mailtrap never delivers to it. Before a real
+deployment it has to become an address on a domain the foundation controls,
+otherwise messages land in spam.
+
 ### 3. Start the SQL Server database
 
 Make sure Docker Desktop is running, then:

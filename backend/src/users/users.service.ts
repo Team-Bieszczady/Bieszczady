@@ -47,10 +47,7 @@ export class UsersService {
     return { ...this.excludePasswordHash(row), taskCount: _count.ownedTasks };
   }
 
-  private async setPassword(
-    userId: string,
-    plainPassword: string,
-  ): Promise<void> {
+  async setPassword(userId: string, plainPassword: string): Promise<void> {
     const passwordHash = await bcrypt.hash(plainPassword, 10);
     await this.prisma.user.update({
       where: { id: userId },

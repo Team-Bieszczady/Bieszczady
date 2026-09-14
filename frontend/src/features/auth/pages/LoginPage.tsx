@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { FieldError } from '../../../components/ui/FieldError';
 import { useForm } from 'react-hook-form';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import toast from 'react-hot-toast';
 import { GoMail } from 'react-icons/go';
 import { Button } from '../../../components/ui/Button';
@@ -107,12 +107,12 @@ export default function LoginPage() {
         </div>
 
         <div className="text-right">
-          <a
-            href="#"
+          <Link
+            to="/forgot-password"
             className="text-darkGreen text-xs font-medium transition-all duration-300 hover:text-darkGreenHover hover:underline"
           >
             Nie pamiętasz hasła?
-          </a>
+          </Link>
         </div>
 
         <div className="flex justify-center">
