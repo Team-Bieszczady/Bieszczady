@@ -1,3 +1,4 @@
+import type { DocumentKind, DocumentStatus } from './documents';
 import { type ModuleKey } from './modules';
 
 export type AccountStatus = 'ACTIVE' | 'INACTIVE';
@@ -59,8 +60,8 @@ export interface BackendDocument {
   projectId: string;
   folderId: string;
   name: string;
-  kind: string;
-  status: string;
+  kind: DocumentKind;
+  status: DocumentStatus;
   ownerId: string;
   createdAt: string;
   updatedAt: string;

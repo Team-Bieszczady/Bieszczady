@@ -5,6 +5,7 @@ import { useAuthToken } from "../context/useAuthToken";
 import { api} from "../lib/api";
 import { DOCUMENT_KIND_LABELS, DOCUMENT_KINDS, type DocumentKind } from "../lib/documents";
 import { useUploadDocument } from "../features/documents/hooks/useUploadDocument";
+import { DocumentsTable } from "../features/documents/components/DocumentsTable";
   const PROJECT_ID = '11111111-1111-1111-1111-111111111111';
 export default function ProjectDocumentsPage() {
 
@@ -85,19 +86,9 @@ if(!folders){
         {!folderId && <p>Wybierz folder</p>}
         {folderId && documentsPending && <p>Ładowanie...</p>}
 
-        {documents &&
-          documents.map((el) => (
-            <div key={el.id}>
-              <p>{el.name}</p>
-              <button
-                onClick={() =>
-                  down(el.id, el.versions[0].versionNo, el.versions[0].fileName)
-                }
-              >
-                Pobierz
-              </button>
-            </div>
-          ))}
+        {documents && (
+          <DocumentsTable documents={documents} onDownload={down} />
+        )}
       </div>
     </div>
   );
