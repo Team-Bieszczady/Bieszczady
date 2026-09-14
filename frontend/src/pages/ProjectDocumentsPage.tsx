@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useFolders } from '../features/documents/hooks/useFolders';
 import { useDocuments } from '../features/documents/hooks/useDocuments';
 import { useAuthToken } from '../context/useAuthToken';
-import { api } from '../lib/api';
+import { api, isApiError } from '../lib/api';
 import {
   DOCUMENT_KINDS_OPTIONS,
   type DocumentKind,
@@ -14,6 +14,7 @@ import { Button } from '../components/ui/Button';
 import { formatFileSize } from '../features/documents/utils/formatters';
 import { IoCloudUploadOutline, IoFolderOutline } from 'react-icons/io5';
 import { Select } from '../components/ui/Select';
+import toast from 'react-hot-toast';
 const PROJECT_ID = '11111111-1111-1111-1111-111111111111';
 export default function ProjectDocumentsPage() {
   const [folderId, setFolderId] = useState<string | null>(null);
@@ -29,12 +30,18 @@ export default function ProjectDocumentsPage() {
   const [showUpload, setShowUpload] = useState(false);
 
   const upload = useUploadDocument(PROJECT_ID, folderId ?? '');
+  const clear = () => {
+    setName("");
+    setShowUpload(false)
+setFile(null)
+  }
   const down = async (
     documentId: string,
     versionNo: number,
     fileName: string,
   ) => {
-    const blob = await api.downloadVersion(
+    try{
+   const blob = await api.downloadVersion(
       requireToken(),
       PROJECT_ID,
       documentId,
@@ -45,7 +52,16 @@ export default function ProjectDocumentsPage() {
     a.href = url;
     a.download = fileName;
     a.click();
+
+    
     URL.revokeObjectURL(url);
+
+    }catch(error) {
+        const message =error instanceof Error && isApiError(error)
+          ? error.message
+          : 'Coś poszło nie tak';
+        toast.error(message);
+    }
   };
 
   const uploadDoc = () => {
@@ -56,10 +72,14 @@ export default function ProjectDocumentsPage() {
       { name, kind, file },
       {
         onSuccess: () => {
-          setName('');
-          setFile(null);
-          setShowUpload(false);
+        clear()
         },
+        onError:(error) => {
+            const message = isApiError(error)
+              ? error.message
+              : 'Coś poszło nie tak'; 
+            toast.error(message);
+        }
       },
     );
   };
@@ -93,6 +113,7 @@ export default function ProjectDocumentsPage() {
           variant="primary"
           size="small"
           onClick={() => setShowUpload(true)}
+          disabled={!folderId}
         >
           <IoCloudUploadOutline className="h-4 w-4" />
           Wgraj plik
@@ -151,7 +172,7 @@ export default function ProjectDocumentsPage() {
 
       <Modal
         isOpen={showUpload}
-        onClose={() => setShowUpload(false)}
+        onClose={clear}
         title="Wgraj plik"
       >
         <div className="flex flex-col gap-3">
@@ -189,7 +210,7 @@ export default function ProjectDocumentsPage() {
           <Button
             variant="ghost"
             size="small"
-            onClick={() => setShowUpload(false)}
+            onClick={() => clear}
           >
             Anuluj
           </Button>
@@ -197,7 +218,7 @@ export default function ProjectDocumentsPage() {
             variant="primary"
             size="small"
             onClick={uploadDoc}
-            disabled={!name || !file}
+            disabled={!name || !file || !kind}
             isPending={upload.isPending}
           >
             Wgraj
