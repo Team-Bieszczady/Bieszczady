@@ -210,7 +210,7 @@ setFile(null)
           <Button
             variant="ghost"
             size="small"
-            onClick={() => clear}
+            onClick={clear}
           >
             Anuluj
           </Button>
