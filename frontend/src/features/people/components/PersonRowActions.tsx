@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import RowActionsMenu from './RowActionsMenu';
 import DeleteAccountDialog from './DeleteAccountDialog';
+import ManageModuleAccessModal from './ManageModuleAccessModal';
+import { useUserModules } from '../hooks/useUpdateUserModules';
 import { useAuth } from '../../../context/useAuth';
 import type { Person } from '../data';
 
@@ -11,6 +13,10 @@ interface PersonRowActionsProps {
 export default function PersonRowActions({ person }: PersonRowActionsProps) {
   const { user } = useAuth();
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isModulesOpen, setIsModulesOpen] = useState(false);
+  const canManageModules = !!user?.isDirector && !person.isDirector;
+  const modules = useUserModules(person.id, isModulesOpen);
+
   if (person.status === 'DELETED') return null;
 
   return (
@@ -19,6 +25,9 @@ export default function PersonRowActions({ person }: PersonRowActionsProps) {
         personId={person.id}
         canDelete={!!user?.isDirector}
         onDelete={() => setIsConfirmOpen(true)}
+        onManageModules={
+          canManageModules ? () => setIsModulesOpen(true) : undefined
+        }
       />
 
       <DeleteAccountDialog
@@ -26,6 +35,15 @@ export default function PersonRowActions({ person }: PersonRowActionsProps) {
         isOpen={isConfirmOpen}
         onClose={() => setIsConfirmOpen(false)}
       />
+      {isModulesOpen && modules.data && (
+        <ManageModuleAccessModal
+          userId={person.id}
+          userName={`${person.firstName} ${person.lastName}`.trim()}
+          currentModules={modules.data}
+          isOpen
+          onClose={() => setIsModulesOpen(false)}
+        />
+      )}
     </>
   );
 }

@@ -45,9 +45,11 @@ export function useAnchoredPosition(
       if (!anchor) return;
 
       const rect = anchor.getBoundingClientRect();
-      const spaceBelow = window.innerHeight - rect.bottom - offset - viewportMargin;
+      const spaceBelow =
+        window.innerHeight - rect.bottom - offset - viewportMargin;
       const spaceAbove = rect.top - offset - viewportMargin;
-      const openUpward = flip && spaceBelow < preferredHeight && spaceAbove > spaceBelow;
+      const openUpward =
+        flip && spaceBelow < preferredHeight && spaceAbove > spaceBelow;
 
       setPosition({
         top: rect.bottom + offset,

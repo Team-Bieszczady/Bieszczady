@@ -39,11 +39,6 @@ export const ROLE_FILTER_OPTIONS: ReadonlyArray<string> = [
   ...ROLE_OPTIONS,
 ];
 
-export const ROLE_SELECT_OPTIONS: ReadonlyArray<{
-  value: string;
-  label: string;
-}> = ROLE_OPTIONS.map((role) => ({ value: role, label: role }));
-
 export const ROLE_FILTER_SELECT_OPTIONS: ReadonlyArray<{
   value: string;
   label: string;

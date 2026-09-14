@@ -1,19 +1,21 @@
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router';
 import { PiDotsThreeOutlineFill } from 'react-icons/pi';
-import { IoEyeOutline } from 'react-icons/io5';
+import { IoEyeOutline, IoKeyOutline } from 'react-icons/io5';
 import { useAnchoredPopup } from '../../../hooks/useAnchoredPopup';
 
 export interface RowActionsMenuProps {
   personId: string;
   canDelete?: boolean;
   onDelete?: () => void;
+  onManageModules?: () => void;
 }
 
 export default function RowActionsMenu({
   personId,
   canDelete = false,
   onDelete,
+  onManageModules,
 }: RowActionsMenuProps) {
   const navigate = useNavigate();
   const {
@@ -29,7 +31,7 @@ export default function RowActionsMenu({
   });
 
   const itemClass =
-    'flex items-center gap-1.5 px-4 py-2 text-xs whitespace-nowrap transition-colors hover:opacity-70 cursor-pointer';
+    'flex w-full items-center justify-start gap-1.5 px-4 py-2 text-xs whitespace-nowrap transition-colors hover:opacity-70 cursor-pointer';
 
   return (
     <div>
@@ -56,7 +58,7 @@ export default function RowActionsMenu({
             className="fixed z-40 w-max rounded-xl border border-gray-200 bg-white shadow-lg"
             style={{ top: `${position.top}px`, right: `${position.right}px` }}
           >
-            <div className="flex items-center divide-x divide-gray-200">
+            <div className="flex flex-col divide-y divide-gray-200">
               <button
                 role="menuitem"
                 type="button"
@@ -69,6 +71,21 @@ export default function RowActionsMenu({
                 <IoEyeOutline className="h-3.5 w-3.5" aria-hidden="true" />
                 Zobacz więcej
               </button>
+
+              {onManageModules && (
+                <button
+                  role="menuitem"
+                  type="button"
+                  onClick={() => {
+                    close();
+                    onManageModules();
+                  }}
+                  className={`${itemClass} text-gray-700`}
+                >
+                  <IoKeyOutline className="h-3.5 w-3.5" aria-hidden="true" />
+                  Dostęp
+                </button>
+              )}
 
               {canDelete && onDelete && (
                 <button

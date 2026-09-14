@@ -57,7 +57,9 @@ export default function PeopleTable({
                 <td
                   colSpan={6}
                   className={`px-4 py-10 text-center text-gray-400 text-sm ${
-                    emptyClickable ? 'cursor-pointer hover:bg-gray-50 transition-colors' : ''
+                    emptyClickable
+                      ? 'cursor-pointer hover:bg-gray-50 transition-colors'
+                      : ''
                   }`}
                   onClick={emptyClickable ? onAddUser : undefined}
                 >
@@ -88,9 +90,16 @@ export default function PeopleTable({
         {people.length === 0 && (
           <div
             className={`border border-gray-200 rounded-lg bg-white p-6 text-center text-gray-400 text-sm ${
-              emptyClickable ? 'cursor-pointer hover:bg-gray-50 transition-colors' : ''
+              emptyClickable
+                ? 'cursor-pointer hover:bg-gray-50 transition-colors'
+                : ''
             }`}
-            style={{ minHeight: '120px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            style={{
+              minHeight: '120px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
             onClick={emptyClickable ? onAddUser : undefined}
           >
             {isLoading ? (

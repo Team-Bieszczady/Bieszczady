@@ -1,4 +1,5 @@
 import { Controller, useForm, useWatch } from 'react-hook-form';
+import { FieldError } from '../../../components/ui/FieldError';
 import toast from 'react-hot-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { SlLock } from 'react-icons/sl';
@@ -7,17 +8,21 @@ import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
 import { Select } from '../../../components/ui/Select';
 import {
-  FIELD_ERROR_CLASSES,
   FIELD_LABEL_CLASSES,
   INPUT_CLASSES,
 } from '../../../components/ui/formStyles';
 import { useCreateUser, type AddUserFormInputs } from '../hooks/useCreateUser';
 import { generatePassword } from '../utils/generatePassword';
-import { PROJECT_SELECT_OPTIONS, ROLE_SELECT_OPTIONS } from '../constants';
+import {
+  useAddMemberToProject,
+  useProjects,
+} from '../../projects/hooks/useProjectsApi';
+import { PROJECT_ROLE_OPTIONS } from '../../projects/labels';
 import {
   DEFAULT_USER_MODULES,
   MODULES,
   MODULE_LABELS,
+  applyModuleDependencies,
   toModuleFlags,
 } from '../../../lib/modules';
 import { isApiError } from '../../../lib/api';
@@ -46,20 +51,49 @@ export default function AddUserModal({ isOpen, onClose }: AddUserModalProps) {
   });
 
   const createUserMutation = useCreateUser();
+  const assignMutation = useAddMemberToProject();
+  const projects = useProjects(false, isOpen);
   const password = useWatch({ control, name: 'password' });
   const moduleFlags = useWatch({ control, name: 'modules' });
+
+  const projectOptions = (projects.data ?? []).map((project) => ({
+    value: project.id,
+    label: project.name,
+  }));
 
   const handleGeneratePassword = () => {
     setValue('password', generatePassword());
   };
 
+  const finish = () => {
+    queryClient.invalidateQueries({ queryKey: ['people'] });
+    reset();
+    onClose();
+  };
+
   const onSubmit = (data: AddUserFormInputs) => {
     createUserMutation.mutate(data, {
-      onSuccess: () => {
+      onSuccess: async (createdUser) => {
         toast.success('Użytkownik został stworzony pomyślnie!');
-        queryClient.invalidateQueries({ queryKey: ['people'] });
-        reset();
-        onClose();
+        if (data.projectId && data.role) {
+          try {
+            await assignMutation.mutateAsync({
+              projectId: data.projectId,
+              userId: createdUser.id,
+              projectRole: data.role,
+            });
+            toast.success('Przypisano do projektu');
+          } catch (error) {
+            console.error();
+            const message =
+              error instanceof Error ? error.message : 'Coś poszło nie tak';
+            toast.error(
+              `Konto utworzone, ale nie przypisano do projektu: ${message}`,
+            );
+          }
+        }
+
+        finish();
       },
       onError: (error) => {
         const message = isApiError(error)
@@ -83,9 +117,7 @@ export default function AddUserModal({ isOpen, onClose }: AddUserModalProps) {
               className={INPUT_CLASSES}
               {...register('firstName', nameRules('Imię'))}
             />
-            {errors.firstName && (
-              <p className={FIELD_ERROR_CLASSES}>{errors.firstName.message}</p>
-            )}
+            <FieldError message={errors.firstName?.message} />
           </div>
           <div>
             <label className={FIELD_LABEL_CLASSES}>Nazwisko</label>
@@ -96,9 +128,7 @@ export default function AddUserModal({ isOpen, onClose }: AddUserModalProps) {
               className={INPUT_CLASSES}
               {...register('lastName', nameRules('Nazwisko'))}
             />
-            {errors.lastName && (
-              <p className={FIELD_ERROR_CLASSES}>{errors.lastName.message}</p>
-            )}
+            <FieldError message={errors.lastName?.message} />
           </div>
         </div>
 
@@ -129,56 +159,56 @@ export default function AddUserModal({ isOpen, onClose }: AddUserModalProps) {
                 },
               })}
             />
-            {errors.email && (
-              <p className={FIELD_ERROR_CLASSES}>{errors.email.message}</p>
-            )}
+            <FieldError message={errors.email?.message} />
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className={FIELD_LABEL_CLASSES}>
-              Rola{' '}
-              <span className="font-normal text-gray-400">
-                wkrótce — jeszcze niezapisywane
-              </span>
-            </label>
+            <label className={FIELD_LABEL_CLASSES}>Rola w projekcie</label>
             <Controller
               name="role"
               control={control}
+              rules={{
+                validate: (value, values) =>
+                  !values.projectId || !!value || 'Wybierz rolę w projekcie',
+              }}
               render={({ field }) => (
                 <Select
                   size="md"
                   placeholder="Wybierz"
-                  options={ROLE_SELECT_OPTIONS}
+                  options={PROJECT_ROLE_OPTIONS}
                   value={field.value ?? ''}
                   onChange={field.onChange}
                   onBlur={field.onBlur}
+                  invalid={!!errors.role}
                 />
               )}
             />
+            <FieldError message={errors.role?.message} />
           </div>
           <div>
-            <label className={FIELD_LABEL_CLASSES}>
-              Przypisz do projektu{' '}
-              <span className="font-normal text-gray-400">
-                wkrótce — jeszcze niezapisywane
-              </span>
-            </label>
+            <label className={FIELD_LABEL_CLASSES}>Przypisz do projektu</label>
             <Controller
               name="projectId"
               control={control}
+              rules={{
+                validate: (value, values) =>
+                  !values.role || !!value || 'Wybierz projekt',
+              }}
               render={({ field }) => (
                 <Select
                   size="md"
-                  placeholder="Wybierz"
-                  options={PROJECT_SELECT_OPTIONS}
+                  placeholder={projects.isLoading ? 'Ładowanie...' : 'Wybierz'}
+                  options={projectOptions}
                   value={field.value ?? ''}
                   onChange={field.onChange}
                   onBlur={field.onBlur}
+                  invalid={!!errors.projectId}
                 />
               )}
             />
+            <FieldError message={errors.projectId?.message} />
           </div>
         </div>
 
@@ -203,7 +233,17 @@ export default function AddUserModal({ isOpen, onClose }: AddUserModalProps) {
                   <input
                     type="checkbox"
                     className="sr-only"
-                    {...register(`modules.${module}`)}
+                    checked={checked}
+                    onChange={(event) =>
+                      setValue(
+                        'modules',
+                        applyModuleDependencies(
+                          moduleFlags,
+                          module,
+                          event.target.checked,
+                        ),
+                      )
+                    }
                   />
                   {checked ? (
                     <IoCheckbox className="w-6 h-6 text-darkGreen shrink-0" />

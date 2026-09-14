@@ -29,10 +29,11 @@ const trigger = cva(
         sm: 'h-7 pl-2 pr-2',
         md: 'h-8 w-full px-3',
       },
+
       tone: {
         empty: 'bg-white border-gray-300 text-dark/75 hover:bg-gray-50',
         chosen:
-          'bg-darkGreen border-transparent text-white hover:bg-darkGreenHover',
+          'bg-white border-gray-300 font-medium text-dark hover:bg-gray-50',
       },
       invalid: {
         true: 'border-darkRed',
@@ -74,7 +75,12 @@ export function Select({
   });
 
   const open = () => {
-    setActiveIndex(Math.max(0, rows.findIndex((row) => row.value === value)));
+    setActiveIndex(
+      Math.max(
+        0,
+        rows.findIndex((row) => row.value === value),
+      ),
+    );
     openPanel();
   };
 
@@ -145,7 +151,9 @@ export function Select({
         onKeyDown={onKeyDown}
         className={`${trigger({ size, tone: selected ? 'chosen' : 'empty', invalid })} ${className}`}
       >
-        <span className="truncate">{selected?.label ?? placeholder}</span>
+        <span className="min-w-0 truncate">
+          {selected?.label ?? placeholder}
+        </span>
         <SlArrowDown
           className={`h-3 w-3 shrink-0 transition-transform duration-200 ${
             isOpen ? 'rotate-180' : ''
@@ -193,7 +201,10 @@ export function Select({
                 >
                   <span className="truncate">{row.label}</span>
                   {isSelected && (
-                    <IoCheckmark className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    <IoCheckmark
+                      className="h-3.5 w-3.5 shrink-0"
+                      aria-hidden="true"
+                    />
                   )}
                 </button>
               );

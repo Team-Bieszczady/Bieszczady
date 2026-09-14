@@ -4,14 +4,21 @@
   --font-sans: 'Plus Jakarta Sans', system-ui, 'Segoe UI', Roboto, sans-serif;
   --breakpoint-500: 500px;
   --breakpoint-700: 700px;
-
+  --breakpoint-800: 800px;
 
   --color-dark: #101010;
-  --color-darkGreen: #18744E;
+  --color-darkGreen: #18744e;
   --color-darkGreenHover: #155a3d;
   --color-lightGreen: #dcfce7;
   --color-white: #fff;
-  --color-darkRed: #A33A2A;
+  --color-darkRed: #a33a2a;
+  --color-limeGreenHover: #d9f5a8;
+  --color-trackGray: #d8dce0;
+  --color-grayText: #6b7280;
+  --color-mutedText: #8a9099;
+  --color-amberSoft: #fbe9cb;
+  --color-amberDark: #b7791f;
+  --color-redSoft: #fbe2e2;
 
   --animate-fade-in: fade-in 220ms ease-out;
 
@@ -92,6 +99,14 @@
   background-color: #9ca3af;
 }
 
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 .modal-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: var(--color-darkGreen) transparent;
@@ -119,4 +134,3 @@
   height: 0;
   width: 0;
 }
-

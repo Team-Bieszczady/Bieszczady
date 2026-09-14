@@ -3,5 +3,3 @@ export const INPUT_CLASSES =
 
 export const FIELD_LABEL_CLASSES =
   'block text-xs font-semibold text-dark/75 mb-1.5';
-
-export const FIELD_ERROR_CLASSES = 'text-red-500 text-xs mt-1';

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { FieldError } from '../../../components/ui/FieldError';
 import { useForm, useWatch } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { Modal } from '../../../components/ui/Modal';
@@ -11,7 +12,6 @@ import { toastAccountError } from '../utils/accountErrorMessage';
 import { NAME_MAX_LENGTH, nameRules } from '../../../lib/nameValidation';
 import type { Person } from '../data';
 import {
-  FIELD_ERROR_CLASSES,
   FIELD_LABEL_CLASSES,
   INPUT_CLASSES,
 } from '../../../components/ui/formStyles';
@@ -134,9 +134,7 @@ export default function EditAccountModal({
             {avatarValue && (
               <button
                 type="button"
-                onClick={() =>
-                  setValue('avatar', null, { shouldDirty: true })
-                }
+                onClick={() => setValue('avatar', null, { shouldDirty: true })}
                 className="text-xs font-medium text-darkRed hover:underline"
               >
                 Usuń zdjęcie
@@ -147,36 +145,24 @@ export default function EditAccountModal({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className={FIELD_LABEL_CLASSES}>
-              Imię
-            </label>
+            <label className={FIELD_LABEL_CLASSES}>Imię</label>
             <input
               type="text"
               maxLength={NAME_MAX_LENGTH}
               className={INPUT_CLASSES}
               {...register('firstName', nameRules('Imię'))}
             />
-            {errors.firstName && (
-              <p className={FIELD_ERROR_CLASSES}>
-                {errors.firstName.message}
-              </p>
-            )}
+            <FieldError message={errors.firstName?.message} />
           </div>
           <div>
-            <label className={FIELD_LABEL_CLASSES}>
-              Nazwisko
-            </label>
+            <label className={FIELD_LABEL_CLASSES}>Nazwisko</label>
             <input
               type="text"
               maxLength={NAME_MAX_LENGTH}
               className={INPUT_CLASSES}
               {...register('lastName', nameRules('Nazwisko'))}
             />
-            {errors.lastName && (
-              <p className={FIELD_ERROR_CLASSES}>
-                {errors.lastName.message}
-              </p>
-            )}
+            <FieldError message={errors.lastName?.message} />
           </div>
         </div>
 
@@ -194,9 +180,7 @@ export default function EditAccountModal({
             />
           </div>
           <div>
-            <label className={FIELD_LABEL_CLASSES}>
-              E-mail
-            </label>
+            <label className={FIELD_LABEL_CLASSES}>E-mail</label>
             <input
               type="email"
               readOnly

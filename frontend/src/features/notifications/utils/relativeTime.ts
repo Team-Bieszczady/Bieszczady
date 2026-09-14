@@ -1,4 +1,4 @@
-type PluralForm = 0 | 1 | 2; 
+type PluralForm = 0 | 1 | 2;
 
 function polishForm(n: number): PluralForm {
   if (n === 1) return 0;
@@ -19,7 +19,10 @@ function ago(n: number, unit: keyof typeof UNITS): string {
 }
 
 export function formatRelativeTime(iso: string, now = Date.now()): string {
-  const seconds = Math.max(0, Math.floor((now - new Date(iso).getTime()) / 1000));
+  const seconds = Math.max(
+    0,
+    Math.floor((now - new Date(iso).getTime()) / 1000),
+  );
 
   if (seconds < 60) return 'przed chwilą';
 
@@ -37,4 +40,3 @@ export function formatRelativeTime(iso: string, now = Date.now()): string {
     month: 'long',
   });
 }
-

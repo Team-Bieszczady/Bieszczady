@@ -27,7 +27,7 @@ export function mapUserToPerson(user: BackendUser): Person {
     role,
     isDirector: user.isDirector,
     projects: [...PLACEHOLDER_PROJECTS],
-    tasksCount: 0,
+    tasksCount: user.taskCount ?? 0,
     status: displayStatus(user),
     accountStatus: user.accountStatus,
     lastLoginAt: user.lastLogin,
