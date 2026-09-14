@@ -22,8 +22,6 @@ function formatValidationErrors(
       fields[path] = messages;
     }
 
-    // A DTO nested inside another DTO reports its own failures here, not in
-    // constraints. Without this the child messages are lost.
     if (error.children && error.children.length > 0) {
       Object.assign(fields, formatValidationErrors(error.children, path));
     }
@@ -35,7 +33,7 @@ function formatValidationErrors(
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  app.setGlobalPrefix('api/v1', { exclude: ['health'] });
+  app.setGlobalPrefix('api/v1');
   app.use(cookieParser());
   app.useGlobalPipes(
     new ValidationPipe({
@@ -65,6 +63,8 @@ async function bootstrap() {
     .setVersion('1.0.0')
     .addBearerAuth()
     .addTag('users', 'User management')
+    .addTag('projects', 'Projects, stages, goals, risks and membership')
+    .addTag('tasks', 'Tasks and their subtask checklists')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

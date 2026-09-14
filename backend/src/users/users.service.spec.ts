@@ -55,7 +55,7 @@ describe('UsersService', () => {
   };
 
   const moduleAccessMock = {
-    seedDefaultModules: jest.fn(),
+    grantInitialModules: jest.fn(),
     setModules: jest.fn(),
     getEffectiveModules: jest.fn(),
     userHasModule: jest.fn(),
@@ -100,7 +100,7 @@ describe('UsersService', () => {
       <T>(cb: (tx: typeof prismaMock) => T | Promise<T>): Promise<T> =>
         Promise.resolve(cb(prismaMock) as T),
     );
-    moduleAccessMock.seedDefaultModules.mockResolvedValue([
+    moduleAccessMock.grantInitialModules.mockResolvedValue([
       ...DEFAULT_USER_MODULES,
     ]);
 
@@ -194,7 +194,7 @@ describe('UsersService', () => {
         modules: ['PEOPLE'],
       });
 
-      expect(moduleAccessMock.seedDefaultModules).toHaveBeenCalledWith(
+      expect(moduleAccessMock.grantInitialModules).toHaveBeenCalledWith(
         prismaMock,
         'user-123',
         ['PEOPLE'],

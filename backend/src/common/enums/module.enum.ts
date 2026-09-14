@@ -16,4 +16,9 @@ export function isModule(value: string): value is Module {
   return (MODULES as readonly string[]).includes(value);
 }
 
-export const DEFAULT_USER_MODULES: Module[] = ['OVERVIEW', 'TASKS', 'CALENDAR'];
+export const DEFAULT_USER_MODULES: Module[] = [
+  'PROJECTS',
+  'OVERVIEW',
+  'TASKS',
+  'CALENDAR',
+];

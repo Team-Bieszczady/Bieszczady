@@ -3,7 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ModuleAccessService } from './module-access.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditLogService } from './audit-log.service';
-import { MODULES } from '../common/enums/module.enum';
+import { DEFAULT_USER_MODULES, MODULES } from '../common/enums/module.enum';
 
 describe('ModuleAccessService', () => {
   let service: ModuleAccessService;
@@ -176,22 +176,47 @@ describe('ModuleAccessService', () => {
     });
   });
 
-  describe('seedDefaultModules', () => {
-    it('grants the defaults plus any extras, deduplicated', async () => {
-      const granted = await service.seedDefaultModules(
+  describe('grantInitialModules', () => {
+    it('grants exactly what was requested, deduplicated', async () => {
+      const granted = await service.grantInitialModules(
         prisma,
         'user-1',
-        ['TASKS', 'PEOPLE'],
+        ['TASKS', 'PEOPLE', 'TASKS'],
         'actor-1',
       );
 
-      expect(granted).toEqual(['OVERVIEW', 'TASKS', 'CALENDAR', 'PEOPLE']);
+      expect(granted).toEqual(['TASKS', 'PEOPLE']);
       expect(prismaMock.userModuleAccess.createMany).toHaveBeenCalledWith({
         data: granted.map((module) => ({
           userId: 'user-1',
           module,
           grantedById: 'actor-1',
         })),
+      });
+    });
+
+    it('falls back to the defaults only when no list is supplied', async () => {
+      const granted = await service.grantInitialModules(
+        prisma,
+        'user-1',
+        undefined,
+        'actor-1',
+      );
+
+      expect(granted).toEqual([...DEFAULT_USER_MODULES]);
+    });
+
+    it('grants nothing for an empty list — a director may withhold every module', async () => {
+      const granted = await service.grantInitialModules(
+        prisma,
+        'user-1',
+        [],
+        'actor-1',
+      );
+
+      expect(granted).toEqual([]);
+      expect(prismaMock.userModuleAccess.createMany).toHaveBeenCalledWith({
+        data: [],
       });
     });
   });

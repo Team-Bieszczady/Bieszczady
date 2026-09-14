@@ -19,8 +19,6 @@ import { UsersModule } from '../users/users.module';
       }),
     }),
     ThrottlerModule.forRoot({
-      // The default message is 'ThrottlerException: Too Many Requests', which
-      // leaks the internal class name to the client.
       errorMessage: 'Too many requests',
       throttlers: [
         {

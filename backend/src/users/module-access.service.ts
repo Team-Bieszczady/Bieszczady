@@ -7,6 +7,7 @@ import {
   isModule,
 } from '../common/enums/module.enum';
 import { PrismaService } from '../prisma/prisma.service';
+import { SERIALIZABLE } from '../prisma/transaction-options';
 import { AuditLogService } from './audit-log.service';
 
 @Injectable()
@@ -48,14 +49,14 @@ export class ModuleAccessService {
     return user.isDirector || user.moduleAccess.length > 0;
   }
 
-  async seedDefaultModules(
+  async grantInitialModules(
     tx: Prisma.TransactionClient,
     userId: string,
-    extra: Module[],
+    requested: Module[] | undefined,
     grantedById: string,
   ): Promise<Module[]> {
     const modulesToGrant = Array.from(
-      new Set([...DEFAULT_USER_MODULES, ...extra]),
+      new Set(requested ?? DEFAULT_USER_MODULES),
     );
 
     await tx.userModuleAccess.createMany({
@@ -74,63 +75,60 @@ export class ModuleAccessService {
     targetId: string,
     modules: Module[],
   ): Promise<Module[]> {
-    return this.prisma.$transaction(
-      async (tx) => {
-        const target = await tx.user.findFirst({
-          where: { id: targetId, deletedAt: null },
-          select: { id: true },
+    return this.prisma.$transaction(async (tx) => {
+      const target = await tx.user.findFirst({
+        where: { id: targetId, deletedAt: null },
+        select: { id: true },
+      });
+
+      if (!target) {
+        throw new NotFoundException('User not found');
+      }
+
+      const currentGrants = await tx.userModuleAccess.findMany({
+        where: { userId: targetId },
+        select: { module: true },
+      });
+
+      const currentModules = new Set(
+        currentGrants.map((g) => g.module).filter(isModule),
+      );
+      const requestedModules = new Set(modules);
+
+      const toRemove = Array.from(currentModules).filter(
+        (m) => !requestedModules.has(m),
+      );
+      const toAdd = Array.from(requestedModules).filter(
+        (m) => !currentModules.has(m),
+      );
+
+      if (toRemove.length > 0) {
+        await tx.userModuleAccess.deleteMany({
+          where: {
+            userId: targetId,
+            module: { in: toRemove },
+          },
         });
+      }
 
-        if (!target) {
-          throw new NotFoundException('User not found');
-        }
-
-        const currentGrants = await tx.userModuleAccess.findMany({
-          where: { userId: targetId },
-          select: { module: true },
+      if (toAdd.length > 0) {
+        await tx.userModuleAccess.createMany({
+          data: toAdd.map((module) => ({
+            userId: targetId,
+            module,
+            grantedById: actorId,
+          })),
         });
+      }
 
-        const currentModules = new Set(
-          currentGrants.map((g) => g.module).filter(isModule),
-        );
-        const requestedModules = new Set(modules);
+      await this.auditLog.recordInTransaction(tx, {
+        actorId,
+        targetId,
+        action: 'MODULE_ACCESS_UPDATED',
+        metadata: { added: toAdd, removed: toRemove },
+      });
 
-        const toRemove = Array.from(currentModules).filter(
-          (m) => !requestedModules.has(m),
-        );
-        const toAdd = Array.from(requestedModules).filter(
-          (m) => !currentModules.has(m),
-        );
-
-        if (toRemove.length > 0) {
-          await tx.userModuleAccess.deleteMany({
-            where: {
-              userId: targetId,
-              module: { in: toRemove },
-            },
-          });
-        }
-
-        if (toAdd.length > 0) {
-          await tx.userModuleAccess.createMany({
-            data: toAdd.map((module) => ({
-              userId: targetId,
-              module,
-              grantedById: actorId,
-            })),
-          });
-        }
-
-        await this.auditLog.recordInTransaction(tx, {
-          actorId,
-          targetId,
-          action: 'MODULE_ACCESS_UPDATED',
-          metadata: { added: toAdd, removed: toRemove },
-        });
-
-        return Array.from(requestedModules);
-      },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
-    );
+      return Array.from(requestedModules);
+    }, SERIALIZABLE);
   }
 }

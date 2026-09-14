@@ -8,7 +8,7 @@ The system has two distinct permission levels that must never be merged:
 
 **Global permissions:** A boolean `isDirector` flag on each user. Directors are global system administrators who can create accounts, deactivate users, and promote/demote other directors.
 
-**Project permissions:** Three roles—COORDINATOR, EXECUTOR, PARTNER—that will be assigned per-project via a future `project_members` join table. These are **not stored on the user**; they exist only as a TypeScript enum (`src/common/enums/project-role.enum.ts`) and will be persisted separately once projects are built.
+**Project permissions:** Three roles—COORDINATOR, EXECUTOR, PARTNER—assigned per-project via the `project_members` join table. These are **not stored on the user**; the value list lives in TypeScript as `PROJECT_ROLES` (`src/common/enums/project.enums.ts`) and is persisted on `project_members.project_role`.
 
 There is no `role` column on the User table. `isDirector` is the only permission field on the user itself.
 
@@ -190,7 +190,7 @@ The following are intentionally out of scope:
 
 - **Logout and `lastLogin`:** the auth module issues and rotates tokens but has no logout endpoint, and successful logins are not recorded. Both belong to F1.1.
 
-- **Project and member endpoints:** No `projects` table, no `project_members` table, no endpoints to assign users to projects or manage project roles.
+- **Per-project permissions beyond tasks:** the projects domain is built — tables, seed and endpoints for projects, stages, activities, tasks, subtasks, goals, risks, members and the three dictionaries (see `docs/projects.md`). What is still missing is the finer `PERMISSION(module, action, project_id?)` model from the ERD. Only tasks are project-scoped today; every other write is director-only.
 
 - **Email sending:** No SMTP, no email templates. Password creation currently returns the temp password in the API response only.
 
@@ -247,7 +247,7 @@ npm run start:prod
 - `src/users/` — User controller, service, DTOs, and tests.
 - `src/users/audit-log.service.ts` — Writes audit entries for privileged user changes.
 - `src/auth/` — Login, refresh, `/auth/me`, JWT strategy, and the JwtAuthGuard / DirectorGuard used across the API.
-- `src/common/enums/project-role.enum.ts` — TypeScript enum for future project roles (not persisted).
+- `src/common/enums/project.enums.ts` — Project-side value lists (roles, risk levels, colours, task status/priority) as `as const` arrays for `@IsIn` validation.
 - `prisma/schema.prisma` — Prisma schema (User and AuditLog models).
 - `prisma/migrations/` — Database migrations.
 - `prisma/seed.ts` — Test data seeding script.

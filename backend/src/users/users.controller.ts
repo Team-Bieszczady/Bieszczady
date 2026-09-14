@@ -364,6 +364,23 @@ export class UserController {
   }
 
   @UseGuards(DirectorGuard)
+  @Get(':id/modules')
+  @ApiOperation({
+    summary: 'List a user"s module grants',
+    description:
+      'The rows behind PATCH :id/modules, so the director UI can open with the boxes already ticked. A director target returns every module — they bypass the check entirely.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Effective modules for that user',
+    example: { modules: ['PROJECTS', 'OVERVIEW', 'TASKS', 'CALENDAR'] },
+  })
+  @ApiResponse({ status: 404, description: 'User not found or deleted' })
+  async getModuleAccess(@Param('id', ParseUUIDPipe) id: string) {
+    return this.usersService.getModuleAccess(id);
+  }
+
+  @UseGuards(DirectorGuard)
   @Patch(':id/modules')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
