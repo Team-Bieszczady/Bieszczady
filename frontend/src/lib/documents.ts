@@ -40,3 +40,7 @@ export const DOCUMENT_STATUS_CLASSES: Record<DocumentStatus, string> = {
   SIGNED: 'bg-darkGreen text-white',
   IN_PROGRESS: 'bg-gray-100 text-gray-600',
 };
+export const DOCUMENT_KINDS_OPTIONS: ReadonlyArray<{
+  value: string;
+  label: string;
+}> = DOCUMENT_KINDS.map((k) => ({ value: k, label: DOCUMENT_KIND_LABELS[k] }));

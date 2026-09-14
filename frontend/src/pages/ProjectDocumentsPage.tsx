@@ -1,59 +1,84 @@
-import { useState } from "react";
-import { useFolders } from "../features/documents/hooks/useFolders";
-import { useDocuments } from "../features/documents/hooks/useDocuments";
-import { useAuthToken } from "../context/useAuthToken";
-import { api} from "../lib/api";
-import { DOCUMENT_KIND_LABELS, DOCUMENT_KINDS, type DocumentKind } from "../lib/documents";
-import { useUploadDocument } from "../features/documents/hooks/useUploadDocument";
-import { DocumentsTable } from "../features/documents/components/DocumentsTable";
-  const PROJECT_ID = '11111111-1111-1111-1111-111111111111';
+import { useState } from 'react';
+import { useFolders } from '../features/documents/hooks/useFolders';
+import { useDocuments } from '../features/documents/hooks/useDocuments';
+import { useAuthToken } from '../context/useAuthToken';
+import { api } from '../lib/api';
+import {
+  DOCUMENT_KINDS_OPTIONS,
+  type DocumentKind,
+} from '../lib/documents';
+import { useUploadDocument } from '../features/documents/hooks/useUploadDocument';
+import { DocumentsTable } from '../features/documents/components/DocumentsTable';
+import { Modal } from '../components/ui/Modal';
+import { Button } from '../components/ui/Button';
+import { formatFileSize } from '../features/documents/utils/formatters';
+import { IoCloudUploadOutline, IoFolderOutline } from 'react-icons/io5';
+import { Select } from '../components/ui/Select';
+const PROJECT_ID = '11111111-1111-1111-1111-111111111111';
 export default function ProjectDocumentsPage() {
-
-
-
   const [folderId, setFolderId] = useState<string | null>(null);
   const { requireToken } = useAuthToken();
-const { data: folders, isPending: foldersPending } = useFolders(PROJECT_ID);
-const { data: documents, isPending: documentsPending } = useDocuments(PROJECT_ID, folderId);
-const [name, setName] = useState('');
-const [kind, setKind] = useState<DocumentKind>('CONTRACT');
-const [file, setFile] = useState<File | null>(null);
-const [showUpload, setShowUpload] = useState(false);
-
-const upload = useUploadDocument(PROJECT_ID, folderId ?? '');
-const down = async (
-  documentId: string,
-  versionNo: number,
-  fileName: string,
-) => {
-  const blob = await api.downloadVersion(
-    requireToken(),
+  const { data: folders, isPending: foldersPending } = useFolders(PROJECT_ID);
+  const { data: documents, isPending: documentsPending } = useDocuments(
     PROJECT_ID,
-    documentId,
-    versionNo,
+    folderId,
   );
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
- a.download = fileName;
-  a.click();
-  URL.revokeObjectURL(url);
-}; 
+  const [name, setName] = useState('');
+  const [kind, setKind] = useState<DocumentKind>('CONTRACT');
+  const [file, setFile] = useState<File | null>(null);
+  const [showUpload, setShowUpload] = useState(false);
 
-const uploadDoc = ( ) => {
-  if(!file){
-    return null
+  const upload = useUploadDocument(PROJECT_ID, folderId ?? '');
+  const down = async (
+    documentId: string,
+    versionNo: number,
+    fileName: string,
+  ) => {
+    const blob = await api.downloadVersion(
+      requireToken(),
+      PROJECT_ID,
+      documentId,
+      versionNo,
+    );
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const uploadDoc = () => {
+    if (!file) {
+      return null;
+    }
+    upload.mutate(
+      { name, kind, file },
+      {
+        onSuccess: () => {
+          setName('');
+          setFile(null);
+          setShowUpload(false);
+        },
+      },
+    );
+  };
+
+  if (foldersPending) {
+    return <p>Loading...</p>;
   }
- upload.mutate({name, kind,file})
-}
+  if (!folders) {
+    return null;
+  }
 
-if(foldersPending){
-  return <p>Loading...</p>
-}
-if(!folders){
-  return null
-}
+  const nameFolder = folders.find((el) => el.id === folderId)?.name;
 
+  const bytes =
+    documents?.reduce(
+      (accumulator, currentValue) =>
+        accumulator + currentValue.versions[0].sizeBytes,
+      0,
+    ) ?? 0;
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-start justify-between">
@@ -64,13 +89,14 @@ if(!folders){
           <h1 className="mt-1 text-2xl font-bold text-dark">Dokumenty</h1>
         </div>
 
-        <button
-          type="button"
+        <Button
+          variant="primary"
+          size="small"
           onClick={() => setShowUpload(true)}
-          className="rounded-lg bg-darkGreen px-4 py-2 text-sm font-medium text-white hover:bg-darkGreenHover"
         >
+          <IoCloudUploadOutline className="h-4 w-4" />
           Wgraj plik
-        </button>
+        </Button>
       </div>
 
       <div className="flex gap-6">
@@ -81,14 +107,16 @@ if(!folders){
           <div className="flex flex-col gap-1">
             {folders.map((el) => (
               <button
-                className={`rounded px-3 py-2 text-left text-sm ${
+                type="button"
+                key={el.id}
+                onClick={() => setFolderId(el.id)}
+                className={`flex items-center gap-2 rounded px-3 py-2 text-left text-sm ${
                   el.id === folderId
                     ? 'bg-lightGreen text-darkGreen'
                     : 'text-dark hover:bg-gray-50'
                 }`}
-                key={el.id}
-                onClick={() => setFolderId(el.id)}
               >
+                <IoFolderOutline className="h-4 w-4 shrink-0" />
                 {el.name}
               </button>
             ))}
@@ -101,6 +129,15 @@ if(!folders){
               Wybierz folder
             </p>
           )}
+
+          {folderId && (
+            <div className="border-b border-gray-200 px-4 py-4">
+              <p className="text-base font-semibold text-dark">{nameFolder}</p>
+              <p className="mt-0.5 text-xs text-gray-400">
+                {documents?.length ?? 0} dokumentów · {formatFileSize(bytes)}
+              </p>
+            </div>
+          )}
           {folderId && documentsPending && (
             <p className="px-4 py-10 text-center text-xs text-gray-400">
               Ładowanie...
@@ -112,64 +149,61 @@ if(!folders){
         </section>
       </div>
 
-      {showUpload && (
-<div className="rounded-lg border border-gray-200 bg-white p-4">
-  <p className="mb-4 text-sm font-semibold text-dark">Wgraj plik</p>
-
-  <div className="flex flex-col gap-3">
-    <label className="flex flex-col gap-1 text-xs text-gray-600">
-      Nazwa dokumentu
-      <input
-        type="text"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        className="rounded border border-gray-200 px-3 py-2 text-sm text-dark"
-      />
-    </label>
-
-    <label className="flex flex-col gap-1 text-xs text-gray-600">
-      Rodzaj
-      <select
-        value={kind}
-        onChange={(e) => setKind(e.target.value as DocumentKind)}
-        className="rounded border border-gray-200 px-3 py-2 text-sm text-dark"
+      <Modal
+        isOpen={showUpload}
+        onClose={() => setShowUpload(false)}
+        title="Wgraj plik"
       >
-        {DOCUMENT_KINDS.map( e => <option key={e} value={e}>{DOCUMENT_KIND_LABELS[e]}</option>)}
+        <div className="flex flex-col gap-3">
+          <label className="flex flex-col gap-1 text-xs text-gray-600">
+            Nazwa dokumentu
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="rounded border border-gray-200 px-3 py-2 text-sm text-dark"
+            />
+          </label>
 
-      </select>
-    </label>
+          <label className="flex flex-col gap-1 text-xs text-gray-600">
+            Rodzaj
+            <Select
+              options={DOCUMENT_KINDS_OPTIONS}
+              value={kind}
+              onChange={(v) => setKind(v as DocumentKind)}
+              placeholder="Wybierz rodzaj"
+            />
+          </label>
 
-    <label className="flex flex-col gap-1 text-xs text-gray-600">
-      Plik
-      <input
-        type="file"
-        onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-        className="text-sm"
-      />
-    </label>
-  </div>
+          <label className="flex flex-col gap-1 text-xs text-gray-600">
+            Plik
+            <input
+              type="file"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              className="text-sm"
+            />
+          </label>
+        </div>
 
-  <div className="mt-4 flex justify-end gap-2">
-    <button
-      type="button"
-      onClick={() => setShowUpload(false)}
-      className="rounded-lg px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
-    >
-      Anuluj
-    </button>
-    <button
-      type="button"
-      onClick={uploadDoc}
-      disabled={!name || !file}
-      className="rounded-lg bg-darkGreen px-4 py-2 text-sm font-medium text-white hover:bg-darkGreenHover disabled:cursor-not-allowed disabled:opacity-50"
-    >
-      Wgraj
-    </button>
-  </div>
-  
-</div>
-      
-  )
+        <div className="mt-4 flex justify-end gap-2">
+          <Button
+            variant="ghost"
+            size="small"
+            onClick={() => setShowUpload(false)}
+          >
+            Anuluj
+          </Button>
+          <Button
+            variant="primary"
+            size="small"
+            onClick={uploadDoc}
+            disabled={!name || !file}
+            isPending={upload.isPending}
+          >
+            Wgraj
+          </Button>
+        </div>
+      </Modal>
+    </div>
+  );
 }
-</div>
-)}
