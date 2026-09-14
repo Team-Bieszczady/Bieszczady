@@ -117,6 +117,8 @@ interface RequestInitOptions {
   fallbackMessage: string;
 }
 
+
+
 async function request<T>(
   path: string,
   { method, accessToken, body, fallbackMessage }: RequestInitOptions,
@@ -154,7 +156,33 @@ async function request<T>(
   return response.json() as Promise<T>;
 }
 
+async function sendWithRefresh(
+  path: string,
+  init: RequestInit,
+  accessToken: string,
+): Promise<Response> {
+  const send = (token: string) =>
+    fetch(`${API_BASE_URL}${path}`, {
+     ...init,
+     headers: {...init.headers, Authorization:`Bearer ${token}` }
+
+    });
+  let response = await send(accessToken);
+ if (response.status === 401 && accessToken) {
+    const freshToken = await refreshAccessToken();
+    if (freshToken) {
+      response = await send(freshToken);
+    }
+  }
+  return response
+}
+
+
 export const api = {
+
+
+
+
   async login(email: string, password: string): Promise<AuthResponse> {
     const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
       method: 'POST',
@@ -374,16 +402,13 @@ export const api = {
   },
 
 async downloadVersion(accessToken: string, projectId:string, documentId: string, versionNo: number): Promise<Blob>{
- const response = await fetch(
-   `${API_BASE_URL}/api/v1/projects/${projectId}/documents/${documentId}/versions/${versionNo}/download`,
-   {
-     headers: {
-       Authorization: `Bearer ${accessToken}`,
-     },
-     method: 'GET',
-     credentials: 'include',
-   },
+
+ const response = await sendWithRefresh(
+   `/api/v1/projects/${projectId}/documents/${documentId}/versions/${versionNo}/download`,
+   { method: 'GET', credentials: 'include' },
+   accessToken
  );
+
 
     if (!response.ok) {
       throw createApiError(response.status, 'Nie udało się pobrać pliku');
@@ -393,20 +418,15 @@ async downloadVersion(accessToken: string, projectId:string, documentId: string,
 },
 
 async uploadDocument(accessToken: string, projectId: string, folderId: string, formData: FormData): Promise<BackendDocument> {
- const response = await fetch(
-   `${API_BASE_URL}/api/v1/projects/${projectId}/folders/${folderId}/documents`,
-   {
-     headers: {
-       Authorization: `Bearer ${accessToken}`,
-     },
-     method: 'POST',
-     credentials: 'include',
-     body: formData,
-   },
+
+ const response = await sendWithRefresh(
+   `/api/v1/projects/${projectId}/folders/${folderId}/documents`,
+   { method: 'POST', credentials: 'include', body: formData },
+   accessToken,
  );
 
  if (!response.ok) {
-   throw createApiError(response.status, 'Nie udało się pobrać pliku');
+   throw createApiError(response.status, 'Nie udało się wgrać pliku');
  }
 
  return response.json();
