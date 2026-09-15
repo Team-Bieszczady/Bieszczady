@@ -7,7 +7,11 @@ import { DocumentsService } from './documents.service';
 import { DocumentVersionsController } from './document-versions.controller';
 
 @Module({
-  controllers: [FoldersController, DocumentsController, DocumentVersionsController],
+  controllers: [
+    FoldersController,
+    DocumentsController,
+    DocumentVersionsController,
+  ],
   providers: [FoldersService, StorageService, DocumentsService],
 })
 export class DocumentsModule {}

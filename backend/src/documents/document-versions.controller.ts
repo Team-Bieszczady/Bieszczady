@@ -1,12 +1,25 @@
-import { Body, Controller, Get, Param, ParseIntPipe, ParseUUIDPipe, Post, Res, StreamableFile, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
-import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
-import { PasswordChangeGuard } from "../auth/guards/password-change.guard";
-import { DocumentsService } from "./documents.service";
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  ParseUUIDPipe,
+  Post,
+  Res,
+  StreamableFile,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { PasswordChangeGuard } from '../auth/guards/password-change.guard';
+import { DocumentsService } from './documents.service';
 import { type Response } from 'express';
-import { FileInterceptor } from "@nestjs/platform-express";
-import { CurrentUser } from "../auth/decorators/current-user.decorator";
-import {type AuthenticatedUser } from "../auth/types/auth.types";
-import { CreateVersionDto } from "./dto/create-version.dto";
+import { FileInterceptor } from '@nestjs/platform-express';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { type AuthenticatedUser } from '../auth/types/auth.types';
+import { CreateVersionDto } from './dto/create-version.dto';
 
 @Controller('/projects/:projectId/documents')
 export class DocumentVersionsController {
@@ -51,5 +64,14 @@ export class DocumentVersionsController {
       dto,
       file,
     );
+  }
+
+  @Get('/:documentId/versions')
+  @UseGuards(JwtAuthGuard, PasswordChangeGuard)
+  async getDocumentsVersions(
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('documentId', ParseUUIDPipe) documentId: string,
+  ) {
+    return await this.documentService.getVersions(projectId, documentId);
   }
 }

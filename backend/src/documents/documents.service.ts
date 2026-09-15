@@ -6,7 +6,6 @@ import { CreateDocumentDto } from './dto/create-document.dto';
 import { buffer } from 'stream/consumers';
 import { CreateVersionDto } from './dto/create-version.dto';
 
-
 interface UploadedFile {
   buffer: Buffer;
   originalname: string;
@@ -99,7 +98,7 @@ export class DocumentsService {
         mimeType: file.mimetype,
         sizeBytes: file.size,
         uploadedById: ownerId,
-        changeNote: dto.changeNote
+        changeNote: dto.changeNote,
       },
     });
 
@@ -139,6 +138,19 @@ export class DocumentsService {
     return { buffer, fileName: version.fileName, mimeType: version.mimeType };
   }
 
+  async getVersions(projectId: string, documentId: string) {
+    const versions = await this.prisma.documentVersion.findMany({
+      where: {
+        document: { projectId, id: documentId, deletedAt: null },
+      },
+      orderBy: {
+        versionNo: 'desc',
+      },
+    });
+    if (versions.length === 0) {
+      throw new NotFoundException('Nie znaleziono dokumentu');
+    }
 
-  
+    return versions;
+  }
 }
