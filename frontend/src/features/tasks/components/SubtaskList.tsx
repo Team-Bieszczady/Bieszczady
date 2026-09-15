@@ -10,7 +10,7 @@ import type { Subtask } from '../../projects/types';
 
 interface SubtaskListProps {
   subtasks: Subtask[];
-  onAdd: (title: string) => void;
+  onAdd: (title: string) => void | Promise<unknown>;
   onRename: (subtaskId: string, title: string) => void;
   onToggle: (subtaskId: string) => void;
   onDelete: (subtaskId: string) => void;
@@ -20,21 +20,27 @@ function AddSubtaskForm({
   onAdd,
   onClose,
 }: {
-  onAdd: (title: string) => void;
+  onAdd: (title: string) => void | Promise<unknown>;
   onClose: () => void;
 }) {
-  const { register, handleSubmit, reset, setFocus } = useForm<{
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setFocus,
+    formState: { isSubmitting },
+  } = useForm<{
     title: string;
   }>({ defaultValues: { title: '' } });
   const inputId = useId();
 
-  const submit = handleSubmit(({ title }) => {
+  const submit = handleSubmit(async ({ title }) => {
     if (!title.trim()) {
       onClose();
       return;
     }
 
-    onAdd(title);
+    await onAdd(title);
     reset();
     setFocus('title');
   });
@@ -55,7 +61,13 @@ function AddSubtaskForm({
         }}
         className={INPUT_CLASSES}
       />
-      <Button variant="primary" size="small" type="submit">
+      <Button
+        variant="primary"
+        size="small"
+        type="submit"
+        isPending={isSubmitting}
+        disabled={isSubmitting}
+      >
         Dodaj
       </Button>
       <Button variant="outline" size="small" type="button" onClick={onClose}>

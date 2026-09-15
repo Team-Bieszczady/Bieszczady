@@ -40,7 +40,10 @@ function ProjectSections({ project, canEdit }: ProjectSectionsProps) {
       <ScheduleSection
         plan={plan}
         canEdit={canEdit}
-        canToggleTask={(task) => canChangeStatusOf(user, members, task.ownerId)}
+        canToggleTask={(task) =>
+          project.archivedAt === null &&
+          canChangeStatusOf(user, members, task.ownerId)
+        }
       />
       <BudgetSection canEdit={canEdit} />
       <RisksSection projectId={project.id} canEdit={canEdit} />
@@ -79,7 +82,7 @@ export default function ProjectOverviewPage() {
           <ProjectSections
             key={project.id}
             project={project}
-            canEdit={!!user?.isDirector}
+            canEdit={!!user?.isDirector && project.archivedAt === null}
           />
         )}
       </QueryState>

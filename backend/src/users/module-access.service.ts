@@ -82,7 +82,7 @@ export class ModuleAccessService {
       });
 
       if (!target) {
-        throw new NotFoundException('User not found');
+        throw new NotFoundException('Nie znaleziono użytkownika');
       }
 
       const currentGrants = await tx.userModuleAccess.findMany({

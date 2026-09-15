@@ -349,8 +349,16 @@ describe('UsersService', () => {
       prismaMock.user.count.mockResolvedValue(1);
 
       await expect(
-        service.setAccountStatus('director-123', 'director-123', 'INACTIVE'),
+        service.setAccountStatus('other-director', 'director-123', 'INACTIVE'),
       ).rejects.toThrow(ConflictException);
+    });
+
+    it('should reject deactivating your own account', async () => {
+      prismaMock.user.findFirst.mockResolvedValue(mockDirector);
+
+      await expect(
+        service.setAccountStatus('director-123', 'director-123', 'INACTIVE'),
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it('should allow deactivating non-director', async () => {
@@ -552,6 +560,14 @@ describe('UsersService', () => {
       await expect(
         service.softDeleteUser('other-director', 'director-123'),
       ).rejects.toThrow(ConflictException);
+    });
+
+    it('should reject deleting your own account', async () => {
+      prismaMock.user.findFirst.mockResolvedValue(mockDirector);
+
+      await expect(
+        service.softDeleteUser('director-123', 'director-123'),
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it('should allow deleting non-director', async () => {

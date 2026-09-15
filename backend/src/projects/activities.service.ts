@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { SERIALIZABLE } from '../prisma/transaction-options';
 import { StageCompletionService } from './stage-completion.service';
+import { ProjectAccessService } from './project-access.service';
 import {
   CreateActivityDto,
   MoveActivityDto,
@@ -14,19 +15,15 @@ export class ActivitiesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly completion: StageCompletionService,
+    private readonly access: ProjectAccessService,
   ) {}
-
-  private async findOrThrow(id: string) {
-    const activity = await this.prisma.activity.findUnique({ where: { id } });
-    if (!activity) throw new NotFoundException('Activity not found');
-    return activity;
-  }
 
   async create(stageId: string, dto: CreateActivityDto) {
     const stage = await this.prisma.stage.findUnique({
       where: { id: stageId },
     });
-    if (!stage) throw new NotFoundException('Stage not found');
+    if (!stage) throw new NotFoundException('Nie znaleziono etapu');
+    await this.access.assertNotArchived(stage.projectId);
 
     const last = await this.prisma.activity.aggregate({
       where: { stageId },
@@ -43,7 +40,8 @@ export class ActivitiesService {
   }
 
   async update(id: string, dto: UpdateActivityDto) {
-    await this.findOrThrow(id);
+    const { projectId } = await this.access.locateActivity(id);
+    await this.access.assertNotArchived(projectId);
 
     const data: Prisma.ActivityUpdateInput = {};
     if (dto.name !== undefined) data.name = dto.name;
@@ -53,16 +51,23 @@ export class ActivitiesService {
 
   async move(id: string, dto: MoveActivityDto) {
     return this.prisma.$transaction(async (tx) => {
-      const activity = await tx.activity.findUnique({ where: { id } });
-      if (!activity) throw new NotFoundException('Activity not found');
+      const activity = await this.access.locateActivity(id, tx);
 
       const target = await tx.stage.findUnique({
         where: { id: dto.stageId },
       });
-      if (!target) throw new NotFoundException('Target stage not found');
+      if (!target)
+        throw new NotFoundException('Nie znaleziono etapu docelowego');
+
+      await this.access.assertNotArchived(activity.projectId, tx);
+      if (target.projectId !== activity.projectId) {
+        await this.access.assertNotArchived(target.projectId, tx);
+      }
 
       const from = activity.stageId;
-      if (from === target.id) return activity;
+      if (from === target.id) {
+        return tx.activity.findUniqueOrThrow({ where: { id } });
+      }
 
       const last = await tx.activity.aggregate({
         where: { stageId: target.id },
@@ -84,8 +89,8 @@ export class ActivitiesService {
 
   async remove(id: string): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
-      const activity = await tx.activity.findUnique({ where: { id } });
-      if (!activity) throw new NotFoundException('Activity not found');
+      const activity = await this.access.locateActivity(id, tx);
+      await this.access.assertNotArchived(activity.projectId, tx);
 
       await tx.subtask.deleteMany({ where: { task: { activityId: id } } });
       await tx.task.deleteMany({ where: { activityId: id } });

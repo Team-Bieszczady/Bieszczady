@@ -87,9 +87,8 @@ export default function AddUserModal({ isOpen, onClose }: AddUserModalProps) {
             console.error();
             const message =
               error instanceof Error ? error.message : 'Coś poszło nie tak';
-            toast.error(
-              `Konto utworzone, ale nie przypisano do projektu: ${message}`,
-            );
+            const text = `Konto utworzone, ale nie przypisano do projektu: ${message}`;
+            toast.error(text, { id: text });
           }
         }
 
@@ -99,7 +98,7 @@ export default function AddUserModal({ isOpen, onClose }: AddUserModalProps) {
         const message = isApiError(error)
           ? error.message
           : 'Coś poszło nie tak';
-        toast.error(message);
+        toast.error(message, { id: message });
       },
     });
   };

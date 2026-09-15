@@ -80,11 +80,11 @@ export default function EditAccountModal({
       const dataUrl = await resizeImageToDataUrl(file);
       setValue('avatar', dataUrl, { shouldDirty: true });
     } catch (error) {
-      toast.error(
+      const message =
         error instanceof Error
           ? error.message
-          : 'Nie udało się wczytać zdjęcia.',
-      );
+          : 'Nie udało się wczytać zdjęcia.';
+      toast.error(message, { id: message });
     } finally {
       setIsProcessingImage(false);
     }

@@ -58,6 +58,16 @@ export function useProjectTasks(
     })),
   );
 
+  const stageStartByAction = new Map(
+    openStages.flatMap((stage) =>
+      stage.activities.map(
+        (activity) => [activity.id, stage.startDate] as const,
+      ),
+    ),
+  );
+  const stageStartFor = (actionId: string): string | null =>
+    stageStartByAction.get(actionId) ?? null;
+
   const optionsForRow = (row: TaskRow): SelectOption[] =>
     actionOptions.some((option) => option.value === row.actionId)
       ? actionOptions
@@ -221,6 +231,7 @@ export function useProjectTasks(
       setStatus.isPending ||
       removeTask.isPending,
     actionOptions,
+    stageStartFor,
     optionsForRow,
     ownerOptions,
     addTask,

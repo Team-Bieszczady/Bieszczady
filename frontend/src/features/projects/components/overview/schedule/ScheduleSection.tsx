@@ -63,11 +63,11 @@ export default function ScheduleSection({
     const result = await pending;
 
     if (!result.ok) {
-      toast.error(
+      const message =
         'issue' in result
           ? SCHEDULE_ISSUE_MESSAGES[result.issue]
-          : result.message,
-      );
+          : result.message;
+      toast.error(message, { id: message });
       return false;
     }
     close();
@@ -130,7 +130,9 @@ export default function ScheduleSection({
   const requestAddAction = () => {
     if (stageOptions.length === 0) {
       const issue: ScheduleIssue = 'noOpenStages';
-      toast.error(SCHEDULE_ISSUE_MESSAGES[issue]);
+      toast.error(SCHEDULE_ISSUE_MESSAGES[issue], {
+        id: SCHEDULE_ISSUE_MESSAGES[issue],
+      });
       return;
     }
     setDialog({ kind: 'add-action' });

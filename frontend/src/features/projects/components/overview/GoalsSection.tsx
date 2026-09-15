@@ -36,8 +36,12 @@ export default function GoalsSection({
   const save = async (id: string, values: TitleDescriptionValues) => {
     const result = await saveGoal(id, values);
 
-    if (!result.ok) return toast.error(result.message);
+    if (!result.ok) {
+      toast.error(result.message, { id: result.message });
+      return false;
+    }
     toast.success(result.wasNew ? 'Cel dodany' : 'Cel zaktualizowany');
+    return true;
   };
 
   const confirmDelete = async () => {
@@ -46,7 +50,7 @@ export default function GoalsSection({
     const result = await deleteGoal(deletingGoal.id);
     setDeletingGoal(null);
 
-    if (!result.ok) return toast.error(result.message);
+    if (!result.ok) return toast.error(result.message, { id: result.message });
     toast.success('Cel został usunięty');
   };
 

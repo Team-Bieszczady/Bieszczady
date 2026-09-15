@@ -64,7 +64,7 @@ export default function RisksSection({
 
   const submitAdd = async (values: RiskFormValues) => {
     const result = await addRisk(values);
-    if (!result.ok) return toast.error(result.message);
+    if (!result.ok) return toast.error(result.message, { id: result.message });
 
     close();
     toast.success('Ryzyko dodane');
@@ -72,7 +72,7 @@ export default function RisksSection({
 
   const submitEdit = async (risk: RiskView, values: RiskFormValues) => {
     const result = await editRisk(risk.id, values);
-    if (!result.ok) return toast.error(result.message);
+    if (!result.ok) return toast.error(result.message, { id: result.message });
 
     close();
     toast.success('Ryzyko zaktualizowane');
@@ -80,7 +80,7 @@ export default function RisksSection({
 
   const confirmDelete = async (risk: RiskView) => {
     const result = await deleteRisk(risk.id);
-    if (!result.ok) return toast.error(result.message);
+    if (!result.ok) return toast.error(result.message, { id: result.message });
 
     close();
     toast.success('Ryzyko usunięte');

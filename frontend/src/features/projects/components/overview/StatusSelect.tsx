@@ -34,7 +34,7 @@ function NewStatusForm({ onCreate, onCancel }: NewStatusFormProps) {
     setValue,
     setError,
     control,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<NewStatusFormValues>({
     defaultValues: { name: '', color: STATUS_COLORS[0].id },
   });
@@ -76,6 +76,8 @@ function NewStatusForm({ onCreate, onCancel }: NewStatusFormProps) {
           variant="primary"
           size="small"
           type="submit"
+          isPending={isSubmitting}
+          disabled={isSubmitting}
           className="font-medium!"
         >
           Dodaj

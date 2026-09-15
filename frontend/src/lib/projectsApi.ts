@@ -328,6 +328,27 @@ export const projectsApi = {
       'Nie udało się zapisać odbiorców projektu',
       { recipientIds },
     ),
+  archive: (accessToken: string, id: string) =>
+    send<BackendProject>(
+      'PATCH',
+      accessToken,
+      `/projects/${id}/archive`,
+      'Nie udało się zarchiwizować projektu',
+    ),
+  restore: (accessToken: string, id: string) =>
+    send<BackendProject>(
+      'PATCH',
+      accessToken,
+      `/projects/${id}/restore`,
+      'Nie udało się przywrócić projektu',
+    ),
+  remove: (accessToken: string, id: string) =>
+    send<void>(
+      'DELETE',
+      accessToken,
+      `/projects/${id}`,
+      'Nie udało się usunąć projektu',
+    ),
 };
 
 export const statusesApi = dictionaryResource('project-statuses', 'statusy');

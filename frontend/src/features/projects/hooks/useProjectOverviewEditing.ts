@@ -36,6 +36,13 @@ export interface DeleteStatusResult {
   usage: number;
 }
 
+/**
+ * One id for every error this hook raises, so a retry replaces the toast on
+ * screen — including when it fails for a different reason — instead of stacking
+ * a second one and leaving a ghost from the previous attempt.
+ */
+const ERROR_TOAST_ID = 'project-overview-error';
+
 function usageFromMessage(message: string): number {
   const match = /(\d+)/.exec(message);
   return match ? Number(match[1]) : 0;
@@ -72,12 +79,17 @@ export function useProjectOverviewEditing(project: BackendProject) {
   const createTypeEntry = typeMutations.useCreate();
   const createRecipientEntry = recipientMutations.useCreate();
 
-  const run = async (work: Promise<unknown>, success: string) => {
+  const run = async (
+    work: Promise<unknown>,
+    success: string,
+  ): Promise<boolean> => {
     try {
       await work;
       toast.success(success);
+      return true;
     } catch (error) {
-      toast.error((error as Error).message);
+      toast.error((error as Error).message, { id: ERROR_TOAST_ID });
+      return false;
     }
   };
 
@@ -137,7 +149,8 @@ export function useProjectOverviewEditing(project: BackendProject) {
       if ((error as { status?: number }).status === 409) {
         return { ok: false, reason: 'duplicate' };
       }
-      toast.error((error as Error).message);
+      const message = (error as Error).message;
+      toast.error(message, { id: ERROR_TOAST_ID });
       return { ok: false };
     }
   };
@@ -151,7 +164,7 @@ export function useProjectOverviewEditing(project: BackendProject) {
       if (status === 409) {
         return { ok: false, usage: usageFromMessage(message) };
       }
-      toast.error(message);
+      toast.error(message, { id: ERROR_TOAST_ID });
       return { ok: false, usage: 0 };
     }
   };
@@ -177,7 +190,7 @@ export function useProjectOverviewEditing(project: BackendProject) {
     ),
   
     updateHeader: (next: { name: string; description: string }) =>
-      void run(updateProject.mutateAsync(next), 'Projekt zaktualizowany'),
+      run(updateProject.mutateAsync(next), 'Projekt zaktualizowany'),
     setStatus: (id: string) =>
       void run(
         setProjectStatus.mutateAsync(id),

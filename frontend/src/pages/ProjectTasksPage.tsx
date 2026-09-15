@@ -83,7 +83,7 @@ function TasksView({
   const close = () => setDialog(CLOSED);
 
   const reportQuietly = (result: TaskResult) => {
-    if (!result.ok) toast.error(result.message);
+    if (!result.ok) toast.error(result.message, { id: result.message });
   };
 
   const report = (
@@ -92,7 +92,7 @@ function TasksView({
     { keepOpen = false }: { keepOpen?: boolean } = {},
   ) => {
     if (!result.ok) {
-      toast.error(result.message);
+      toast.error(result.message, { id: result.message });
       return;
     }
     if (!keepOpen) close();
@@ -106,7 +106,8 @@ function TasksView({
   };
 
   const allRows = plan.rows;
-  const canEdit = canManageTasks(user, plan.members);
+  const isArchived = !!project?.archivedAt;
+  const canEdit = !isArchived && canManageTasks(user, plan.members);
   const filteredRows = filterAndSortTasks(allRows, filters, today);
   const counts = countByStatus(filteredRows);
   const rows = statusTab
@@ -160,6 +161,7 @@ function TasksView({
     if (actionOptions.length === 0) {
       toast.error(
         'Brak działań w otwartych etapach — najpierw dodaj działanie w Harmonogramie.',
+        { id: 'no-open-actions' },
       );
       return;
     }
@@ -221,7 +223,9 @@ function TasksView({
   return (
     <>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-dark lg:text-4xl">Zadania</h1>
+        <h1 className="text-base font-bold text-dark 500:text-xl lg:text-2xl">
+          Zadania
+        </h1>
         {canEdit && (
           <Button
             variant="primary"
@@ -327,14 +331,16 @@ function TasksView({
           contextLabel={project?.name ?? detailRow.stageName}
           canEdit={canEdit}
           canDelete={canEdit}
-          canComplete={canChangeTaskStatus(user, plan.members, detailRow)}
-          canManageSubtasks={canManageSubtasks(user, detailRow)}
+          canComplete={
+            !isArchived && canChangeTaskStatus(user, plan.members, detailRow)
+          }
+          canManageSubtasks={!isArchived && canManageSubtasks(user, detailRow)}
           onClose={close}
           onEdit={() => setDialog({ kind: 'edit', row: detailRow })}
           onDelete={() => setDialog({ kind: 'delete', row: detailRow })}
           onToggleDone={() => void toggleDone(detailRow)}
           onAddSubtask={(title) =>
-            void plan.addSubtask(detailRow.id, title).then(reportQuietly)
+            plan.addSubtask(detailRow.id, title).then(reportQuietly)
           }
           onRenameSubtask={(subtaskId, title) =>
             void plan.renameSubtask(subtaskId, title).then(reportQuietly)
@@ -364,6 +370,7 @@ function TasksView({
           task={null}
           actionOptions={actionOptions}
           ownerOptions={ownerOptions}
+          stageStartFor={plan.stageStartFor}
           onClose={close}
           onSubmit={(values) => void submitAdd(values)}
           isSubmitting={plan.isSubmitting}
@@ -376,6 +383,7 @@ function TasksView({
           task={dialog.row}
           actionOptions={optionsForRow(dialog.row)}
           ownerOptions={ownerOptions}
+          stageStartFor={plan.stageStartFor}
           onClose={close}
           onSubmit={(values) => void submitEdit(dialog.row, values)}
           isSubmitting={plan.isSubmitting}

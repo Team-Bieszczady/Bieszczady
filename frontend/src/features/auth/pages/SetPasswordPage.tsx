@@ -53,7 +53,9 @@ export default function SetPasswordPage() {
 
   const onSubmit = (data: SetPasswordFormInputs) => {
     if (!accessToken || !state?.tempPassword) {
-      toast.error('Musisz zalogować się, aby ustawić hasło');
+      toast.error('Musisz zalogować się, aby ustawić hasło', {
+        id: 'set-password-error',
+      });
       return;
     }
 
@@ -66,9 +68,13 @@ export default function SetPasswordPage() {
         },
         onError: (error) => {
           if (isApiError(error) && error.status === 401) {
-            toast.error('Nieprawidłowe hasło tymczasowe');
+            toast.error('Nieprawidłowe hasło tymczasowe', {
+              id: 'set-password-error',
+            });
           } else {
-            toast.error('Coś poszło nie tak. Spróbuj ponownie.');
+            toast.error('Coś poszło nie tak. Spróbuj ponownie.', {
+              id: 'set-password-error',
+            });
           }
         },
       },

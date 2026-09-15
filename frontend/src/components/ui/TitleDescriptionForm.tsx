@@ -17,7 +17,8 @@ interface TitleDescriptionFormProps {
   titleEmptyMessage: string;
   descriptionEmptyMessage: string;
   titleInputClassName?: string;
-  onSave: (values: TitleDescriptionValues) => void;
+  /** Resolves false when the save was rejected, so the form can stay open. */
+  onSave: (values: TitleDescriptionValues) => Promise<boolean>;
   onCancel: () => void;
 }
 
@@ -35,19 +36,18 @@ export function TitleDescriptionForm({
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<TitleDescriptionValues>({
     defaultValues: { title, description },
   });
   const titleId = useId();
   const descriptionId = useId();
-
-  const submit = handleSubmit((values) =>
-    onSave({
+  const submit = handleSubmit(async (values) => {
+    await onSave({
       title: values.title.trim(),
       description: values.description.trim(),
-    }),
-  );
+    });
+  });
 
   return (
     <form
@@ -94,11 +94,19 @@ export function TitleDescriptionForm({
           variant="primary"
           size="small"
           type="submit"
+          isPending={isSubmitting}
+          disabled={isSubmitting}
           className="font-medium!"
         >
           Zapisz
         </Button>
-        <Button variant="outline" size="small" type="button" onClick={onCancel}>
+        <Button
+          variant="outline"
+          size="small"
+          type="button"
+          onClick={onCancel}
+          disabled={isSubmitting}
+        >
           Anuluj
         </Button>
       </div>

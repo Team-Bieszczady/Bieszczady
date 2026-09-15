@@ -101,7 +101,34 @@ export class TasksService {
     });
     if (member === 0) {
       throw new ConflictException(
-        'The task owner must be a member of this project',
+        'Wykonawca zadania musi być członkiem projektu',
+      );
+    }
+  }
+
+  /**
+   * A task cannot be due before the stage it belongs to has started.
+   *
+   * A due date AFTER the stage's deadline is deliberately allowed: that is how a
+   * slipping project is recorded, and `isStageOverdue` on the frontend depends
+   * on it. Do not tighten this into a range check.
+   */
+  private async assertDueDateFitsStage(
+    stageId: string,
+    dueDate: string | null | undefined,
+    db: Prisma.TransactionClient = this.prisma,
+  ): Promise<void> {
+    if (!dueDate) return;
+
+    const stage = await db.stage.findUnique({
+      where: { id: stageId },
+      select: { startDate: true },
+    });
+    if (!stage?.startDate) return;
+
+    if (new Date(dueDate) < stage.startDate) {
+      throw new ConflictException(
+        'Termin zadania nie może być wcześniejszy niż data rozpoczęcia etapu',
       );
     }
   }
@@ -163,7 +190,7 @@ export class TasksService {
       where: { id },
       include: TASK_INCLUDE,
     });
-    if (!task) throw new NotFoundException('Task not found');
+    if (!task) throw new NotFoundException('Nie znaleziono zadania');
 
     return this.toResponse(task);
   }
@@ -175,7 +202,9 @@ export class TasksService {
   ) {
     const { stageId, projectId } = await this.access.locateActivity(activityId);
     await this.access.assertCanManageTasks(actor, projectId);
+    await this.access.assertNotArchived(projectId);
     await this.assertOwnerIsMember(projectId, dto.ownerId);
+    await this.assertDueDateFitsStage(stageId, dto.dueDate);
 
     const created = await this.prisma.$transaction(async (tx) => {
       const task = await tx.task.create({
@@ -201,6 +230,7 @@ export class TasksService {
   async update(id: string, dto: UpdateTaskDto, actor: AuthenticatedUser) {
     const task = await this.access.locateTask(id);
     await this.access.assertCanManageTasks(actor, task.projectId);
+    await this.access.assertNotArchived(task.projectId);
 
     if (dto.ownerId !== undefined) {
       await this.assertOwnerIsMember(task.projectId, dto.ownerId);
@@ -221,16 +251,31 @@ export class TasksService {
       }
 
       let movedFrom: string | null = null;
+      let stageId = task.stageId;
       if (dto.activityId !== undefined && dto.activityId !== task.activityId) {
         const target = await this.access.locateActivity(dto.activityId, tx);
         if (target.projectId !== task.projectId) {
           throw new ConflictException(
-            'The target activity belongs to a different project',
+            'Działanie docelowe należy do innego projektu',
           );
         }
 
         data.activity = { connect: { id: dto.activityId } };
         movedFrom = task.stageId;
+        stageId = target.stageId;
+      }
+
+      if (dto.dueDate !== undefined || movedFrom) {
+        const dueDate =
+          dto.dueDate !== undefined
+            ? dto.dueDate
+            : (
+                await tx.task.findUniqueOrThrow({
+                  where: { id },
+                  select: { dueDate: true },
+                })
+              ).dueDate?.toISOString();
+        await this.assertDueDateFitsStage(stageId, dueDate, tx);
       }
 
       const row = await tx.task.update({
@@ -256,6 +301,7 @@ export class TasksService {
   ) {
     const task = await this.access.locateTask(id);
     await this.access.assertCanChangeTaskStatus(actor, task);
+    await this.access.assertNotArchived(task.projectId);
 
     const updated = await this.prisma.$transaction(async (tx) => {
       const row = await tx.task.update({
@@ -274,6 +320,7 @@ export class TasksService {
   async remove(id: string, actor: AuthenticatedUser): Promise<void> {
     const task = await this.access.locateTask(id);
     await this.access.assertCanManageTasks(actor, task.projectId);
+    await this.access.assertNotArchived(task.projectId);
 
     await this.prisma.$transaction(async (tx) => {
       await tx.subtask.deleteMany({ where: { taskId: id } });

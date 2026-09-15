@@ -9,6 +9,7 @@ describe('SubtasksService', () => {
   let service: SubtasksService;
 
   const prisma = {
+    project: { findUnique: jest.fn() },
     task: { count: jest.fn(), update: jest.fn() },
     subtask: {
       findUnique: jest.fn(),
@@ -49,6 +50,7 @@ describe('SubtasksService', () => {
       (fn: (tx: typeof prisma) => unknown) => fn(prisma),
     );
     jest.spyOn(access, 'locateTask').mockResolvedValue(location('piotr'));
+    prisma.project.findUnique.mockResolvedValue({ archivedAt: null });
     prisma.subtask.aggregate.mockResolvedValue({ _max: { sortOrder: 2 } });
     prisma.subtask.create.mockResolvedValue({ id: 'st3' });
   });
@@ -162,6 +164,45 @@ describe('SubtasksService', () => {
       await service.remove('st1', owner);
 
       expect(prisma.subtask.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('an archived project is read-only', () => {
+    beforeEach(() => {
+      prisma.project.findUnique.mockResolvedValue({
+        archivedAt: new Date('2026-01-01'),
+      });
+    });
+
+    it('refuses a new checklist item from its owner', async () => {
+      await expect(
+        service.create('t1', { title: 'Zebrać oferty' }, owner),
+      ).rejects.toThrow(ForbiddenException);
+      expect(prisma.subtask.create).not.toHaveBeenCalled();
+    });
+
+    it('refuses ticking an item', async () => {
+      prisma.subtask.findUnique.mockResolvedValue({ id: 'st1', taskId: 't1' });
+
+      await expect(
+        service.update('st1', { done: true }, owner),
+      ).rejects.toThrow(ForbiddenException);
+      expect(prisma.subtask.update).not.toHaveBeenCalled();
+    });
+
+    it('refuses deleting an item', async () => {
+      prisma.subtask.findUnique.mockResolvedValue({ id: 'st1', taskId: 't1' });
+
+      await expect(service.remove('st1', owner)).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(prisma.subtask.delete).not.toHaveBeenCalled();
+    });
+
+    it('still answers "not your task" first for a non-owning director', async () => {
+      await expect(
+        service.create('t1', { title: 'Zebrać oferty' }, director),
+      ).rejects.toThrow(/przypisano zadanie/);
     });
   });
 });

@@ -31,6 +31,8 @@ interface TaskFormModalProps {
   task: TaskRow | null;
   actionOptions: SelectOption[];
   ownerOptions: SelectOption[];
+  /** Start date of the stage behind an action, so a task cannot predate it. */
+  stageStartFor: (actionId: string) => string | null;
   onClose: () => void;
   onSubmit: (values: TaskFormInputs) => void;
   isSubmitting?: boolean;
@@ -46,6 +48,7 @@ export default function TaskFormModal({
   task,
   actionOptions,
   ownerOptions,
+  stageStartFor,
   onClose,
   onSubmit,
   isSubmitting = false,
@@ -81,6 +84,8 @@ export default function TaskFormModal({
       : TASK_STATUS_OPTIONS;
 
   const status = useWatch({ control, name: 'status' });
+  const actionId = useWatch({ control, name: 'actionId' });
+  const stageStart = actionId ? stageStartFor(actionId) : null;
 
   return (
     <Modal
@@ -133,11 +138,20 @@ export default function TaskFormModal({
               Termin
             </label>
             <input
-              {...register('dueDate')}
+              {...register('dueDate', {
+                validate: (value) =>
+                  !value ||
+                  !stageStart ||
+                  value >= stageStart ||
+                  'Termin zadania nie może być wcześniejszy niż data rozpoczęcia etapu',
+              })}
               id={dueDateId}
               type="date"
+              min={stageStart ?? undefined}
+              aria-invalid={!!errors.dueDate}
               className={INPUT_CLASSES}
             />
+            <FieldError message={errors.dueDate?.message} />
           </div>
         </div>
 

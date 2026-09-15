@@ -64,10 +64,11 @@ export default function StagesSection({
 
   const close = () => setDialog(CLOSED);
 
-  const reportFailure = (result: Extract<StageResult, { ok: false }>) =>
-    toast.error(
-      'issue' in result ? STAGE_ISSUE_MESSAGES[result.issue] : result.message,
-    );
+  const reportFailure = (result: Extract<StageResult, { ok: false }>) => {
+    const message =
+      'issue' in result ? STAGE_ISSUE_MESSAGES[result.issue] : result.message;
+    toast.error(message, { id: message });
+  };
 
   const active = plan.activeStages;
   const views = active.map((stage) =>
@@ -117,11 +118,10 @@ export default function StagesSection({
     const result = await plan.moveDeadline(stage.id, deadline, note);
 
     if (!result.ok) {
-      return toast.error(
-        result.issue
-          ? STAGE_ISSUE_MESSAGES[result.issue]
-          : (result.message ?? STAGE_ISSUE_MESSAGES.notFound),
-      );
+      const message = result.issue
+        ? STAGE_ISSUE_MESSAGES[result.issue]
+        : (result.message ?? STAGE_ISSUE_MESSAGES.notFound);
+      return toast.error(message, { id: message });
     }
 
     toast.success('Termin etapu przeniesiony');
@@ -258,6 +258,7 @@ export default function StagesSection({
         <StageFormModal
           mode="add"
           stage={null}
+          project={project}
           onClose={close}
           onSubmit={submitAdd}
         />
@@ -267,6 +268,7 @@ export default function StagesSection({
         <StageFormModal
           mode="edit"
           stage={dialog.stage}
+          project={project}
           onClose={close}
           onSubmit={(values) => submitEdit(dialog.stage, values)}
         />
@@ -275,6 +277,7 @@ export default function StagesSection({
       {dialog.kind === 'move-deadline' && (
         <MoveDeadlineModal
           stage={dialog.stage}
+          project={project}
           onClose={close}
           onSubmit={(deadline, note) =>
             submitMoveDeadline(dialog.stage, deadline, note)

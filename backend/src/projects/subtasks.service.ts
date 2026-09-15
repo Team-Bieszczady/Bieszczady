@@ -15,7 +15,7 @@ export class SubtasksService {
 
   private async findOrThrow(id: string) {
     const subtask = await this.prisma.subtask.findUnique({ where: { id } });
-    if (!subtask) throw new NotFoundException('Subtask not found');
+    if (!subtask) throw new NotFoundException('Nie znaleziono kroku');
     return subtask;
   }
 
@@ -36,6 +36,7 @@ export class SubtasksService {
   ) {
     const task = await this.access.locateTask(taskId);
     this.access.assertOwnsTask(actor, task);
+    await this.access.assertNotArchived(task.projectId);
 
     return this.prisma.$transaction(async (tx) => {
       const last = await tx.subtask.aggregate({
@@ -57,6 +58,7 @@ export class SubtasksService {
     const subtask = await this.findOrThrow(id);
     const task = await this.access.locateTask(subtask.taskId);
     this.access.assertOwnsTask(actor, task);
+    await this.access.assertNotArchived(task.projectId);
 
     const data: Prisma.SubtaskUpdateInput = {};
     if (dto.title !== undefined) data.title = dto.title;
@@ -69,6 +71,7 @@ export class SubtasksService {
     const subtask = await this.findOrThrow(id);
     const task = await this.access.locateTask(subtask.taskId);
     this.access.assertOwnsTask(actor, task);
+    await this.access.assertNotArchived(task.projectId);
 
     await this.prisma.subtask.delete({ where: { id } });
   }

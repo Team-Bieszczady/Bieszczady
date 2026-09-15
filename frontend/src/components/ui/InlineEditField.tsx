@@ -6,7 +6,7 @@ interface InlineEditFormProps {
   ariaLabel: string;
   emptyMessage: string;
   inputClassName: string;
-  onSave: (value: string) => void;
+  onSave: (value: string) => void | Promise<unknown>;
   onCancel: () => void;
 }
 
@@ -21,10 +21,12 @@ function InlineEditForm({
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<{ value: string }>({ defaultValues: { value: defaultValue } });
 
-  const submit = handleSubmit(({ value }) => onSave(value.trim()));
+  const submit = handleSubmit(async ({ value }) => {
+    await onSave(value.trim());
+  });
 
   return (
     <form onSubmit={submit} className="w-full">
@@ -34,6 +36,7 @@ function InlineEditForm({
         })}
         autoFocus
         type="text"
+        disabled={isSubmitting}
         aria-label={ariaLabel}
         onKeyDown={(event) => {
           if (event.key === 'Escape') onCancel();
@@ -50,7 +53,7 @@ interface InlineEditFieldProps {
   isEditing: boolean;
   onStartEdit: () => void;
   onCancel: () => void;
-  onSave: (value: string) => void;
+  onSave: (value: string) => void | Promise<unknown>;
   canEdit: boolean;
   ariaLabel: string;
   emptyMessage?: string;

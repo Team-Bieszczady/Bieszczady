@@ -14,7 +14,7 @@ interface GoalCardProps {
   isEditing: boolean;
   onStartEdit: () => void;
   onCancel: () => void;
-  onSave: (values: TitleDescriptionValues) => void;
+  onSave: (values: TitleDescriptionValues) => Promise<boolean>;
   onDelete: () => void;
 }
 

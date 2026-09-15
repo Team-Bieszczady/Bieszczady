@@ -4,9 +4,7 @@ import { Modal } from '../../../../../components/ui/Modal';
 import { Button } from '../../../../../components/ui/Button';
 import { RadioOptionCard } from '../../../../../components/ui/RadioOptionCard';
 import { Select, type SelectOption } from '../../../../../components/ui/Select';
-import {
-  FIELD_LABEL_CLASSES,
-} from '../../../../../components/ui/formStyles';
+import { FIELD_LABEL_CLASSES } from '../../../../../components/ui/formStyles';
 import {
   ACTION_FORMS,
   pluralizePl,
@@ -26,7 +24,7 @@ interface DeleteStageModalProps {
   tasksCount: number;
   targetOptions: SelectOption[];
   onClose: () => void;
-  onConfirm: (strategy: DeleteStrategy) => void;
+  onConfirm: (strategy: DeleteStrategy) => void | Promise<unknown>;
 }
 
 export default function DeleteStageModal({
@@ -42,19 +40,19 @@ export default function DeleteStageModal({
     register,
     handleSubmit,
     control,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<DeleteStageFormInputs>({
     defaultValues: { mode: canMove ? 'move' : 'delete', targetStageId: '' },
   });
 
   const mode = useWatch({ control, name: 'mode' });
 
-  const submit = handleSubmit((values) => {
+  const submit = handleSubmit(async (values) => {
     if (values.mode === 'move') {
-      onConfirm({ kind: 'move', targetStageId: values.targetStageId });
+      await onConfirm({ kind: 'move', targetStageId: values.targetStageId });
       return;
     }
-    onConfirm({ kind: 'delete' });
+    await onConfirm({ kind: 'delete' });
   });
 
   const contents = `${pluralizePl(actionsCount, ACTION_FORMS)} i ${pluralizePl(
@@ -126,6 +124,8 @@ export default function DeleteStageModal({
             variant="outline"
             size="small"
             type="submit"
+            isPending={isSubmitting}
+            disabled={isSubmitting}
             className="border-darkRed text-darkRed hover:border-darkRed hover:bg-red-50"
           >
             Usuń etap

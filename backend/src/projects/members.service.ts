@@ -60,17 +60,16 @@ export class MembersService {
 
   async add(projectId: string, dto: AddMemberDto) {
     return this.prisma.$transaction(async (tx) => {
-      const project = await tx.project.count({ where: { id: projectId } });
-      if (project === 0) throw new NotFoundException('Project not found');
+      await this.access.assertNotArchived(projectId, tx);
 
       const user = await tx.user.findFirst({
         where: { id: dto.userId, deletedAt: null },
         select: { id: true, accountStatus: true },
       });
-      if (!user) throw new NotFoundException('User not found');
+      if (!user) throw new NotFoundException('Nie znaleziono użytkownika');
       if (user.accountStatus !== 'ACTIVE') {
         throw new ConflictException(
-          'Only active users can be added to a project',
+          'Do projektu można dodać tylko aktywnych użytkowników',
         );
       }
 
@@ -78,7 +77,9 @@ export class MembersService {
         where: { projectId, userId: dto.userId },
       });
       if (already > 0) {
-        throw new ConflictException('User is already a member of this project');
+        throw new ConflictException(
+          'Ten użytkownik jest już członkiem projektu',
+        );
       }
 
       return tx.projectMember.create({
@@ -96,7 +97,8 @@ export class MembersService {
     const member = await this.prisma.projectMember.findUnique({
       where: { id },
     });
-    if (!member) throw new NotFoundException('Project member not found');
+    if (!member) throw new NotFoundException('Nie znaleziono członka projektu');
+    await this.access.assertNotArchived(member.projectId);
 
     return this.prisma.projectMember.update({
       where: { id },
@@ -108,7 +110,9 @@ export class MembersService {
   async remove(id: string): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
       const member = await tx.projectMember.findUnique({ where: { id } });
-      if (!member) throw new NotFoundException('Project member not found');
+      if (!member)
+        throw new NotFoundException('Nie znaleziono członka projektu');
+      await this.access.assertNotArchived(member.projectId, tx);
 
       await tx.risk.updateMany({
         where: {

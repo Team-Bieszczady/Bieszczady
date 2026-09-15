@@ -1,4 +1,8 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service';
 import { ProjectAccessService } from './project-access.service';
@@ -12,7 +16,11 @@ describe('ProjectsService date order', () => {
     $transaction: jest.fn(),
   };
 
-  const access = { assertCanRead: jest.fn(), assertExists: jest.fn() };
+  const access = {
+    assertCanRead: jest.fn(),
+    assertExists: jest.fn(),
+    assertNotArchived: jest.fn(),
+  };
 
   const stored = (startDate: Date | null, plannedEndDate: Date | null) => ({
     id: 'p1',
@@ -144,6 +152,84 @@ describe('ProjectsService date order', () => {
       await expect(
         service.update('p1', { startDate: '2026-12-01' }),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('archived projects are read-only', () => {
+    const archived = () =>
+      access.assertNotArchived.mockRejectedValue(
+        new ForbiddenException('This project is archived'),
+      );
+
+    it('refuses an edit, before touching the row', async () => {
+      prisma.project.findUnique.mockResolvedValue(stored(null, null));
+      archived();
+
+      await expect(service.update('p1', { name: 'Nowa' })).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(prisma.project.update).not.toHaveBeenCalled();
+    });
+
+    it('refuses a status change', async () => {
+      prisma.project.findUnique.mockResolvedValue(stored(null, null));
+      archived();
+
+      await expect(service.setStatus('p1', { statusId: null })).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(prisma.project.update).not.toHaveBeenCalled();
+    });
+
+    it('answers "archived" before "dates out of order"', async () => {
+      prisma.project.findUnique.mockResolvedValue(stored(null, null));
+      archived();
+
+      await expect(
+        service.update('p1', {
+          startDate: '2026-12-01',
+          plannedEndDate: '2026-01-01',
+        }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('the three exits stay open on an archived project', () => {
+    it('archives without consulting the archived gate', async () => {
+      prisma.project.findUnique.mockResolvedValue(stored(null, null));
+
+      await service.setArchived('p1', true);
+
+      expect(prisma.project.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: { archivedAt: expect.any(Date) as Date },
+        }),
+      );
+      expect(access.assertNotArchived).not.toHaveBeenCalled();
+    });
+
+    it('restores without consulting the archived gate', async () => {
+      prisma.project.findUnique.mockResolvedValue(stored(null, null));
+
+      await service.setArchived('p1', false);
+
+      expect(prisma.project.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { archivedAt: null } }),
+      );
+      expect(access.assertNotArchived).not.toHaveBeenCalled();
+    });
+
+    it('still refuses to delete a project that has not been archived', async () => {
+      prisma.$transaction.mockImplementation(
+        (fn: (tx: typeof prisma) => unknown) => fn(prisma),
+      );
+      prisma.project.findUnique.mockResolvedValue({
+        id: 'p1',
+        archivedAt: null,
+      });
+
+      await expect(service.remove('p1')).rejects.toThrow(ConflictException);
+      expect(access.assertNotArchived).not.toHaveBeenCalled();
     });
   });
 });

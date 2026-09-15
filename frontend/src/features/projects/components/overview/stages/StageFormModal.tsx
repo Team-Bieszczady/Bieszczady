@@ -7,7 +7,9 @@ import {
   FIELD_LABEL_CLASSES,
   INPUT_CLASSES,
 } from '../../../../../components/ui/formStyles';
+import type { BackendProject } from '../../../../../lib/projectsApi';
 import type { Stage } from '../../../types';
+import { STAGE_ISSUE_MESSAGES } from '../../../utils/stageRules';
 
 export interface StageFormInputs {
   name: string;
@@ -19,13 +21,16 @@ export interface StageFormInputs {
 interface StageFormModalProps {
   mode: 'add' | 'edit';
   stage: Stage | null;
+  /** The window the stage has to fit inside; either end may be unset. */
+  project: Pick<BackendProject, 'startDate' | 'plannedEndDate'>;
   onClose: () => void;
-  onSubmit: (values: StageFormInputs) => void;
+  onSubmit: (values: StageFormInputs) => void | Promise<unknown>;
 }
 
 export default function StageFormModal({
   mode,
   stage,
+  project,
   onClose,
   onSubmit,
 }: StageFormModalProps) {
@@ -33,7 +38,7 @@ export default function StageFormModal({
     register,
     handleSubmit,
     control,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<StageFormInputs>({
     defaultValues: {
       name: stage?.name ?? '',
@@ -56,7 +61,12 @@ export default function StageFormModal({
       onClose={onClose}
       title={mode === 'add' ? 'Dodaj etap' : 'Edytuj etap'}
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+      <form
+        onSubmit={handleSubmit(async (values) => {
+          await onSubmit(values);
+        })}
+        className="space-y-5"
+      >
         <div>
           <label className={FIELD_LABEL_CLASSES} htmlFor={nameId}>
             Nazwa etapu
@@ -85,13 +95,28 @@ export default function StageFormModal({
               <input
                 {...register('deadline', {
                   required: 'Termin etapu jest wymagany',
-                  validate: (value) =>
-                    !startDate ||
-                    value >= startDate ||
-                    'Termin nie może być wcześniejszy niż data rozpoczęcia',
+                  validate: (value) => {
+                    if (startDate && value < startDate) {
+                      return STAGE_ISSUE_MESSAGES.deadlineBeforeStart;
+                    }
+                    if (!startDate && project.startDate) {
+                      if (value < project.startDate) {
+                        return STAGE_ISSUE_MESSAGES.startBeforeProject;
+                      }
+                    }
+                    if (
+                      project.plannedEndDate &&
+                      value > project.plannedEndDate
+                    ) {
+                      return STAGE_ISSUE_MESSAGES.deadlineAfterProjectEnd;
+                    }
+                    return true;
+                  },
                 })}
                 id={deadlineId}
                 type="date"
+                min={project.startDate ?? undefined}
+                max={project.plannedEndDate ?? undefined}
                 aria-invalid={!!errors.deadline}
                 className={INPUT_CLASSES}
               />
@@ -106,9 +131,25 @@ export default function StageFormModal({
                 </span>
               </label>
               <input
-                {...register('startDate')}
+                {...register('startDate', {
+                  validate: (value) => {
+                    if (!value) return true;
+                    if (project.startDate && value < project.startDate) {
+                      return STAGE_ISSUE_MESSAGES.startBeforeProject;
+                    }
+                    if (
+                      project.plannedEndDate &&
+                      value > project.plannedEndDate
+                    ) {
+                      return STAGE_ISSUE_MESSAGES.deadlineAfterProjectEnd;
+                    }
+                    return true;
+                  },
+                })}
                 id={startId}
                 type="date"
+                min={project.startDate ?? undefined}
+                max={project.plannedEndDate ?? undefined}
                 aria-invalid={!!errors.startDate}
                 className={INPUT_CLASSES}
               />
@@ -117,8 +158,9 @@ export default function StageFormModal({
           </div>
         ) : (
           <p className="rounded-lg bg-gray-50 px-3 py-2.5 text-[11px] leading-relaxed text-grayText">
-            Termin i datę rozpoczęcia zmienisz przez „Przenieś termin” — dzięki
-            temu każda zmiana zostawia ślad wraz z komentarzem.
+            Termin zmienisz przez „Przenieś termin” — dzięki temu każda zmiana
+            zostawia ślad wraz z komentarzem. Daty rozpoczęcia nie można już
+            zmienić.
           </p>
         )}
 
@@ -156,6 +198,8 @@ export default function StageFormModal({
             variant="primary"
             size="small"
             type="submit"
+            isPending={isSubmitting}
+            disabled={isSubmitting}
             className="font-medium!"
           >
             Zapisz

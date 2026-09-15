@@ -28,7 +28,7 @@ export class ModuleAccessGuard implements CanActivate {
       .getRequest<{ user?: AuthenticatedUser }>();
 
     if (!user) {
-      throw new ForbiddenException();
+      throw new ForbiddenException('Nie masz dostępu do tej sekcji');
     }
     if (user.isDirector) {
       return true;
@@ -38,7 +38,7 @@ export class ModuleAccessGuard implements CanActivate {
       requiredModule,
     );
     if (!hasAccess) {
-      throw new ForbiddenException();
+      throw new ForbiddenException('Nie masz dostępu do tej sekcji');
     }
 
     return true;

@@ -7,6 +7,8 @@ export type StageIssue =
   | 'duplicateName'
   | 'deadlineRequired'
   | 'deadlineBeforeStart'
+  | 'startBeforeProject'
+  | 'deadlineAfterProjectEnd'
   | 'startDateEarlier'
   | 'startDateAfterCompletion'
   | 'deadlineBeforeCompletion'
@@ -30,6 +32,9 @@ export const STAGE_ISSUE_MESSAGES: Record<StageIssue, string> = {
   duplicateName: 'Etap o tej nazwie już istnieje w tym projekcie',
   deadlineRequired: 'Termin etapu jest wymagany',
   deadlineBeforeStart: 'Termin nie może być wcześniejszy niż data rozpoczęcia',
+  startBeforeProject: 'Etap nie może zaczynać się przed datą startu projektu',
+  deadlineAfterProjectEnd:
+    'Termin etapu nie może być późniejszy niż data zakończenia projektu',
   startDateEarlier: 'W zakończonym etapie nie można cofnąć daty rozpoczęcia',
   startDateAfterCompletion:
     'Data rozpoczęcia nie może być późniejsza niż data zakończenia etapu',
@@ -48,13 +53,31 @@ export interface StageDateValues {
   deadline: string;
 }
 
+/** The project's window. Both ends are nullable, and each bound only applies
+ *  when the project actually carries it. */
+export interface ProjectDateBounds {
+  startDate: string | null;
+  plannedEndDate: string | null;
+}
+
 export function validateStageDates(
   stage: Stage | null,
   next: StageDateValues,
+  project?: ProjectDateBounds,
 ): RuleResult {
   if (!next.deadline) return fail('deadlineRequired');
   if (next.startDate && next.startDate > next.deadline) {
     return fail('deadlineBeforeStart');
+  }
+
+  if (project) {
+    const from = next.startDate ?? next.deadline;
+    if (project.startDate && from < project.startDate) {
+      return fail('startBeforeProject');
+    }
+    if (project.plannedEndDate && next.deadline > project.plannedEndDate) {
+      return fail('deadlineAfterProjectEnd');
+    }
   }
 
   if (stage?.completedAt) {

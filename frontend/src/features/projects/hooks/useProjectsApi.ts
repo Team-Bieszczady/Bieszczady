@@ -43,6 +43,18 @@ export function useProjects(archived = false, enabled = true) {
   );
 }
 
+/**
+ * `archived: true` asks the API to INCLUDE archived projects, not to return only
+ * those — the Archiwum page wants only those, so it narrows the result here.
+ */
+export function useArchivedProjects(enabled = true) {
+  const query = useProjects(true, enabled);
+  return {
+    ...query,
+    data: query.data?.filter((project) => project.archivedAt !== null),
+  };
+}
+
 export function useProject(id: string | null) {
   return useApiQuery(
     projectKeys.detail(id ?? ''),
@@ -95,10 +107,10 @@ export function useStages(projectId: string, archived = false) {
   );
 }
 
-
 export function useCreateProject() {
   return useApiMutation(
-    (token, payload: CreateProjectPayload) => projectsApi.create(token, payload),
+    (token, payload: CreateProjectPayload) =>
+      projectsApi.create(token, payload),
     { invalidates: projectLists },
   );
 }
@@ -133,6 +145,32 @@ export function useSetProjectRecipients(id: string) {
   );
 }
 
+export function useArchiveProject() {
+  return useApiMutation((token, id: string) => projectsApi.archive(token, id), {
+    invalidates: projectLists,
+  });
+}
+
+export function useRestoreProject() {
+  return useApiMutation((token, id: string) => projectsApi.restore(token, id), {
+    invalidates: projectLists,
+  });
+}
+
+/**
+ * The API refuses to delete a project that has not been archived, so "Usuń" on a
+ * live project archives it first. From Archiwum it is already archived and the
+ * delete goes straight through.
+ */
+export function useDeleteProject() {
+  return useApiMutation(
+    async (token, project: { id: string; archivedAt: string | null }) => {
+      if (!project.archivedAt) await projectsApi.archive(token, project.id);
+      await projectsApi.remove(token, project.id);
+    },
+    { invalidates: projectLists },
+  );
+}
 
 function dictionaryMutations(
   api: typeof statusesApi,
@@ -174,7 +212,6 @@ export const recipientMutations = dictionaryMutations(
   recipientsApi,
   projectKeys.recipients,
 );
-
 
 export function useCreateGoal(projectId: string) {
   return useApiMutation(
@@ -228,7 +265,6 @@ export function useDeleteRisk(projectId: string) {
   });
 }
 
-
 function memberKeys(projectId: string) {
   return [
     projectKeys.members(projectId),
@@ -265,8 +301,10 @@ export function useAddMemberToProject() {
 
 export function useSetMemberRole(projectId: string) {
   return useApiMutation(
-    (token, { id, projectRole }: { id: string; projectRole: ProjectRoleValue }) =>
-      membersApi.patch(token, id, { projectRole }),
+    (
+      token,
+      { id, projectRole }: { id: string; projectRole: ProjectRoleValue },
+    ) => membersApi.patch(token, id, { projectRole }),
     { invalidates: memberKeys(projectId) },
   );
 }
@@ -276,7 +314,6 @@ export function useRemoveMember(projectId: string) {
     invalidates: [...memberKeys(projectId), projectKeys.risks(projectId)],
   });
 }
-
 
 function stageKeys(projectId: string) {
   return [projectKeys.stagesFor(projectId), ...projectLists];

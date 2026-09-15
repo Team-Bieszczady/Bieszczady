@@ -22,7 +22,7 @@ interface ActionFormModalProps {
   action: ScheduleAction | null;
   stageOptions: SelectOption[];
   onClose: () => void;
-  onSubmit: (values: ActionFormInputs) => void;
+  onSubmit: (values: ActionFormInputs) => void | Promise<unknown>;
 }
 
 const TITLES: Record<ActionFormMode, string> = {
@@ -48,7 +48,7 @@ export default function ActionFormModal({
     register,
     handleSubmit,
     control,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<ActionFormInputs>({
     defaultValues: {
       title: action?.title ?? '',
@@ -62,7 +62,12 @@ export default function ActionFormModal({
 
   return (
     <Modal isOpen onClose={onClose} title={TITLES[mode]}>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+      <form
+        onSubmit={handleSubmit(async (values) => {
+          await onSubmit(values);
+        })}
+        className="space-y-5"
+      >
         {mode === 'move' && action && (
           <div className="rounded-lg border border-gray-200 bg-white px-3 py-2.5">
             <p className="text-[10px] font-semibold tracking-[0.5px] text-mutedText">
@@ -133,6 +138,8 @@ export default function ActionFormModal({
             variant="primary"
             size="small"
             type="submit"
+            isPending={isSubmitting}
+            disabled={isSubmitting}
             className="font-medium!"
           >
             {SUBMIT_LABELS[mode]}

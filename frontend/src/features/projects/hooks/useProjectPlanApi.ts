@@ -40,6 +40,7 @@ import {
   useMoveStageDeadline,
   useShiftFollowingStages,
   useStages,
+  useProject,
   useUpdateActivity,
   useUpdateStage,
 } from './useProjectsApi';
@@ -122,6 +123,13 @@ function asFailure<Issue>(error: unknown, fallback: string) {
 
 export function useProjectPlanApi(projectId: string) {
   const query = useStages(projectId, true);
+  const { data: project } = useProject(projectId);
+  const projectBounds = project
+    ? {
+        startDate: project.startDate,
+        plannedEndDate: project.plannedEndDate,
+      }
+    : undefined;
 
   const createStage = useCreateStage(projectId);
   const updateStage = useUpdateStage(projectId);
@@ -163,10 +171,11 @@ export function useProjectPlanApi(projectId: string) {
     if (!name) return { ok: false, issue: 'emptyName' };
     if (isNameTaken(name)) return { ok: false, issue: 'duplicateName' };
 
-    const dates = validateStageDates(null, {
-      startDate: values.startDate,
-      deadline: values.deadline,
-    });
+    const dates = validateStageDates(
+      null,
+      { startDate: values.startDate, deadline: values.deadline },
+      projectBounds,
+    );
     if (!dates.ok) return dates;
 
     try {
@@ -212,10 +221,11 @@ export function useProjectPlanApi(projectId: string) {
     const stage = find(id);
     if (!stage) return { ok: false, issue: 'notFound', suggestions: [] };
 
-    const check = validateStageDates(stage, {
-      startDate: stage.startDate,
-      deadline: next,
-    });
+    const check = validateStageDates(
+      stage,
+      { startDate: stage.startDate, deadline: next },
+      projectBounds,
+    );
     if (!check.ok) return { ok: false, issue: check.issue, suggestions: [] };
     if (next === stage.deadline) return { ok: true, suggestions: [] };
 

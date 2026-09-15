@@ -149,6 +149,27 @@ before changing the backend.
 - **Tasks and subtasks are the one place with per-project scoping.** They are
   gated on `TASKS`, not `PROJECTS`, and their writes deliberately carry no
   `DirectorGuard`. See "Tasks and subtasks".
+- **An archived project (`projects.archived_at`) is read-only.** Every write
+  beneath it is refused with **403**, for everyone, a director included.
+  `ProjectAccessService.assertNotArchived(projectId, db?)` is its single home;
+  all 26 per-project writes call it, ordered
+  `locate → permission → archive → payload validation → write` (after the
+  permission check so a non-coordinator's message does not depend on archive
+  state; before validation so an archived project never answers "owner must be a
+  member"). Three exits are deliberately exempt — `PATCH /projects/:id/archive`,
+  `PATCH /projects/:id/restore` and `DELETE /projects/:id` — as are the three
+  *global* dictionary controllers, which have no project in scope. Stage
+  archive/restore is **not** exempt: inside an archived project it is still a
+  write. Consequences worth knowing: a task owner cannot tick their own subtasks
+  on an archived project, and membership cannot be cleaned up there.
+  **403, not 409**, because `useProjectOverviewEditing.ts` maps any 409 from the
+  status endpoints to "duplicate name", and because every other 409 in this
+  module is payload-shaped and fixable by changing the request — "archived" is
+  not. `assertNotArchived` tests `archivedAt` for truthiness, not `!== null`, so
+  a mock that omits the column reads as live rather than silently archived.
+- **`DELETE /projects/:id` requires the project to be archived first** (409
+  otherwise). The frontend's "Usuń" on a live project therefore archives and
+  then deletes, in two calls.
 - **Responses are mapped, not raw rows.** `include` produces join rows like
   `types: [{ projectType: { name } }]`; each service flattens to
   `{ id, name }`. A deliberate departure from `users.service.ts`, where the row
@@ -203,8 +224,12 @@ Two things here run against the grain of the rest of the codebase, on purpose:
   activity -> stage -> project, because `tasks` has no `project_id`. The rule
   therefore lives in `ProjectAccessService` — one file, so it has a single home —
   following the in-service membership precedent of
-  `RisksService.assertResponsibleIsMember`. It runs inside the same transaction as
-  the write, so a membership revoked mid-request cannot authorise anything.
+  `RisksService.assertResponsibleIsMember`. **Note the check currently runs
+  *before* `$transaction`, not inside it**, in all four of `TasksService`'s
+  writes — so a membership revoked mid-request can still authorise one. Moving
+  these inside the transaction is outstanding hardening, not something to assume
+  is already true. `ProjectAccessService`'s methods all accept the `tx` client as
+  their last argument, so the move is mechanical.
 - **Subtasks are the one write a director cannot perform.** A checklist is the
   assignee's own breakdown of their work, not a management surface. This mirrors
   the frontend's `canManageSubtasks`. Consequence worth knowing: removing a project

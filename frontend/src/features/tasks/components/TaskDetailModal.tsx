@@ -27,7 +27,7 @@ interface TaskDetailModalProps {
   onEdit: () => void;
   onDelete: () => void;
   onToggleDone: () => void;
-  onAddSubtask: (title: string) => void;
+  onAddSubtask: (title: string) => void | Promise<unknown>;
   onRenameSubtask: (subtaskId: string, title: string) => void;
   onToggleSubtask: (subtaskId: string) => void;
   onDeleteSubtask: (subtaskId: string) => void;

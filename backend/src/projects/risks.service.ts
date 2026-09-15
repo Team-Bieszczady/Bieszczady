@@ -28,7 +28,7 @@ export class RisksService {
     });
     if (member === 0) {
       throw new ConflictException(
-        'The responsible user must be a member of this project',
+        'Osoba odpowiedzialna musi być członkiem projektu',
       );
     }
   }
@@ -44,7 +44,7 @@ export class RisksService {
   }
 
   async create(projectId: string, dto: CreateRiskDto) {
-    await this.access.assertExists(projectId);
+    await this.access.assertNotArchived(projectId);
     await this.assertResponsibleIsMember(projectId, dto.responsibleUserId);
 
     return this.prisma.risk.create({
@@ -61,7 +61,8 @@ export class RisksService {
 
   async update(id: string, dto: UpdateRiskDto) {
     const risk = await this.prisma.risk.findUnique({ where: { id } });
-    if (!risk) throw new NotFoundException('Risk not found');
+    if (!risk) throw new NotFoundException('Nie znaleziono ryzyka');
+    await this.access.assertNotArchived(risk.projectId);
 
     if (dto.responsibleUserId !== undefined) {
       await this.assertResponsibleIsMember(
@@ -89,7 +90,8 @@ export class RisksService {
 
   async remove(id: string): Promise<void> {
     const risk = await this.prisma.risk.findUnique({ where: { id } });
-    if (!risk) throw new NotFoundException('Risk not found');
+    if (!risk) throw new NotFoundException('Nie znaleziono ryzyka');
+    await this.access.assertNotArchived(risk.projectId);
 
     await this.prisma.risk.delete({ where: { id } });
   }

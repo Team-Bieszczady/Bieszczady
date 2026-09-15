@@ -3,9 +3,7 @@ import { FieldError } from '../../../../components/ui/FieldError';
 import { Button } from '../../../../components/ui/Button';
 import { Modal } from '../../../../components/ui/Modal';
 import { Select, type SelectOption } from '../../../../components/ui/Select';
-import {
-  FIELD_LABEL_CLASSES,
-} from '../../../../components/ui/formStyles';
+import { FIELD_LABEL_CLASSES } from '../../../../components/ui/formStyles';
 import type { ProjectRoleValue } from '../../../../lib/projectsApi';
 import { PROJECT_ROLE_OPTIONS } from '../../labels';
 import type { TeamMemberView } from '../../hooks/useProjectTeam';
@@ -20,7 +18,7 @@ interface TeamMemberFormModalProps {
   member: TeamMemberView | null;
   candidateOptions: SelectOption[];
   onClose: () => void;
-  onSubmit: (values: TeamMemberFormInputs) => void;
+  onSubmit: (values: TeamMemberFormInputs) => void | Promise<unknown>;
 }
 
 export default function TeamMemberFormModal({
@@ -33,7 +31,7 @@ export default function TeamMemberFormModal({
   const {
     handleSubmit,
     control,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<TeamMemberFormInputs>({
     defaultValues: {
       userId: member?.userId ?? '',
@@ -49,7 +47,12 @@ export default function TeamMemberFormModal({
       onClose={onClose}
       title={isAdding ? 'Dodaj członka zespołu' : 'Zmień rolę w projekcie'}
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+      <form
+        onSubmit={handleSubmit(async (values) => {
+          await onSubmit(values);
+        })}
+        className="space-y-5"
+      >
         {isAdding ? (
           <div>
             <label className={FIELD_LABEL_CLASSES}>Osoba</label>
@@ -120,6 +123,8 @@ export default function TeamMemberFormModal({
             variant="primary"
             size="small"
             type="submit"
+            isPending={isSubmitting}
+            disabled={isSubmitting}
             className="font-medium!"
           >
             Zapisz

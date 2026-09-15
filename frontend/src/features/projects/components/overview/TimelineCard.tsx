@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { DAY_FORMS, pluralizePl } from '../../../../lib/pluralizePl';
 import type { Stage } from '../../types';
 import { diffInDays, formatStageDate, todayIso } from '../../utils/isoDate';
 import type { StageView } from '../../utils/stageState';
@@ -18,9 +19,9 @@ function remainingLabel(plannedEndDate: string | null): string {
   if (!plannedEndDate) return 'Brak daty zakończenia';
 
   const days = diffInDays(todayIso(), plannedEndDate);
-  if (days > 0) return `Pozostało ${days} dni`;
+  if (days > 0) return `Pozostało ${pluralizePl(days, DAY_FORMS)}`;
   if (days === 0) return 'Ostatni dzień';
-  return `Po terminie o ${Math.abs(days)} dni`;
+  return `Po terminie o ${pluralizePl(Math.abs(days), DAY_FORMS)}`;
 }
 
 function DateBlock({ label, value }: { label: string; value: string }) {

@@ -23,7 +23,7 @@ export class ProjectAccessService {
 
   async assertExists(projectId: string, db: Db = this.prisma): Promise<void> {
     const found = await db.project.count({ where: { id: projectId } });
-    if (found === 0) throw new NotFoundException('Project not found');
+    if (found === 0) throw new NotFoundException('Nie znaleziono projektu');
   }
 
   async assertCanRead(
@@ -38,7 +38,31 @@ export class ProjectAccessService {
     const member = await db.projectMember.count({
       where: { projectId, userId: actor.id },
     });
-    if (member === 0) throw new NotFoundException('Project not found');
+    if (member === 0) throw new NotFoundException('Nie znaleziono projektu');
+  }
+
+  /**
+   * An archived project is read-only: every write beneath it is refused, for
+   * everyone, a director included. The three exits — archive, restore and
+   * permanent delete — deliberately do not call this.
+   *
+   * Truthiness, not `!== null`: against a real row the two are identical, but a
+   * mock that omits `archivedAt` would read as archived under `!== null`.
+   */
+  async assertNotArchived(
+    projectId: string,
+    db: Db = this.prisma,
+  ): Promise<void> {
+    const project = await db.project.findUnique({
+      where: { id: projectId },
+      select: { archivedAt: true },
+    });
+    if (!project) throw new NotFoundException('Nie znaleziono projektu');
+    if (project.archivedAt) {
+      throw new ForbiddenException(
+        'Projekt jest zarchiwizowany i tylko do odczytu. Przywróć go, aby wprowadzić zmiany',
+      );
+    }
   }
 
   async locateTask(
@@ -56,7 +80,7 @@ export class ProjectAccessService {
         },
       },
     });
-    if (!task) throw new NotFoundException('Task not found');
+    if (!task) throw new NotFoundException('Nie znaleziono zadania');
 
     return {
       taskId: task.id,
@@ -75,7 +99,7 @@ export class ProjectAccessService {
       where: { id: activityId },
       select: { stageId: true, stage: { select: { projectId: true } } },
     });
-    if (!activity) throw new NotFoundException('Activity not found');
+    if (!activity) throw new NotFoundException('Nie znaleziono działania');
 
     return { stageId: activity.stageId, projectId: activity.stage.projectId };
   }
@@ -100,7 +124,7 @@ export class ProjectAccessService {
   ): Promise<void> {
     if (await this.canManageTasks(actor, projectId, db)) return;
     throw new ForbiddenException(
-      'Only a director or a coordinator of this project can manage its tasks',
+      'Tylko dyrektor lub koordynator tego projektu może zarządzać jego zadaniami',
     );
   }
 
@@ -113,14 +137,14 @@ export class ProjectAccessService {
 
     if (await this.canManageTasks(actor, task.projectId, db)) return;
     throw new ForbiddenException(
-      'Only the task owner, a coordinator of this project or a director can change its status',
+      'Status zadania może zmienić tylko jego wykonawca, koordynator projektu lub dyrektor',
     );
   }
 
   assertOwnsTask(actor: AuthenticatedUser, task: TaskLocation): void {
     if (task.ownerId === actor.id) return;
     throw new ForbiddenException(
-      'Only the person the task is assigned to can manage its subtasks',
+      'Listę kroków może edytować tylko osoba, do której przypisano zadanie',
     );
   }
 }

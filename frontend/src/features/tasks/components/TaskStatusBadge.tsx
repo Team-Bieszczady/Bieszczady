@@ -2,10 +2,10 @@ import { TASK_STATUS_LABELS } from '../../projects/labels';
 import type { TaskStatus } from '../../projects/types';
 
 const TONE: Record<TaskStatus, string> = {
-  NEW: 'bg-gray-100 text-grayText',
-  IN_PROGRESS: 'bg-lightGreen text-darkGreen',
+  NEW: 'bg-blue-100 text-blue-700',
+  IN_PROGRESS: 'bg-amberSoft text-amberDark',
   BLOCKED: 'bg-redSoft text-darkRed',
-  DONE: 'bg-gray-200 text-gray-600',
+  DONE: 'bg-lightGreen text-darkGreen',
 };
 
 interface TaskStatusBadgeProps {

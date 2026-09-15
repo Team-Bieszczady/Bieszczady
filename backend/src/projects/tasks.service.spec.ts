@@ -1,4 +1,4 @@
-import { ConflictException } from '@nestjs/common';
+import { ConflictException, ForbiddenException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service';
 import { StageCompletionService } from './stage-completion.service';
@@ -14,10 +14,12 @@ describe('TasksService', () => {
     task: {
       findMany: jest.fn(),
       findUnique: jest.fn(),
+      findUniqueOrThrow: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
     },
+    stage: { findUnique: jest.fn() },
     subtask: { deleteMany: jest.fn() },
     projectMember: { count: jest.fn() },
     $transaction: jest.fn(),
@@ -31,6 +33,7 @@ describe('TasksService', () => {
     assertCanManageTasks: jest.fn(),
     assertCanChangeTaskStatus: jest.fn(),
     assertOwnsTask: jest.fn(),
+    assertNotArchived: jest.fn(),
   };
 
   const director = { id: 'd1', isDirector: true } as AuthenticatedUser;
@@ -78,7 +81,6 @@ describe('TasksService', () => {
     }).compile();
 
     service = module.get(TasksService);
-    prisma.project.count.mockResolvedValue(1);
     prisma.$transaction.mockImplementation(
       (fn: (tx: typeof prisma) => unknown) => fn(prisma),
     );
@@ -89,6 +91,8 @@ describe('TasksService', () => {
       projectId: 'p1',
       ownerId: 'piotr',
     });
+    prisma.stage.findUnique.mockResolvedValue({ startDate: null });
+    prisma.task.findUniqueOrThrow.mockResolvedValue({ dueDate: null });
   });
 
   describe('reads', () => {
@@ -297,6 +301,145 @@ describe('TasksService', () => {
 
       expect(order).toEqual(['subtasks', 'task']);
       expect(settle).toHaveBeenCalledWith(prisma, ['s1']);
+    });
+  });
+
+  describe('a task may not start before its stage', () => {
+    beforeEach(() => {
+      access.locateActivity.mockResolvedValue({
+        stageId: 's1',
+        projectId: 'p1',
+      });
+      prisma.stage.findUnique.mockResolvedValue({
+        startDate: new Date('2026-09-09'),
+      });
+    });
+
+    it('refuses a due date before the stage starts', async () => {
+      await expect(
+        service.create(
+          'a1',
+          { title: 'Zadanie', dueDate: '2026-09-01' },
+          director,
+        ),
+      ).rejects.toThrow(/data rozpoczęcia etapu/);
+      expect(prisma.task.create).not.toHaveBeenCalled();
+    });
+
+    it('accepts a due date on the stage start itself', async () => {
+      prisma.task.create.mockResolvedValue(row('s1'));
+
+      await service.create(
+        'a1',
+        { title: 'Zadanie', dueDate: '2026-09-09' },
+        director,
+      );
+
+      expect(prisma.task.create).toHaveBeenCalled();
+    });
+
+    it('accepts a due date AFTER the stage deadline — that is how slippage is recorded', async () => {
+      prisma.task.create.mockResolvedValue(row('s1'));
+
+      await service.create(
+        'a1',
+        { title: 'Zadanie', dueDate: '2026-11-20' },
+        director,
+      );
+
+      expect(prisma.task.create).toHaveBeenCalled();
+    });
+
+    it('ignores the rule when the stage has no start date', async () => {
+      prisma.stage.findUnique.mockResolvedValue({ startDate: null });
+      prisma.task.create.mockResolvedValue(row('s1'));
+
+      await service.create(
+        'a1',
+        { title: 'Zadanie', dueDate: '2020-01-01' },
+        director,
+      );
+
+      expect(prisma.task.create).toHaveBeenCalled();
+    });
+
+    it('re-checks the existing due date when a task is re-filed into a later stage', async () => {
+      prisma.task.findUniqueOrThrow.mockResolvedValue({
+        dueDate: new Date('2026-09-01'),
+      });
+      access.locateActivity.mockResolvedValue({
+        stageId: 's9',
+        projectId: 'p1',
+      });
+
+      await expect(
+        service.update('t1', { activityId: 'a9' }, director),
+      ).rejects.toThrow(/data rozpoczęcia etapu/);
+      expect(prisma.task.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('an archived project is read-only', () => {
+    const archived = () =>
+      access.assertNotArchived.mockRejectedValue(
+        new ForbiddenException('This project is archived'),
+      );
+
+    beforeEach(() => {
+      access.locateActivity.mockResolvedValue({
+        stageId: 's1',
+        projectId: 'p1',
+      });
+    });
+
+    it('refuses a new task, and settles nothing', async () => {
+      archived();
+
+      await expect(
+        service.create('a1', { title: 'Zadanie' }, director),
+      ).rejects.toThrow(ForbiddenException);
+      expect(prisma.task.create).not.toHaveBeenCalled();
+      expect(settle).not.toHaveBeenCalled();
+    });
+
+    it('refuses an edit', async () => {
+      archived();
+
+      await expect(
+        service.update('t1', { title: 'Inna nazwa' }, director),
+      ).rejects.toThrow(ForbiddenException);
+      expect(prisma.task.update).not.toHaveBeenCalled();
+    });
+
+    it('refuses a status change, even from the task owner', async () => {
+      archived();
+      const owner = { id: 'piotr', isDirector: false } as AuthenticatedUser;
+
+      await expect(
+        service.updateStatus('t1', { status: 'DONE' }, owner),
+      ).rejects.toThrow(ForbiddenException);
+      expect(prisma.task.update).not.toHaveBeenCalled();
+      expect(settle).not.toHaveBeenCalled();
+    });
+
+    it('refuses a delete', async () => {
+      archived();
+
+      await expect(service.remove('t1', director)).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(prisma.task.delete).not.toHaveBeenCalled();
+    });
+
+    it('answers "archived" only after the permission check has passed', async () => {
+      access.assertCanManageTasks.mockRejectedValue(
+        new ForbiddenException('Tylko dyrektor lub koordynator'),
+      );
+
+      await expect(
+        service.update('t1', { title: 'Inna nazwa' }, director),
+      ).rejects.toThrow(/koordynator/);
+      expect(access.assertNotArchived).not.toHaveBeenCalled();
     });
   });
 });

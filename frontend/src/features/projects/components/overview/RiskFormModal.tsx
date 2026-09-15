@@ -4,9 +4,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { Button } from '../../../../components/ui/Button';
 import { Modal } from '../../../../components/ui/Modal';
 import { Select, type SelectOption } from '../../../../components/ui/Select';
-import {
-  FIELD_LABEL_CLASSES,
-} from '../../../../components/ui/formStyles';
+import { FIELD_LABEL_CLASSES } from '../../../../components/ui/formStyles';
 import type { RiskLevelValue } from '../../../../lib/projectsApi';
 import { RISK_LEVEL_OPTIONS } from '../../labels';
 import type { RiskFormValues, RiskView } from '../../hooks/useProjectRisks';
@@ -23,7 +21,7 @@ interface RiskFormModalProps {
   risk: RiskView | null;
   ownerOptions: SelectOption[];
   onClose: () => void;
-  onSubmit: (values: RiskFormValues) => void;
+  onSubmit: (values: RiskFormValues) => void | Promise<unknown>;
 }
 
 export default function RiskFormModal({
@@ -37,7 +35,7 @@ export default function RiskFormModal({
     register,
     handleSubmit,
     control,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<RiskFormInputs>({
     defaultValues: {
       description: risk?.description ?? '',
@@ -55,7 +53,12 @@ export default function RiskFormModal({
       onClose={onClose}
       title={mode === 'add' ? 'Dodaj ryzyko' : 'Edytuj ryzyko'}
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+      <form
+        onSubmit={handleSubmit(async (values) => {
+          await onSubmit(values);
+        })}
+        className="space-y-5"
+      >
         <div>
           <label className={FIELD_LABEL_CLASSES} htmlFor={descriptionId}>
             Opis ryzyka
@@ -154,6 +157,8 @@ export default function RiskFormModal({
             variant="primary"
             size="small"
             type="submit"
+            isPending={isSubmitting}
+            disabled={isSubmitting}
             className="font-medium!"
           >
             Zapisz

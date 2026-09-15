@@ -3,6 +3,7 @@ import RowActionsMenu from './RowActionsMenu';
 import DeleteAccountDialog from './DeleteAccountDialog';
 import ManageModuleAccessModal from './ManageModuleAccessModal';
 import { useUserModules } from '../hooks/useUpdateUserModules';
+import { isSelf } from '../utils/peoplePermissions';
 import { useAuth } from '../../../context/useAuth';
 import type { Person } from '../data';
 
@@ -15,6 +16,7 @@ export default function PersonRowActions({ person }: PersonRowActionsProps) {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isModulesOpen, setIsModulesOpen] = useState(false);
   const canManageModules = !!user?.isDirector && !person.isDirector;
+  const canDelete = !!user?.isDirector && !isSelf(user, person.id);
   const modules = useUserModules(person.id, isModulesOpen);
 
   if (person.status === 'DELETED') return null;
@@ -23,7 +25,7 @@ export default function PersonRowActions({ person }: PersonRowActionsProps) {
     <>
       <RowActionsMenu
         personId={person.id}
-        canDelete={!!user?.isDirector}
+        canDelete={canDelete}
         onDelete={() => setIsConfirmOpen(true)}
         onManageModules={
           canManageModules ? () => setIsModulesOpen(true) : undefined

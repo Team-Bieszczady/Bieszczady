@@ -81,6 +81,8 @@ export default function AddProjectModal({
   const color = useWatch({ control, name: 'color' });
   const team = useWatch({ control, name: 'team' });
   const coordinatorId = useWatch({ control, name: 'coordinatorId' });
+  const startDate = useWatch({ control, name: 'startDate' });
+  const endDate = useWatch({ control, name: 'endDate' });
 
   const candidates = (people.data ?? []).filter(
     (person) =>
@@ -134,7 +136,8 @@ export default function AddProjectModal({
         toast.success('Projekt został dodany');
         close();
       },
-      onError: (error: Error) => toast.error(error.message),
+      onError: (error: Error) =>
+        toast.error(error.message, { id: error.message }),
     });
   };
 
@@ -248,17 +251,29 @@ export default function AddProjectModal({
             <label className={FIELD_LABEL_CLASSES}>Data rozpoczęcia</label>
             <input
               type="date"
+              max={endDate || undefined}
+              aria-invalid={!!errors.startDate}
               className={INPUT_CLASSES}
               {...register('startDate')}
             />
+            <FieldError message={errors.startDate?.message} />
           </div>
           <div>
             <label className={FIELD_LABEL_CLASSES}>Planowane zakończenie</label>
             <input
               type="date"
+              min={startDate || undefined}
+              aria-invalid={!!errors.endDate}
               className={INPUT_CLASSES}
-              {...register('endDate')}
+              {...register('endDate', {
+                validate: (value) =>
+                  !value ||
+                  !startDate ||
+                  value >= startDate ||
+                  'Data zakończenia nie może być wcześniejsza niż data rozpoczęcia',
+              })}
             />
+            <FieldError message={errors.endDate?.message} />
           </div>
         </div>
 

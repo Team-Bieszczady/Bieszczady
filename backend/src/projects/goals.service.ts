@@ -24,8 +24,7 @@ export class GoalsService {
 
   async create(projectId: string, dto: CreateGoalDto) {
     return this.prisma.$transaction(async (tx) => {
-      const project = await tx.project.count({ where: { id: projectId } });
-      if (project === 0) throw new NotFoundException('Project not found');
+      await this.access.assertNotArchived(projectId, tx);
 
       const last = await tx.goal.aggregate({
         where: { projectId },
@@ -45,7 +44,8 @@ export class GoalsService {
 
   async update(id: string, dto: UpdateGoalDto) {
     const goal = await this.prisma.goal.findUnique({ where: { id } });
-    if (!goal) throw new NotFoundException('Goal not found');
+    if (!goal) throw new NotFoundException('Nie znaleziono celu');
+    await this.access.assertNotArchived(goal.projectId);
 
     const data: Prisma.GoalUpdateInput = {};
     if (dto.title !== undefined) data.title = dto.title;
@@ -57,7 +57,8 @@ export class GoalsService {
   async remove(id: string): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
       const goal = await tx.goal.findUnique({ where: { id } });
-      if (!goal) throw new NotFoundException('Goal not found');
+      if (!goal) throw new NotFoundException('Nie znaleziono celu');
+      await this.access.assertNotArchived(goal.projectId, tx);
 
       await tx.goal.delete({ where: { id } });
 

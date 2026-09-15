@@ -140,7 +140,11 @@ function ProjectsList({ projects, statusOptions, canEdit }: ProjectsListProps) {
       ) : (
         <div className="animate-fade-in grid gap-4 min-[400px]:gap-6 sm:grid-cols-2 xl:grid-cols-3">
           {visibleProjects.map((project) => (
-            <ProjectCard key={project.id} project={project} />
+            <ProjectCard
+              key={project.id}
+              project={project}
+              canManage={canEdit}
+            />
           ))}
         </div>
       )}

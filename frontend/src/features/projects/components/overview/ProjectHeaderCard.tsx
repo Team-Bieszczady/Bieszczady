@@ -4,6 +4,7 @@ import { ActionMenu } from '../../../../components/ui/ActionMenu';
 import { ChipSelectField } from '../../../../components/ui/ChipSelectField';
 import type { BackendProject } from '../../../../lib/projectsApi';
 import { useProjectOverviewEditing } from '../../hooks/useProjectOverviewEditing';
+import ArchivedBadge from '../ArchivedBadge';
 import StatusSelect from './StatusSelect';
 import ManageStatusesModal from './ManageStatusesModal';
 import {
@@ -24,12 +25,13 @@ export default function ProjectHeaderCard({
   const [isEditingHeader, setIsEditingHeader] = useState(false);
   const [isManageOpen, setIsManageOpen] = useState(false);
 
-  const saveHeader = (values: TitleDescriptionValues) => {
-    editing.updateHeader({
+  const saveHeader = async (values: TitleDescriptionValues) => {
+    const saved = await editing.updateHeader({
       name: values.title,
       description: values.description,
     });
-    setIsEditingHeader(false);
+    if (saved) setIsEditingHeader(false);
+    return saved;
   };
 
   return (
@@ -65,6 +67,8 @@ export default function ProjectHeaderCard({
         )}
 
         <div className="mt-3 flex items-center gap-1 800:col-start-2 800:row-start-1 800:mt-0 800:shrink-0">
+          {project.archivedAt !== null && <ArchivedBadge />}
+
           <StatusSelect
             status={editing.status}
             statuses={editing.statuses}

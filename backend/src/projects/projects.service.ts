@@ -31,7 +31,7 @@ type ProjectWithDetail = Prisma.ProjectGetPayload<{
 function assertDateOrder(start: Date | null, end: Date | null): void {
   if (start && end && start.getTime() > end.getTime()) {
     throw new ConflictException(
-      'Project start date cannot be after the planned end date',
+      'Data rozpoczęcia nie może być późniejsza niż planowana data zakończenia',
     );
   }
 }
@@ -78,7 +78,7 @@ export class ProjectsService {
       where: { id },
       include: DETAIL_INCLUDE,
     });
-    if (!project) throw new NotFoundException('Project not found');
+    if (!project) throw new NotFoundException('Nie znaleziono projektu');
     return project;
   }
 
@@ -90,14 +90,17 @@ export class ProjectsService {
   ): Promise<void> {
     if (statusId) {
       const status = await tx.projectStatus.count({ where: { id: statusId } });
-      if (status === 0) throw new NotFoundException('Project status not found');
+      if (status === 0)
+        throw new NotFoundException('Nie znaleziono statusu projektu');
     }
     if (typeIds.length > 0) {
       const found = await tx.projectType.count({
         where: { id: { in: typeIds } },
       });
       if (found !== typeIds.length) {
-        throw new NotFoundException('One or more project types not found');
+        throw new NotFoundException(
+          'Nie znaleziono jednego lub więcej typów projektu',
+        );
       }
     }
     if (recipientIds.length > 0) {
@@ -105,7 +108,9 @@ export class ProjectsService {
         where: { id: { in: recipientIds } },
       });
       if (found !== recipientIds.length) {
-        throw new NotFoundException('One or more project recipients not found');
+        throw new NotFoundException(
+          'Nie znaleziono jednego lub więcej odbiorców projektu',
+        );
       }
     }
   }
@@ -121,7 +126,7 @@ export class ProjectsService {
     });
     if (active !== userIds.length) {
       throw new ConflictException(
-        'Only active users can be added to a project',
+        'Do projektu można dodać tylko aktywnych użytkowników',
       );
     }
   }
@@ -290,6 +295,7 @@ export class ProjectsService {
 
   async update(id: string, dto: UpdateProjectDto) {
     const current = await this.findOrThrow(id);
+    await this.access.assertNotArchived(id);
 
     const data: Prisma.ProjectUpdateInput = {};
     if (dto.name !== undefined) data.name = dto.name;
@@ -325,12 +331,14 @@ export class ProjectsService {
 
   async setStatus(id: string, dto: UpdateProjectStatusDto) {
     await this.findOrThrow(id);
+    await this.access.assertNotArchived(id);
 
     if (dto.statusId) {
       const exists = await this.prisma.projectStatus.count({
         where: { id: dto.statusId },
       });
-      if (exists === 0) throw new NotFoundException('Project status not found');
+      if (exists === 0)
+        throw new NotFoundException('Nie znaleziono statusu projektu');
     }
 
     const updated = await this.prisma.project.update({
@@ -343,6 +351,7 @@ export class ProjectsService {
 
   async setTypes(id: string, dto: UpdateProjectTypesDto) {
     const updated = await this.prisma.$transaction(async (tx) => {
+      await this.access.assertNotArchived(id, tx);
       await this.assertDictionaryIds(tx, dto.typeIds, []);
       await tx.projectTypesOnProjects.deleteMany({
         where: { projectId: id },
@@ -361,12 +370,13 @@ export class ProjectsService {
       });
     }, SERIALIZABLE);
 
-    if (!updated) throw new NotFoundException('Project not found');
+    if (!updated) throw new NotFoundException('Nie znaleziono projektu');
     return this.toDetail(updated);
   }
 
   async setRecipients(id: string, dto: UpdateProjectRecipientsDto) {
     const updated = await this.prisma.$transaction(async (tx) => {
+      await this.access.assertNotArchived(id, tx);
       await this.assertDictionaryIds(tx, [], dto.recipientIds);
       await tx.projectRecipientsOnProjects.deleteMany({
         where: { projectId: id },
@@ -385,7 +395,7 @@ export class ProjectsService {
       });
     }, SERIALIZABLE);
 
-    if (!updated) throw new NotFoundException('Project not found');
+    if (!updated) throw new NotFoundException('Nie znaleziono projektu');
     return this.toDetail(updated);
   }
 
@@ -406,10 +416,10 @@ export class ProjectsService {
         where: { id },
         select: { id: true, archivedAt: true },
       });
-      if (!project) throw new NotFoundException('Project not found');
+      if (!project) throw new NotFoundException('Nie znaleziono projektu');
       if (project.archivedAt === null) {
         throw new ConflictException(
-          'Archive the project before deleting it permanently',
+          'Zarchiwizuj projekt, zanim usuniesz go na stałe',
         );
       }
 

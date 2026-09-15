@@ -7,6 +7,8 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import type { StatusColor } from '../common/enums/project.enums';
 
+type DictionaryKind = 'status' | 'type' | 'recipient';
+
 export interface DictionaryEntry {
   id: string;
   name: string;
@@ -32,7 +34,7 @@ export class DictionariesService {
         select: { id: true, name: true, color: true, active: true },
       });
     } catch (error) {
-      throw this.asConflict(error, 'A status with this name already exists');
+      throw this.asConflict(error, 'Status o tej nazwie już istnieje');
     }
   }
 
@@ -54,14 +56,14 @@ export class DictionariesService {
         select: { id: true, name: true, color: true, active: true },
       });
     } catch (error) {
-      throw this.asConflict(error, 'A status with this name already exists');
+      throw this.asConflict(error, 'Status o tej nazwie już istnieje');
     }
   }
 
   async removeStatus(id: string): Promise<void> {
     await this.assertExists('status', id);
     const usage = await this.prisma.project.count({ where: { statusId: id } });
-    this.assertUnused(usage, 'status');
+    this.assertUnused(usage);
     await this.prisma.projectStatus.delete({ where: { id } });
   }
 
@@ -79,7 +81,7 @@ export class DictionariesService {
         select: { id: true, name: true, active: true },
       });
     } catch (error) {
-      throw this.asConflict(error, 'A type with this name already exists');
+      throw this.asConflict(error, 'Typ o tej nazwie już istnieje');
     }
   }
 
@@ -97,7 +99,7 @@ export class DictionariesService {
         select: { id: true, name: true, active: true },
       });
     } catch (error) {
-      throw this.asConflict(error, 'A type with this name already exists');
+      throw this.asConflict(error, 'Typ o tej nazwie już istnieje');
     }
   }
 
@@ -106,7 +108,7 @@ export class DictionariesService {
     const usage = await this.prisma.projectTypesOnProjects.count({
       where: { projectTypeId: id },
     });
-    this.assertUnused(usage, 'type');
+    this.assertUnused(usage);
     await this.prisma.projectType.delete({ where: { id } });
   }
 
@@ -124,7 +126,7 @@ export class DictionariesService {
         select: { id: true, name: true, active: true },
       });
     } catch (error) {
-      throw this.asConflict(error, 'A recipient with this name already exists');
+      throw this.asConflict(error, 'Odbiorca o tej nazwie już istnieje');
     }
   }
 
@@ -145,7 +147,7 @@ export class DictionariesService {
         select: { id: true, name: true, active: true },
       });
     } catch (error) {
-      throw this.asConflict(error, 'A recipient with this name already exists');
+      throw this.asConflict(error, 'Odbiorca o tej nazwie już istnieje');
     }
   }
 
@@ -154,14 +156,17 @@ export class DictionariesService {
     const usage = await this.prisma.projectRecipientsOnProjects.count({
       where: { recipientId: id },
     });
-    this.assertUnused(usage, 'recipient');
+    this.assertUnused(usage);
     await this.prisma.projectRecipient.delete({ where: { id } });
   }
 
-  private async assertExists(
-    kind: 'status' | 'type' | 'recipient',
-    id: string,
-  ): Promise<void> {
+  private static readonly KIND_PL: Record<DictionaryKind, string> = {
+    status: 'statusu projektu',
+    type: 'typu projektu',
+    recipient: 'odbiorcy projektu',
+  };
+
+  private async assertExists(kind: DictionaryKind, id: string): Promise<void> {
     const found =
       kind === 'status'
         ? await this.prisma.projectStatus.count({ where: { id } })
@@ -169,13 +174,17 @@ export class DictionariesService {
           ? await this.prisma.projectType.count({ where: { id } })
           : await this.prisma.projectRecipient.count({ where: { id } });
 
-    if (found === 0) throw new NotFoundException(`Project ${kind} not found`);
+    if (found === 0) {
+      throw new NotFoundException(
+        `Nie znaleziono ${DictionariesService.KIND_PL[kind]}`,
+      );
+    }
   }
 
-  private assertUnused(usage: number, kind: string): void {
+  private assertUnused(usage: number): void {
     if (usage > 0) {
       throw new ConflictException(
-        `Cannot delete this ${kind}: it is used by ${usage} project(s)`,
+        `Nie można usunąć — pozycja jest używana w projektach (${usage})`,
       );
     }
   }

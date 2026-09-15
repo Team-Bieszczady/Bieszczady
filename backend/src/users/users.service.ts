@@ -26,6 +26,12 @@ export type UserWithTaskCount = Omit<User, 'passwordHash'> & {
   taskCount: number;
 };
 
+const LAST_DIRECTOR_MESSAGES = {
+  deactivate: 'Nie można dezaktywować ostatniego aktywnego dyrektora',
+  remove: 'Nie można odebrać uprawnień ostatniemu aktywnemu dyrektorowi',
+  delete: 'Nie można usunąć ostatniego aktywnego dyrektora',
+} as const;
+
 @Injectable()
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
@@ -62,16 +68,14 @@ export class UsersService {
   private async assertNotLastActiveDirector(
     tx: Prisma.TransactionClient,
     user: User,
-    action: string,
+    action: 'deactivate' | 'remove' | 'delete',
   ): Promise<void> {
     if (user.isDirector && user.accountStatus === 'ACTIVE') {
       const activeDirectorCount = await tx.user.count({
         where: { isDirector: true, accountStatus: 'ACTIVE', deletedAt: null },
       });
       if (activeDirectorCount <= 1) {
-        throw new ConflictException(
-          `Cannot ${action} the last remaining active director`,
-        );
+        throw new ConflictException(LAST_DIRECTOR_MESSAGES[action]);
       }
     }
   }
@@ -119,10 +123,10 @@ export class UsersService {
       this.logger.error('Error creating user:', error);
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
-          throw new ConflictException('Email already in use');
+          throw new ConflictException('Ten adres e-mail jest już zajęty');
         }
       }
-      throw new InternalServerErrorException();
+      throw new InternalServerErrorException('Wystąpił błąd serwera');
     }
   }
 
@@ -133,7 +137,7 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException('Nie znaleziono użytkownika');
     }
 
     return this.withTaskCount(user);
@@ -179,7 +183,7 @@ export class UsersService {
     dto: UpdateUserDto,
   ): Promise<Omit<User, 'passwordHash'>> {
     if (actorId !== targetId) {
-      throw new ForbiddenException('You can only edit your own profile');
+      throw new ForbiddenException('Możesz edytować tylko własny profil');
     }
 
     const user = await this.prisma.user.findFirst({
@@ -187,7 +191,7 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException('Nie znaleziono użytkownika');
     }
 
     const data: Prisma.UserUpdateInput = {};
@@ -215,7 +219,13 @@ export class UsersService {
       });
 
       if (!user) {
-        throw new NotFoundException('User not found');
+        throw new NotFoundException('Nie znaleziono użytkownika');
+      }
+
+      if (actorId === id) {
+        throw new ForbiddenException(
+          'Nie możesz zmienić statusu własnego konta',
+        );
       }
 
       if (status === 'INACTIVE') {
@@ -252,12 +262,12 @@ export class UsersService {
       });
 
       if (!target) {
-        throw new NotFoundException('User not found');
+        throw new NotFoundException('Nie znaleziono użytkownika');
       }
 
       if (actorId === targetId && !isDirector) {
         throw new ForbiddenException(
-          'A director cannot revoke their own director status',
+          'Nie możesz odebrać sobie uprawnień dyrektora',
         );
       }
 
@@ -297,12 +307,12 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException('Nie znaleziono użytkownika');
     }
 
     const valid = await bcrypt.compare(dto.currentPassword, user.passwordHash);
     if (!valid) {
-      throw new UnauthorizedException('Current password is incorrect');
+      throw new UnauthorizedException('Obecne hasło jest nieprawidłowe');
     }
 
     await this.setPassword(userId, dto.newPassword);
@@ -320,7 +330,11 @@ export class UsersService {
       });
 
       if (!user) {
-        throw new NotFoundException('User not found');
+        throw new NotFoundException('Nie znaleziono użytkownika');
+      }
+
+      if (actorId === id) {
+        throw new ForbiddenException('Nie możesz usunąć własnego konta');
       }
 
       await this.assertNotLastActiveDirector(tx, user, 'delete');

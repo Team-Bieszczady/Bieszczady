@@ -3,7 +3,10 @@ import { useSelectedProject } from '../../../context/useSelectedProject';
 import { hasModule } from '../../../lib/modules';
 import { usePeople } from '../../people/hooks/usePeople';
 import { useCurrentUser } from '../../people/hooks/useCurrentUser';
-import { useProjects } from '../../projects/hooks/useProjectsApi';
+import {
+  useArchivedProjects,
+  useProjects,
+} from '../../projects/hooks/useProjectsApi';
 import { ORG_NAV_ITEMS, PROJECT_NAV_ITEMS, type NavItem } from '../data';
 
 interface NavData {
@@ -25,11 +28,15 @@ export function useNavData(): NavData {
     false,
     hasModule(user, 'PROJECTS'),
   );
+  const { data: archived = [] } = useArchivedProjects(
+    hasModule(user, 'SETTINGS'),
+  );
   const { data: me } = useCurrentUser();
 
   const counts: Record<string, number> = {
     people: people.length,
     projects: projects.length,
+    ...(archived.length > 0 ? { settings: archived.length } : {}),
   };
 
   const selectedProject = projects.find((project) => project.id === projectId);

@@ -237,8 +237,6 @@ describe('AuthService', () => {
     });
 
     it('resolves without throwing for an unknown address', async () => {
-      // The caller must not be able to tell an existing account from a missing
-      // one, so this path stays silent rather than raising NotFound.
       await expect(
         service.requestPasswordReset('nobody@example.com'),
       ).resolves.toBeUndefined();
@@ -250,13 +248,10 @@ describe('AuthService', () => {
         .mockImplementation(() => undefined);
       sendPasswordReset.mockRejectedValue(new Error('smtp down'));
 
-      // A dead mail server must not turn into a 500: the difference between a
-      // silent 200 and an error would reveal which addresses have accounts.
       await expect(
         service.requestPasswordReset(ACTIVE_EMAIL),
       ).resolves.toBeUndefined();
 
-      // Silent to the caller, but never silent to us.
       expect(logged).toHaveBeenCalled();
       logged.mockRestore();
     });

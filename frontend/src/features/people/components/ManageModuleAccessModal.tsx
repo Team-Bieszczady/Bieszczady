@@ -47,7 +47,9 @@ export default function ManageModuleAccessModal({
       toast.success(`Dostęp do modułów dla ${userName} został zaktualizowany`);
       onClose();
     } catch {
-      toast.error('Nie udało się zaktualizować dostępu. Spróbuj ponownie.');
+      toast.error('Nie udało się zaktualizować dostępu. Spróbuj ponownie.', {
+        id: 'module-access-error',
+      });
     }
   };
 

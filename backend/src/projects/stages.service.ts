@@ -31,9 +31,45 @@ export class StagesService {
   ) {}
 
   private async findStageOrThrow(id: string) {
-    const stage = await this.prisma.stage.findUnique({ where: { id } });
-    if (!stage) throw new NotFoundException('Stage not found');
+    const stage = await this.prisma.stage.findUnique({
+      where: { id },
+      include: {
+        project: { select: { startDate: true, plannedEndDate: true } },
+      },
+    });
+    if (!stage) throw new NotFoundException('Nie znaleziono etapu');
     return stage;
+  }
+
+  /**
+   * A stage lives inside its project's window. Both project dates are nullable,
+   * so each bound only applies when the project actually carries it. Bounds are
+   * inclusive — a stage may start on the project's first day and end on its last.
+   */
+  private assertWithinProject(
+    project: { startDate: Date | null; plannedEndDate: Date | null },
+    startDate: Date | null,
+    deadline: Date,
+  ): void {
+    const from = startDate ?? deadline;
+
+    if (project.startDate && from < project.startDate) {
+      throw new ConflictException(
+        'Etap nie może zaczynać się przed datą startu projektu',
+      );
+    }
+    if (project.plannedEndDate && deadline > project.plannedEndDate) {
+      throw new ConflictException(
+        'Termin etapu nie może być późniejszy niż data zakończenia projektu',
+      );
+    }
+  }
+
+  /** `deadline` is a DATE column, `completedAt` a timestamp — compare by day. */
+  private static startOfDay(value: Date): Date {
+    return new Date(
+      Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()),
+    );
   }
 
   async findAllForProject(
@@ -99,15 +135,21 @@ export class StagesService {
   }
 
   async create(projectId: string, dto: CreateStageDto) {
-    await this.access.assertExists(projectId);
+    await this.access.assertNotArchived(projectId);
 
     const deadline = new Date(dto.deadline);
     const startDate = dto.startDate ? new Date(dto.startDate) : null;
     if (startDate && startDate > deadline) {
       throw new ConflictException(
-        'Deadline cannot be earlier than the start date',
+        'Termin nie może być wcześniejszy niż data rozpoczęcia',
       );
     }
+
+    const project = await this.prisma.project.findUniqueOrThrow({
+      where: { id: projectId },
+      select: { startDate: true, plannedEndDate: true },
+    });
+    this.assertWithinProject(project, startDate, deadline);
 
     const last = await this.prisma.stage.aggregate({
       where: { projectId },
@@ -127,7 +169,8 @@ export class StagesService {
   }
 
   async update(id: string, dto: UpdateStageDto) {
-    await this.findStageOrThrow(id);
+    const stage = await this.findStageOrThrow(id);
+    await this.access.assertNotArchived(stage.projectId);
 
     const data: Prisma.StageUpdateInput = {};
     if (dto.name !== undefined) data.name = dto.name;
@@ -138,18 +181,23 @@ export class StagesService {
 
   async moveDeadline(id: string, dto: MoveStageDeadlineDto) {
     const stage = await this.findStageOrThrow(id);
+    await this.access.assertNotArchived(stage.projectId);
     const next = new Date(dto.deadline);
 
     if (stage.startDate && next < stage.startDate) {
       throw new ConflictException(
-        'Deadline cannot be earlier than the start date',
+        'Termin nie może być wcześniejszy niż data rozpoczęcia',
       );
     }
-    if (stage.completedAt && next < stage.completedAt) {
+    if (
+      stage.completedAt &&
+      next < StagesService.startOfDay(stage.completedAt)
+    ) {
       throw new ConflictException(
-        'Deadline cannot be earlier than the date the stage finished',
+        'Termin nie może być wcześniejszy niż data zakończenia etapu',
       );
     }
+    this.assertWithinProject(stage.project, stage.startDate, next);
 
     const days = shiftDays(stage.deadline, next);
 
@@ -184,9 +232,18 @@ export class StagesService {
     const ids = dto.shifts.map((shift) => shift.stageId);
 
     return this.prisma.$transaction(async (tx) => {
-      const stages = await tx.stage.findMany({ where: { id: { in: ids } } });
+      const stages = await tx.stage.findMany({
+        where: { id: { in: ids } },
+        include: {
+          project: { select: { startDate: true, plannedEndDate: true } },
+        },
+      });
       if (stages.length !== ids.length) {
-        throw new NotFoundException('One or more stages not found');
+        throw new NotFoundException('Nie znaleziono jednego lub więcej etapów');
+      }
+
+      for (const projectId of new Set(stages.map((stage) => stage.projectId))) {
+        await this.access.assertNotArchived(projectId, tx);
       }
 
       const byId = new Map(stages.map((stage) => [stage.id, stage]));
@@ -194,12 +251,28 @@ export class StagesService {
 
       for (const shift of dto.shifts) {
         const stage = byId.get(shift.stageId)!;
+        const next = new Date(shift.deadline);
+        if (stage.startDate && next < stage.startDate) {
+          throw new ConflictException(
+            'Termin nie może być wcześniejszy niż data rozpoczęcia',
+          );
+        }
+        if (
+          stage.completedAt &&
+          next < StagesService.startOfDay(stage.completedAt)
+        ) {
+          throw new ConflictException(
+            'Termin nie może być wcześniejszy niż data zakończenia etapu',
+          );
+        }
+        this.assertWithinProject(stage.project, stage.startDate, next);
+
         updated.push(
           await tx.stage.update({
             where: { id: stage.id },
             data: {
               originalDeadline: stage.originalDeadline ?? stage.deadline,
-              deadline: new Date(shift.deadline),
+              deadline: next,
               deadlineNote: dto.note?.trim() ? dto.note.trim() : null,
             },
           }),
@@ -211,7 +284,8 @@ export class StagesService {
   }
 
   async setArchived(id: string, archived: boolean) {
-    await this.findStageOrThrow(id);
+    const stage = await this.findStageOrThrow(id);
+    await this.access.assertNotArchived(stage.projectId);
 
     return this.prisma.stage.update({
       where: { id },
@@ -224,7 +298,8 @@ export class StagesService {
 
     await this.prisma.$transaction(async (tx) => {
       const stage = await tx.stage.findUnique({ where: { id } });
-      if (!stage) throw new NotFoundException('Stage not found');
+      if (!stage) throw new NotFoundException('Nie znaleziono etapu');
+      await this.access.assertNotArchived(stage.projectId, tx);
 
       const activityCount = await tx.activity.count({
         where: { stageId: id },
@@ -232,7 +307,7 @@ export class StagesService {
 
       if (activityCount > 0 && strategy === 'none') {
         throw new ConflictException(
-          `Stage has ${activityCount} activity(ies): choose strategy=move or strategy=delete`,
+          `Etap ma przypisane działania (${activityCount}) — wybierz, czy przenieść je, czy usunąć`,
         );
       }
 
@@ -241,11 +316,11 @@ export class StagesService {
           where: { id: query.targetStageId },
         });
         if (!target || target.id === id) {
-          throw new NotFoundException('Target stage not found');
+          throw new NotFoundException('Nie znaleziono etapu docelowego');
         }
         if (target.projectId !== stage.projectId) {
           throw new ConflictException(
-            'Target stage belongs to a different project',
+            'Etap docelowy należy do innego projektu',
           );
         }
 

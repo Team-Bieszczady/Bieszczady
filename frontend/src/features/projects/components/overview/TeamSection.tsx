@@ -52,7 +52,7 @@ export default function TeamSection({
     role: ProjectRoleValue;
   }) => {
     const result = await addMember(values.userId, values.role);
-    if (!result.ok) return toast.error(result.message);
+    if (!result.ok) return toast.error(result.message, { id: result.message });
 
     close();
     toast.success('Członek zespołu dodany');
@@ -63,7 +63,7 @@ export default function TeamSection({
     values: { role: ProjectRoleValue },
   ) => {
     const result = await changeRole(member.id, values.role);
-    if (!result.ok) return toast.error(result.message);
+    if (!result.ok) return toast.error(result.message, { id: result.message });
 
     close();
     toast.success('Rola zaktualizowana');
@@ -71,7 +71,7 @@ export default function TeamSection({
 
   const confirmRemove = async (member: TeamMemberView) => {
     const result = await removeMember(member.id);
-    if (!result.ok) return toast.error(result.message);
+    if (!result.ok) return toast.error(result.message, { id: result.message });
 
     close();
     toast.success('Członek zespołu usunięty z projektu');

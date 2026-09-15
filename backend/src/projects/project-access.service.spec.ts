@@ -14,7 +14,7 @@ describe('ProjectAccessService', () => {
     task: { findUnique: jest.fn() },
     activity: { findUnique: jest.fn() },
     projectMember: { count: jest.fn() },
-    project: { count: jest.fn() },
+    project: { count: jest.fn(), findUnique: jest.fn() },
   };
 
   const user = (id: string, isDirector = false): AuthenticatedUser => ({
@@ -93,6 +93,68 @@ describe('ProjectAccessService', () => {
         service.assertCanRead(user('d1', true), 'nope'),
       ).rejects.toThrow(NotFoundException);
       expect(prisma.projectMember.count).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('assertNotArchived', () => {
+    it('lets a write through on a live project', async () => {
+      prisma.project.findUnique.mockResolvedValue({ archivedAt: null });
+
+      await expect(service.assertNotArchived('p1')).resolves.toBeUndefined();
+    });
+
+    it('refuses a write on an archived project', async () => {
+      prisma.project.findUnique.mockResolvedValue({
+        archivedAt: new Date('2026-01-01'),
+      });
+
+      await expect(service.assertNotArchived('p1')).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('explains itself, rather than answering a bare "Forbidden"', async () => {
+      prisma.project.findUnique.mockResolvedValue({
+        archivedAt: new Date('2026-01-01'),
+      });
+
+      await expect(service.assertNotArchived('p1')).rejects.toThrow(
+        /zarchiwizowany/,
+      );
+    });
+
+    it('refuses a director too — archived is read-only for everyone', async () => {
+      prisma.project.findUnique.mockResolvedValue({
+        archivedAt: new Date('2026-01-01'),
+      });
+
+      await expect(service.assertNotArchived('p1')).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('404s a missing project rather than calling it archived', async () => {
+      prisma.project.findUnique.mockResolvedValue(null);
+
+      await expect(service.assertNotArchived('gone')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('treats a row with no archivedAt key as live, not archived', async () => {
+      prisma.project.findUnique.mockResolvedValue({ id: 'p1' });
+
+      await expect(service.assertNotArchived('p1')).resolves.toBeUndefined();
+    });
+
+    it('reads through the client it is handed, so it joins the caller’s transaction', async () => {
+      const tx = { project: { findUnique: jest.fn() } };
+      tx.project.findUnique.mockResolvedValue({ archivedAt: null });
+
+      await service.assertNotArchived('p1', tx as never);
+
+      expect(tx.project.findUnique).toHaveBeenCalled();
+      expect(prisma.project.findUnique).not.toHaveBeenCalled();
     });
   });
 
@@ -175,7 +237,7 @@ describe('ProjectAccessService', () => {
 
       await expect(
         service.assertCanManageTasks(user('piotr'), 'p1'),
-      ).rejects.toThrow(/director or a coordinator of this project/);
+      ).rejects.toThrow(/dyrektor lub koordynator tego projektu/);
     });
   });
 

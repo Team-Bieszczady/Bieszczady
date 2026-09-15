@@ -7,8 +7,10 @@ import {
   FIELD_LABEL_CLASSES,
   INPUT_CLASSES,
 } from '../../../../../components/ui/formStyles';
+import type { BackendProject } from '../../../../../lib/projectsApi';
 import type { Stage } from '../../../types';
 import { formatStageDate, toIsoDate } from '../../../utils/isoDate';
+import { STAGE_ISSUE_MESSAGES } from '../../../utils/stageRules';
 
 interface MoveDeadlineInputs {
   deadline: string;
@@ -17,19 +19,22 @@ interface MoveDeadlineInputs {
 
 interface MoveDeadlineModalProps {
   stage: Stage;
+  /** The window the new deadline has to stay inside. */
+  project: Pick<BackendProject, 'startDate' | 'plannedEndDate'>;
   onClose: () => void;
-  onSubmit: (deadline: string, note: string) => void;
+  onSubmit: (deadline: string, note: string) => void | Promise<unknown>;
 }
 
 export default function MoveDeadlineModal({
   stage,
+  project,
   onClose,
   onSubmit,
 }: MoveDeadlineModalProps) {
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<MoveDeadlineInputs>({
     defaultValues: { deadline: stage.deadline, note: stage.deadlineNote ?? '' },
   });
@@ -41,9 +46,9 @@ export default function MoveDeadlineModal({
   return (
     <Modal isOpen onClose={onClose} title="Przenieś termin etapu">
       <form
-        onSubmit={handleSubmit((values) =>
-          onSubmit(values.deadline, values.note),
-        )}
+        onSubmit={handleSubmit(async (values) => {
+          await onSubmit(values.deadline, values.note);
+        })}
         className="space-y-5"
       >
         <div className="rounded-lg border border-gray-200 bg-white px-3 py-2.5">
@@ -72,12 +77,20 @@ export default function MoveDeadlineModal({
                 if (completedOn && value < completedOn) {
                   return 'Termin nie może być wcześniejszy niż data zakończenia etapu';
                 }
+                if (project.startDate && value < project.startDate) {
+                  return STAGE_ISSUE_MESSAGES.startBeforeProject;
+                }
+                if (project.plannedEndDate && value > project.plannedEndDate) {
+                  return STAGE_ISSUE_MESSAGES.deadlineAfterProjectEnd;
+                }
                 return true;
               },
             })}
             id={dateId}
             autoFocus
             type="date"
+            min={stage.startDate ?? project.startDate ?? undefined}
+            max={project.plannedEndDate ?? undefined}
             aria-invalid={!!errors.deadline}
             className={INPUT_CLASSES}
           />
@@ -119,6 +132,8 @@ export default function MoveDeadlineModal({
             variant="primary"
             size="small"
             type="submit"
+            isPending={isSubmitting}
+            disabled={isSubmitting}
             className="font-medium!"
           >
             Przenieś termin
