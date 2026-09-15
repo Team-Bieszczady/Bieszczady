@@ -53,6 +53,7 @@ export interface BackendDocumentVersion {
   changeNote: string | null;
   uploadedById: string;
   createdAt: string;
+  uploadedBy: { firstName: string; lastName: string };
 }
 
 export interface BackendDocument {
@@ -432,7 +433,21 @@ async uploadDocument(accessToken: string, projectId: string, folderId: string, f
  return response.json();
 
 
-}
+},
+  async getVersions(
+    accessToken: string,
+    projectId: string,
+    documentId: string
+  ): Promise<BackendDocumentVersion[]> {
+    return request<BackendDocumentVersion[]>(
+      `/api/v1/projects/${projectId}/documents/${documentId}/versions`,
+      {
+        method: 'GET',
+        accessToken,
+       fallbackMessage: 'Nie udało się pobrać historii wersji',
+      },
+    );
+  },
 
 };
 

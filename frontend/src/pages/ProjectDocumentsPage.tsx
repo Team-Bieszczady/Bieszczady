@@ -15,6 +15,9 @@ import { formatFileSize } from '../features/documents/utils/formatters';
 import { IoCloudUploadOutline, IoFolderOutline } from 'react-icons/io5';
 import { Select } from '../components/ui/Select';
 import toast from 'react-hot-toast';
+
+
+
 const PROJECT_ID = '11111111-1111-1111-1111-111111111111';
 export default function ProjectDocumentsPage() {
   const [folderId, setFolderId] = useState<string | null>(null);
@@ -28,7 +31,19 @@ export default function ProjectDocumentsPage() {
   const [kind, setKind] = useState<DocumentKind>('CONTRACT');
   const [file, setFile] = useState<File | null>(null);
   const [showUpload, setShowUpload] = useState(false);
+const [expandedIds, setExpandedIds] = useState<string[]>([]);
 
+
+
+
+const toggleExpanded = (documentId: string) => {
+  if(expandedIds.includes(documentId)){
+const newExpandsIds = expandedIds.filter((el) => el !== documentId);
+setExpandedIds(newExpandsIds)
+  }else{
+  setExpandedIds([...expandedIds, documentId])
+  }
+};
   const upload = useUploadDocument(PROJECT_ID, folderId ?? '');
   const clear = () => {
     setName("");
@@ -165,16 +180,18 @@ setFile(null)
             </p>
           )}
           {documents && (
-            <DocumentsTable documents={documents} onDownload={down} />
+            <DocumentsTable
+              documents={documents}
+              projectId={PROJECT_ID}
+              onDownload={down}
+              expandedIds={expandedIds}
+              onToggle={toggleExpanded}
+            />
           )}
         </section>
       </div>
 
-      <Modal
-        isOpen={showUpload}
-        onClose={clear}
-        title="Wgraj plik"
-      >
+      <Modal isOpen={showUpload} onClose={clear} title="Wgraj plik">
         <div className="flex flex-col gap-3">
           <label className="flex flex-col gap-1 text-xs text-gray-600">
             Nazwa dokumentu
@@ -207,11 +224,7 @@ setFile(null)
         </div>
 
         <div className="mt-4 flex justify-end gap-2">
-          <Button
-            variant="ghost"
-            size="small"
-            onClick={clear}
-          >
+          <Button variant="ghost" size="small" onClick={clear}>
             Anuluj
           </Button>
           <Button
