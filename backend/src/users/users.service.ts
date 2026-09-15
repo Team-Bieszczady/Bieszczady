@@ -8,6 +8,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { SERIALIZABLE } from '../prisma/transaction-options';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
@@ -16,6 +17,20 @@ import * as bcrypt from 'bcryptjs';
 import { AuditLogService } from './audit-log.service';
 import { ModuleAccessService } from './module-access.service';
 import { Module } from '../common/enums/module.enum';
+
+const TASK_COUNT = { _count: { select: { ownedTasks: true } } } as const;
+
+type UserWithCount = User & { _count: { ownedTasks: number } };
+
+export type UserWithTaskCount = Omit<User, 'passwordHash'> & {
+  taskCount: number;
+};
+
+const LAST_DIRECTOR_MESSAGES = {
+  deactivate: 'Nie można dezaktywować ostatniego aktywnego dyrektora',
+  remove: 'Nie można odebrać uprawnień ostatniemu aktywnemu dyrektorowi',
+  delete: 'Nie można usunąć ostatniego aktywnego dyrektora',
+} as const;
 
 @Injectable()
 export class UsersService {
@@ -31,6 +46,11 @@ export class UsersService {
     return Object.fromEntries(
       Object.entries(user).filter(([key]) => key !== 'passwordHash'),
     ) as Omit<User, 'passwordHash'>;
+  }
+  private withTaskCount(user: UserWithCount): UserWithTaskCount {
+    const { _count, ...row } = user;
+
+    return { ...this.excludePasswordHash(row), taskCount: _count.ownedTasks };
   }
 
   async setPassword(userId: string, plainPassword: string): Promise<void> {
@@ -48,16 +68,14 @@ export class UsersService {
   private async assertNotLastActiveDirector(
     tx: Prisma.TransactionClient,
     user: User,
-    action: string,
+    action: 'deactivate' | 'remove' | 'delete',
   ): Promise<void> {
     if (user.isDirector && user.accountStatus === 'ACTIVE') {
       const activeDirectorCount = await tx.user.count({
         where: { isDirector: true, accountStatus: 'ACTIVE', deletedAt: null },
       });
       if (activeDirectorCount <= 1) {
-        throw new ConflictException(
-          `Cannot ${action} the last remaining active director`,
-        );
+        throw new ConflictException(LAST_DIRECTOR_MESSAGES[action]);
       }
     }
   }
@@ -83,10 +101,10 @@ export class UsersService {
             mustChangePassword: true,
           },
         });
-        const grantedModules = await this.moduleAccess.seedDefaultModules(
+        const grantedModules = await this.moduleAccess.grantInitialModules(
           tx,
           newUser.id,
-          dto.modules ?? [],
+          dto.modules,
           actorId,
         );
 
@@ -105,32 +123,24 @@ export class UsersService {
       this.logger.error('Error creating user:', error);
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
-          throw new ConflictException('Email already in use');
+          throw new ConflictException('Ten adres e-mail jest już zajęty');
         }
       }
-      throw new InternalServerErrorException();
+      throw new InternalServerErrorException('Wystąpił błąd serwera');
     }
   }
 
-  async findById(id: string): Promise<Omit<User, 'passwordHash'>> {
+  async findById(id: string): Promise<UserWithTaskCount> {
     const user = await this.prisma.user.findFirst({
       where: { id, deletedAt: null },
+      include: TASK_COUNT,
     });
 
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException('Nie znaleziono użytkownika');
     }
 
-    return this.excludePasswordHash(user);
-  }
-
-  async findByEmail(email: string): Promise<Omit<User, 'passwordHash'> | null> {
-    const normalizedEmail = this.normalizeEmail(email);
-    const user = await this.prisma.user.findFirst({
-      where: { email: normalizedEmail, deletedAt: null },
-    });
-
-    return user ? this.excludePasswordHash(user) : null;
+    return this.withTaskCount(user);
   }
 
   async findByEmailForAuth(email: string): Promise<User | null> {
@@ -150,13 +160,14 @@ export class UsersService {
 
     return user ? this.excludePasswordHash(user) : null;
   }
-  async findAll(includeDeleted = false): Promise<Omit<User, 'passwordHash'>[]> {
+  async findAll(includeDeleted = false): Promise<UserWithTaskCount[]> {
     const users = await this.prisma.user.findMany({
       where: includeDeleted ? {} : { deletedAt: null },
       orderBy: { createdAt: 'asc' },
+      include: TASK_COUNT,
     });
 
-    return users.map((user) => this.excludePasswordHash(user));
+    return users.map((user) => this.withTaskCount(user));
   }
 
   async recordLogin(id: string): Promise<void> {
@@ -172,7 +183,7 @@ export class UsersService {
     dto: UpdateUserDto,
   ): Promise<Omit<User, 'passwordHash'>> {
     if (actorId !== targetId) {
-      throw new ForbiddenException('You can only edit your own profile');
+      throw new ForbiddenException('Możesz edytować tylko własny profil');
     }
 
     const user = await this.prisma.user.findFirst({
@@ -180,7 +191,7 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException('Nie znaleziono użytkownika');
     }
 
     const data: Prisma.UserUpdateInput = {};
@@ -202,37 +213,40 @@ export class UsersService {
     id: string,
     status: string,
   ): Promise<Omit<User, 'passwordHash'>> {
-    const updated = await this.prisma.$transaction(
-      async (tx) => {
-        const user = await tx.user.findFirst({
-          where: { id, deletedAt: null },
-        });
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.findFirst({
+        where: { id, deletedAt: null },
+      });
 
-        if (!user) {
-          throw new NotFoundException('User not found');
-        }
+      if (!user) {
+        throw new NotFoundException('Nie znaleziono użytkownika');
+      }
 
-        if (status === 'INACTIVE') {
-          await this.assertNotLastActiveDirector(tx, user, 'deactivate');
-        }
+      if (actorId === id) {
+        throw new ForbiddenException(
+          'Nie możesz zmienić statusu własnego konta',
+        );
+      }
 
-        const result = await tx.user.update({
-          where: { id },
-          data: { accountStatus: status },
-        });
+      if (status === 'INACTIVE') {
+        await this.assertNotLastActiveDirector(tx, user, 'deactivate');
+      }
 
-        await this.auditLog.recordInTransaction(tx, {
-          actorId,
-          targetId: id,
-          action:
-            status === 'INACTIVE' ? 'ACCOUNT_DEACTIVATED' : 'ACCOUNT_ACTIVATED',
-          metadata: { from: user.accountStatus, to: status },
-        });
+      const result = await tx.user.update({
+        where: { id },
+        data: { accountStatus: status },
+      });
 
-        return result;
-      },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
-    );
+      await this.auditLog.recordInTransaction(tx, {
+        actorId,
+        targetId: id,
+        action:
+          status === 'INACTIVE' ? 'ACCOUNT_DEACTIVATED' : 'ACCOUNT_ACTIVATED',
+        metadata: { from: user.accountStatus, to: status },
+      });
+
+      return result;
+    }, SERIALIZABLE);
 
     return this.excludePasswordHash(updated);
   }
@@ -242,47 +256,44 @@ export class UsersService {
     targetId: string,
     isDirector: boolean,
   ): Promise<Omit<User, 'passwordHash'>> {
-    const result = await this.prisma.$transaction(
-      async (tx) => {
-        const target = await tx.user.findFirst({
-          where: { id: targetId, deletedAt: null },
-        });
+    const result = await this.prisma.$transaction(async (tx) => {
+      const target = await tx.user.findFirst({
+        where: { id: targetId, deletedAt: null },
+      });
 
-        if (!target) {
-          throw new NotFoundException('User not found');
-        }
+      if (!target) {
+        throw new NotFoundException('Nie znaleziono użytkownika');
+      }
 
-        if (actorId === targetId && !isDirector) {
-          throw new ForbiddenException(
-            'A director cannot revoke their own director status',
-          );
-        }
+      if (actorId === targetId && !isDirector) {
+        throw new ForbiddenException(
+          'Nie możesz odebrać sobie uprawnień dyrektora',
+        );
+      }
 
-        if (!isDirector && target.isDirector) {
-          await this.assertNotLastActiveDirector(tx, target, 'remove');
-        }
+      if (!isDirector && target.isDirector) {
+        await this.assertNotLastActiveDirector(tx, target, 'remove');
+      }
 
-        const updated = await tx.user.update({
-          where: { id: targetId },
-          data: { isDirector },
-        });
+      const updated = await tx.user.update({
+        where: { id: targetId },
+        data: { isDirector },
+      });
 
-        await this.auditLog.recordInTransaction(tx, {
-          actorId,
-          targetId,
-          action: isDirector
-            ? 'DIRECTOR_STATUS_GRANTED'
-            : 'DIRECTOR_STATUS_REVOKED',
-          metadata: {
-            previousValue: target.isDirector,
-            newValue: isDirector,
-          },
-        });
+      await this.auditLog.recordInTransaction(tx, {
+        actorId,
+        targetId,
+        action: isDirector
+          ? 'DIRECTOR_STATUS_GRANTED'
+          : 'DIRECTOR_STATUS_REVOKED',
+        metadata: {
+          previousValue: target.isDirector,
+          newValue: isDirector,
+        },
+      });
 
-        return updated;
-      },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
-    );
+      return updated;
+    }, SERIALIZABLE);
 
     return this.excludePasswordHash(result);
   }
@@ -296,12 +307,12 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException('Nie znaleziono użytkownika');
     }
 
     const valid = await bcrypt.compare(dto.currentPassword, user.passwordHash);
     if (!valid) {
-      throw new UnauthorizedException('Current password is incorrect');
+      throw new UnauthorizedException('Obecne hasło jest nieprawidłowe');
     }
 
     await this.setPassword(userId, dto.newPassword);
@@ -313,32 +324,43 @@ export class UsersService {
   }
 
   async softDeleteUser(actorId: string, id: string): Promise<void> {
-    await this.prisma.$transaction(
-      async (tx) => {
-        const user = await tx.user.findFirst({
-          where: { id, deletedAt: null },
-        });
+    await this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.findFirst({
+        where: { id, deletedAt: null },
+      });
 
-        if (!user) {
-          throw new NotFoundException('User not found');
-        }
+      if (!user) {
+        throw new NotFoundException('Nie znaleziono użytkownika');
+      }
 
-        await this.assertNotLastActiveDirector(tx, user, 'delete');
+      if (actorId === id) {
+        throw new ForbiddenException('Nie możesz usunąć własnego konta');
+      }
 
-        await tx.user.update({
-          where: { id },
-          data: { deletedAt: new Date() },
-        });
+      await this.assertNotLastActiveDirector(tx, user, 'delete');
 
-        await this.auditLog.recordInTransaction(tx, {
-          actorId,
-          targetId: id,
-          action: 'ACCOUNT_DELETED',
-          metadata: { email: user.email },
-        });
-      },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
-    );
+      await tx.user.update({
+        where: { id },
+        data: { deletedAt: new Date() },
+      });
+
+      await this.auditLog.recordInTransaction(tx, {
+        actorId,
+        targetId: id,
+        action: 'ACCOUNT_DELETED',
+        metadata: { email: user.email },
+      });
+    }, SERIALIZABLE);
+  }
+  async getModuleAccess(id: string): Promise<{ modules: Module[] }> {
+    const user = await this.findById(id);
+
+    return {
+      modules: await this.moduleAccess.getEffectiveModules({
+        id: user.id,
+        isDirector: user.isDirector,
+      }),
+    };
   }
 
   async setModuleAccess(

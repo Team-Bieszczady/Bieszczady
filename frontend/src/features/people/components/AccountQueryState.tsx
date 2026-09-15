@@ -1,7 +1,5 @@
 import type { ReactNode } from 'react';
-import { PageMessage } from '../../../components/ui/PageMessage';
-import { Spinner } from '../../../components/ui/Spinner';
-import { isApiError } from '../../../lib/api';
+import { QueryState } from '../../../components/ui/QueryState';
 import { accountErrorMessage } from '../utils/accountErrorMessage';
 import type { Person } from '../data';
 
@@ -18,44 +16,17 @@ interface AccountQueryStateProps {
 }
 
 export default function AccountQueryState({
-  isLoading,
-  isError,
-  error,
   person,
-  errorMessage,
-  notFoundMessage,
-  terminalStatuses = [404],
-  refetch,
   children,
+  ...rest
 }: AccountQueryStateProps) {
-  if (isLoading) {
-    return (
-      <div
-        role="status"
-        aria-live="polite"
-        className="flex flex-col items-center justify-center gap-3 h-screen px-6 text-center"
-      >
-        <Spinner variant="dark" size="32" />
-        <p className="text-gray-500 text-sm">Ładowanie...</p>
-      </div>
-    );
-  }
-
-  if (isError) {
-    const status = isApiError(error) ? error.status : undefined;
-    const isTerminal = status !== undefined && terminalStatuses.includes(status);
-
-    return (
-      <PageMessage
-        message={accountErrorMessage(error, errorMessage)}
-        onRetry={isTerminal ? undefined : refetch}
-      />
-    );
-  }
-
-  if (!person) {
-    return <PageMessage message={notFoundMessage} />;
-  }
-
-  return <>{children(person)}</>;
+  return (
+    <QueryState<Person>
+      {...rest}
+      data={person}
+      resolveError={accountErrorMessage}
+    >
+      {children}
+    </QueryState>
+  );
 }

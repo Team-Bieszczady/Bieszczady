@@ -11,7 +11,10 @@ interface AnchoredPopupOptions extends AnchoredPositionOptions {
   restoreFocus?: boolean;
 }
 
-interface AnchoredPopup<TButton extends HTMLElement, TPanel extends HTMLElement> {
+interface AnchoredPopup<
+  TButton extends HTMLElement,
+  TPanel extends HTMLElement,
+> {
   isOpen: boolean;
   open: () => void;
   close: () => void;
@@ -24,8 +27,10 @@ interface AnchoredPopup<TButton extends HTMLElement, TPanel extends HTMLElement>
 export function useAnchoredPopup<
   TButton extends HTMLElement,
   TPanel extends HTMLElement,
->({ restoreFocus = false, ...positionOptions }: AnchoredPopupOptions = {}):
-  AnchoredPopup<TButton, TPanel> {
+>({
+  restoreFocus = false,
+  ...positionOptions
+}: AnchoredPopupOptions = {}): AnchoredPopup<TButton, TPanel> {
   const [isOpen, setIsOpen] = useState(false);
   const buttonRef = useRef<TButton>(null);
   const panelRef = useRef<TPanel>(null);

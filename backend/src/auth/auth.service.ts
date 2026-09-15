@@ -98,7 +98,7 @@ export class AuthService {
     const user = await this.validateUser(email, password);
     if (!user) {
       this.logger.warn(`Failed login attempt for ${email}`);
-      throw new UnauthorizedException();
+      throw new UnauthorizedException('Nieprawidłowy e-mail lub hasło');
     }
     this.logger.log(`User ${user.id} logged in`);
 
@@ -111,12 +111,12 @@ export class AuthService {
   async refresh(refreshToken: string): Promise<LoginResult> {
     const userId = this.refreshTokens.consume(refreshToken);
     if (!userId) {
-      throw new UnauthorizedException();
+      throw new UnauthorizedException('Sesja wygasła. Zaloguj się ponownie');
     }
 
     const user = await this.getActiveUserById(userId);
     if (!user) {
-      throw new UnauthorizedException();
+      throw new UnauthorizedException('Sesja wygasła. Zaloguj się ponownie');
     }
 
     return this.issueTokens(user);
@@ -127,7 +127,7 @@ export class AuthService {
   }
 
   async requestPasswordReset(email: string): Promise<void> {
-    const user = await this.usersService.findByEmail(email);
+    const user = await this.usersService.findByEmailForAuth(email);
     if (!user || user.accountStatus !== 'ACTIVE') {
       return;
     }

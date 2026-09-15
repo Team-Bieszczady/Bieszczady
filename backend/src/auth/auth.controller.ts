@@ -69,7 +69,7 @@ export class AuthController {
     const token = cookies?.[REFRESH_COOKIE];
 
     if (!token) {
-      throw new UnauthorizedException();
+      throw new UnauthorizedException('Sesja wygasła. Zaloguj się ponownie');
     }
 
     const { accessToken, refreshToken, user } =

@@ -8,7 +8,7 @@ The system has two distinct permission levels that must never be merged:
 
 **Global permissions:** A boolean `isDirector` flag on each user. Directors are global system administrators who can create accounts, deactivate users, and promote/demote other directors.
 
-**Project permissions:** Three roles—COORDINATOR, EXECUTOR, PARTNER—that will be assigned per-project via a future `project_members` join table. These are **not stored on the user**; they exist only as a TypeScript enum (`src/common/enums/project-role.enum.ts`) and will be persisted separately once projects are built.
+**Project permissions:** Three roles—COORDINATOR, EXECUTOR, PARTNER—assigned per-project via the `project_members` join table. These are **not stored on the user**; the value list lives in TypeScript as `PROJECT_ROLES` (`src/common/enums/project.enums.ts`) and is persisted on `project_members.project_role`.
 
 There is no `role` column on the User table. `isDirector` is the only permission field on the user itself.
 
@@ -249,7 +249,7 @@ the token.
 
 The following are intentionally out of scope:
 
-- **Project and member endpoints:** No `projects` table, no `project_members` table, no endpoints to assign users to projects or manage project roles.
+- **Per-project permissions beyond tasks:** the projects domain is built — tables, seed and endpoints for projects, stages, activities, tasks, subtasks, goals, risks, members and the three dictionaries (see `docs/projects.md`). What is still missing is the finer `PERMISSION(module, action, project_id?)` model from the ERD. Only tasks are project-scoped today; every other write is director-only.
 
 - **Director-initiated password reset (F1.5):** a director cannot yet reset someone else's password from the People page. The self-service flow over email exists; the administrative one does not.
 
@@ -313,8 +313,8 @@ npm run start:prod
 - `src/auth/password-reset-token.service.ts` — Issues and consumes single-use reset tokens, stored hashed in the database.
 - `src/mail/` — `MailService`, the only place that talks to the SMTP server.
 - `src/prisma/prisma.module.ts` — Global module providing `PrismaService` to the whole app.
-- `src/common/enums/project-role.enum.ts` — TypeScript enum for future project roles (not persisted).
-- `prisma/schema.prisma` — Prisma schema (User, AuditLog, UserModuleAccess and PasswordResetToken models).
+- `src/common/enums/project.enums.ts` — Project-side value lists (roles, risk levels, colours, task status/priority) as `as const` arrays for `@IsIn` validation.
+- `prisma/schema.prisma` — Prisma schema (User, AuditLog, UserModuleAccess, the projects domain, and PasswordResetToken models).
 - `prisma/migrations/` — Database migrations.
 - `prisma/seed.ts` — Test data seeding script.
 

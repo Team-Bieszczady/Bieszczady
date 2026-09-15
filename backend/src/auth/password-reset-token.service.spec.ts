@@ -114,7 +114,6 @@ describe('PasswordResetTokenService', () => {
       const lifetimeMs = prisma.rows[0].expiresAt.getTime() - before;
       const expectedMs = PASSWORD_RESET_TTL_MINUTES * 60 * 1000;
 
-      // A second of slack, because the clock moves between the two readings.
       expect(Math.abs(lifetimeMs - expectedMs)).toBeLessThan(1000);
     });
 
@@ -128,8 +127,6 @@ describe('PasswordResetTokenService', () => {
       const first = await service.issue('user-1');
       await service.issue('user-1');
 
-      // Asking for a second link must leave only one usable one, so a stolen
-      // or forwarded older email stops working the moment the user tries again.
       await expect(service.consume(first)).resolves.toBeNull();
     });
 
@@ -187,8 +184,6 @@ describe('PasswordResetTokenService', () => {
 
       await service.consume(token);
 
-      // An expired token must not be silently marked used: the row should stay
-      // untouched so the reason it failed remains visible in the table.
       expect(prisma.rows[0].usedAt).toBeNull();
     });
   });

@@ -21,9 +21,7 @@ import { MailModule } from '../mail/mail.module';
       }),
     }),
     ThrottlerModule.forRoot({
-      // The default message is 'ThrottlerException: Too Many Requests', which
-      // leaks the internal class name to the client.
-      errorMessage: 'Too many requests',
+      errorMessage: 'Zbyt wiele prób. Odczekaj chwilę i spróbuj ponownie',
       throttlers: [
         {
           ttl: 60000,

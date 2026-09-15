@@ -10,4 +10,6 @@ export interface AuthContextType {
   updateUser: (patch: Partial<AuthenticatedUser>) => void;
 }
 
-export const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(
+  undefined,
+);

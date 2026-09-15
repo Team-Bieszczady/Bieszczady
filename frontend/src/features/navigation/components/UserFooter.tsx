@@ -19,7 +19,9 @@ export default function UserFooter({
   className = '',
 }: UserFooterProps) {
   return (
-    <div className={`flex items-center w-full px-4 py-2 border-t border-gray-200 ${className}`}>
+    <div
+      className={`flex items-center w-full px-4 py-2 border-t border-gray-200 ${className}`}
+    >
       <Link
         to="/profile"
         onClick={onNavigate}

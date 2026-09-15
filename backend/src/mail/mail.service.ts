@@ -6,7 +6,6 @@ import { join } from 'node:path';
 const LOGO_PATH = join(__dirname, 'assets', 'logo.jpg');
 const LOGO_CID = 'logo';
 
-// Brand colours, kept in step with frontend/src/index.css.
 const DARK_GREEN = '#18744E';
 const DARK = '#101010';
 

@@ -12,7 +12,7 @@ export const CurrentUser = createParamDecorator<undefined>(
       .getRequest<{ user?: AuthenticatedUser }>();
 
     if (!request.user) {
-      throw new UnauthorizedException();
+      throw new UnauthorizedException('Sesja wygasła. Zaloguj się ponownie');
     }
 
     return request.user;

@@ -24,6 +24,7 @@ export interface BackendUser {
   isDirector: boolean;
   mustChangePassword: boolean;
   modules?: ModuleKey[];
+  taskCount?: number;
   lastLogin: string | null;
   createdAt: string;
   updatedAt: string;
@@ -78,7 +79,7 @@ interface RequestInitOptions {
   fallbackMessage: string;
 }
 
-async function request<T>(
+export async function request<T>(
   path: string,
   { method, accessToken, body, fallbackMessage }: RequestInitOptions,
 ): Promise<T> {
@@ -193,6 +194,17 @@ export const api = {
     });
   },
 
+  async getUserModules(
+    accessToken: string,
+    id: string,
+  ): Promise<{ modules: ModuleKey[] }> {
+    return request<{ modules: ModuleKey[] }>(`/api/v1/users/${id}/modules`, {
+      method: 'GET',
+      accessToken,
+      fallbackMessage: 'Nie udało się pobrać dostępu do modułów',
+    });
+  },
+
   async updateUserModules(
     accessToken: string,
     id: string,
@@ -234,19 +246,6 @@ export const api = {
       accessToken,
       body: { accountStatus },
       fallbackMessage: 'Nie udało się zmienić statusu konta',
-    });
-  },
-
-  async setDirectorStatus(
-    accessToken: string,
-    id: string,
-    isDirector: boolean,
-  ): Promise<BackendUser> {
-    return request<BackendUser>(`/api/v1/users/${id}/director-status`, {
-      method: 'PATCH',
-      accessToken,
-      body: { isDirector },
-      fallbackMessage: 'Nie udało się zmienić uprawnień dyrektora',
     });
   },
 

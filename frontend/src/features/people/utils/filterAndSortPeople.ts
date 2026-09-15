@@ -1,5 +1,6 @@
 import type { Person, PersonStatus } from '../data';
 import type { SortOption } from '../constants';
+import { normalizeText } from '../../../lib/normalizeText';
 
 export interface PeopleFilters {
   search: string;
@@ -17,14 +18,6 @@ export const EMPTY_FILTERS: PeopleFilters = {
   sort: '',
 };
 
-function normalize(value: string): string {
-  return value
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .toLowerCase()
-    .trim();
-}
-
 const STATUS_RANK: Record<PersonStatus, number> = {
   ACTIVE: 0,
   PENDING: 1,
@@ -36,12 +29,12 @@ export function filterAndSortPeople(
   people: Person[],
   filters: PeopleFilters,
 ): Person[] {
-  const search = normalize(filters.search);
+  const search = normalizeText(filters.search);
 
   const filtered = people.filter((person) => {
     if (
       search &&
-      !normalize(`${person.firstName} ${person.lastName}`).includes(search)
+      !normalizeText(`${person.firstName} ${person.lastName}`).includes(search)
     ) {
       return false;
     }

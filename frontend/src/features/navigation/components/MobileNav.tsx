@@ -38,7 +38,7 @@ export default function MobileNav() {
       width: '24px',
       height: '24px',
       left: '20px',
-      top: '20px',
+      top: '16px',
       zIndex: '40',
     },
     bmBurgerBars: {

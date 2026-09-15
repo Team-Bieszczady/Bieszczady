@@ -1,4 +1,4 @@
-import { truncateText } from '../utils/truncate';
+import { truncateText } from '../../../lib/truncate';
 import type { Person } from '../data';
 
 interface ProjectChipsProps {

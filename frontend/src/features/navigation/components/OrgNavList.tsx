@@ -15,8 +15,12 @@ export default function OrgNavList({
   onNavigate,
 }: OrgNavListProps) {
   return (
-    <div className={`flex flex-col gap-2 lg:gap-1 ${useDesktopStyle ? 'relative' : 'px-4'} ${className}`}>
-      {useDesktopStyle && <span className="absolute left-4 top-0 bottom-0 border-l border-dark/30" />}
+    <div
+      className={`flex flex-col gap-2 lg:gap-1 ${useDesktopStyle ? 'relative' : 'px-4'} ${className}`}
+    >
+      {useDesktopStyle && (
+        <span className="absolute left-4 top-0 bottom-0 border-l border-dark/30" />
+      )}
       {items.map((item) => (
         <NavLink
           key={item.id}
@@ -39,18 +43,20 @@ export default function OrgNavList({
               {useDesktopStyle && (
                 <span
                   className={`absolute left-0 top-0 bottom-0 border-l-2 transition-colors duration-200 ease-out ${
-                    isActive ? 'border-darkGreen' : 'border-transparent group-hover:border-dark/60'
+                    isActive
+                      ? 'border-darkGreen'
+                      : 'border-transparent group-hover:border-dark/60'
                   }`}
                 />
               )}
-              <span className={useDesktopStyle ? 'pl-4' : ''}>{item.label}</span>
+              <span className={useDesktopStyle ? 'pl-4' : ''}>
+                {item.label}
+              </span>
               {item.count !== undefined && (
                 <span className={useDesktopStyle ? 'pr-3' : ''}>
                   <span
                     className={`inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-xs font-medium transition-colors duration-200 ease-out ${
-                      isActive
-                        ? 'text-darkGreen'
-                        : 'bg-gray-100 text-gray-600'
+                      isActive ? 'text-darkGreen' : 'bg-gray-100 text-gray-600'
                     }`}
                   >
                     {item.count}

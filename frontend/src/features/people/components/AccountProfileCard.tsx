@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
-import { TfiEmail, TfiMobile } from 'react-icons/tfi';
+import { GoMail } from 'react-icons/go';
+import { MdLocalPhone } from 'react-icons/md';
+
 import { StatusPill } from '../../../components/ui/StatusPill';
 import type { PersonStatus } from '../data';
 import {
@@ -18,13 +20,7 @@ interface AccountProfileCardProps {
   status: PersonStatus;
 }
 
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: ReactNode;
-}) {
+function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="p-3 lg:py-4 lg:px-8">
       <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">
@@ -59,7 +55,7 @@ export default function AccountProfileCard({
         <dl className="space-y-2 sm:space-y-1">
           <Row label="E-mail">
             <dd className="flex min-w-0 items-center gap-2 text-sm text-dark sm:py-1">
-              <TfiEmail
+              <GoMail
                 className="h-4 w-4 shrink-0 text-gray-400"
                 aria-hidden="true"
               />
@@ -68,7 +64,7 @@ export default function AccountProfileCard({
           </Row>
           <Row label="Telefon">
             <dd className="flex min-w-0 items-center gap-2 text-sm text-dark sm:py-1">
-              <TfiMobile
+              <MdLocalPhone
                 className="h-4 w-4 shrink-0 text-gray-400"
                 aria-hidden="true"
               />

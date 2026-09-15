@@ -11,23 +11,27 @@ datasource db {
 }
 
 model User {
-  id                 String   @id @default(uuid())
-  firstName          String   @map("first_name")
-  lastName           String   @map("last_name")
-  email              String   @unique
+  id                 String    @id @default(uuid())
+  firstName          String    @map("first_name")
+  lastName           String    @map("last_name")
+  email              String    @unique
   phone              String?
-  passwordHash       String   @map("password_hash")
-  avatar             String?  @db.NVarChar(Max)
-  accountStatus      String   @default("ACTIVE") @map("account_status")
-  isDirector         Boolean       @default(false) @map("is_director")
-  mustChangePassword Boolean       @default(true) @map("must_change_password")
-  lastLogin          DateTime?     @map("last_login")
-  createdAt          DateTime      @default(now()) @map("created_at")
-  updatedAt          DateTime      @updatedAt @map("updated_at")
-  deletedAt          DateTime?     @map("deleted_at")
+  passwordHash       String    @map("password_hash")
+  avatar             String?   @db.NVarChar(Max)
+  accountStatus      String    @default("ACTIVE") @map("account_status")
+  isDirector         Boolean   @default(false) @map("is_director")
+  mustChangePassword Boolean   @default(true) @map("must_change_password")
+  lastLogin          DateTime? @map("last_login")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+  deletedAt          DateTime? @map("deleted_at")
 
   moduleAccess        UserModuleAccess[] @relation("UserModuleAccessUser")
   grantedModuleAccess UserModuleAccess[] @relation("UserModuleAccessGrantedBy")
+
+  projectMemberships ProjectMember[] @relation("ProjectMemberUser")
+  ownedTasks         Task[]          @relation("TaskOwner")
+  responsibleRisks   Risk[]          @relation("RiskResponsible")
 
   @@map("users")
 }
@@ -39,8 +43,8 @@ model UserModuleAccess {
   grantedAt   DateTime @default(now()) @map("granted_at")
   grantedById String   @map("granted_by_id")
 
-  user        User @relation("UserModuleAccessUser", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  grantedBy   User @relation("UserModuleAccessGrantedBy", fields: [grantedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user      User @relation("UserModuleAccessUser", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  grantedBy User @relation("UserModuleAccessGrantedBy", fields: [grantedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([userId, module])
   @@map("user_module_access")
@@ -55,6 +59,215 @@ model AuditLog {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("audit_logs")
+}
+
+model ProjectStatus {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  color     String   @default("gray")
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  projects Project[] @relation("ProjectStatusProjects")
+
+  @@map("project_statuses")
+}
+
+model ProjectType {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  projects ProjectTypesOnProjects[] @relation("ProjectTypesOnProjectsByType")
+
+  @@map("project_types")
+}
+
+model ProjectRecipient {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  projects ProjectRecipientsOnProjects[] @relation("ProjectRecipientsOnProjectsByRecipient")
+
+  @@map("project_recipients")
+}
+
+model Project {
+  id             String    @id @default(uuid())
+  name           String
+  description    String    @db.NVarChar(Max)
+  statusId       String?   @map("status_id")
+  color          String    @default("green")
+  budgetAmount   Decimal?  @map("budget_amount") @db.Decimal(12, 2)
+  startDate      DateTime? @map("start_date") @db.Date
+  plannedEndDate DateTime? @map("planned_end_date") @db.Date
+  archivedAt     DateTime? @map("archived_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  status ProjectStatus? @relation("ProjectStatusProjects", fields: [statusId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  types      ProjectTypesOnProjects[]      @relation("ProjectTypesOnProjectsByProject")
+  recipients ProjectRecipientsOnProjects[] @relation("ProjectRecipientsOnProjectsByProject")
+  members    ProjectMember[]               @relation("ProjectMembers")
+  goals      Goal[]                        @relation("ProjectGoals")
+  stages     Stage[]                       @relation("ProjectStages")
+  risks      Risk[]                        @relation("ProjectRisks")
+
+  @@index([statusId])
+  @@map("projects")
+}
+
+model ProjectTypesOnProjects {
+  projectId     String @map("project_id")
+  projectTypeId String @map("project_type_id")
+
+  project     Project     @relation("ProjectTypesOnProjectsByProject", fields: [projectId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  projectType ProjectType @relation("ProjectTypesOnProjectsByType", fields: [projectTypeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([projectId, projectTypeId])
+  @@index([projectTypeId])
+  @@map("project_types_on_projects")
+}
+
+model ProjectRecipientsOnProjects {
+  projectId   String @map("project_id")
+  recipientId String @map("recipient_id")
+
+  project   Project          @relation("ProjectRecipientsOnProjectsByProject", fields: [projectId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  recipient ProjectRecipient @relation("ProjectRecipientsOnProjectsByRecipient", fields: [recipientId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([projectId, recipientId])
+  @@index([recipientId])
+  @@map("project_recipients_on_projects")
+}
+
+model ProjectMember {
+  id          String   @id @default(uuid())
+  projectId   String   @map("project_id")
+  userId      String   @map("user_id")
+  projectRole String   @map("project_role")
+  joinedAt    DateTime @default(now()) @map("joined_at")
+
+  project Project @relation("ProjectMembers", fields: [projectId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user    User    @relation("ProjectMemberUser", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([projectId, userId])
+  @@index([userId])
+  @@map("project_members")
+}
+
+model Goal {
+  id          String   @id @default(uuid())
+  projectId   String   @map("project_id")
+  goalNumber  Int      @map("goal_number")
+  title       String
+  description String   @db.NVarChar(Max)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  project Project @relation("ProjectGoals", fields: [projectId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([projectId, goalNumber])
+  @@index([projectId])
+  @@map("goals")
+}
+
+model Stage {
+  id               String    @id @default(uuid())
+  projectId        String    @map("project_id")
+  name             String
+  description      String    @default("") @db.NVarChar(Max)
+  sortOrder        Int       @map("sort_order")
+  startDate        DateTime? @map("start_date") @db.Date
+  deadline         DateTime  @db.Date
+  originalDeadline DateTime? @map("original_deadline") @db.Date
+  deadlineNote     String?   @map("deadline_note") @db.NVarChar(Max)
+  completedAt      DateTime? @map("completed_at")
+  archivedAt       DateTime? @map("archived_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  project    Project    @relation("ProjectStages", fields: [projectId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  activities Activity[] @relation("StageActivities")
+
+  @@index([projectId])
+  @@map("stages")
+}
+
+model Activity {
+  id        String   @id @default(uuid())
+  stageId   String   @map("stage_id")
+  name      String
+  sortOrder Int      @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  stage Stage  @relation("StageActivities", fields: [stageId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tasks Task[] @relation("ActivityTasks")
+
+  @@index([stageId])
+  @@map("activities")
+}
+
+model Task {
+  id          String    @id @default(uuid())
+  activityId  String    @map("activity_id")
+  ownerId     String?   @map("owner_id")
+  title       String
+  description String    @default("") @db.NVarChar(Max)
+  status      String    @default("NEW")
+  priority    String    @default("MEDIUM")
+  dueDate     DateTime? @map("due_date") @db.Date
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  activity Activity  @relation("ActivityTasks", fields: [activityId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  owner    User?     @relation("TaskOwner", fields: [ownerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  subtasks Subtask[] @relation("TaskSubtasks")
+
+  @@index([activityId])
+  @@index([ownerId])
+  @@map("tasks")
+}
+
+model Subtask {
+  id        String   @id @default(uuid())
+  taskId    String   @map("task_id")
+  title     String
+  done      Boolean  @default(false)
+  sortOrder Int      @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  task Task @relation("TaskSubtasks", fields: [taskId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([taskId])
+  @@map("subtasks")
+}
+
+model Risk {
+  id                String   @id @default(uuid())
+  projectId         String   @map("project_id")
+  responsibleUserId String?  @map("responsible_user_id")
+  description       String   @db.NVarChar(Max)
+  probability       String   @default("MEDIUM")
+  impact            String   @default("MEDIUM")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  project     Project @relation("ProjectRisks", fields: [projectId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  responsible User?   @relation("RiskResponsible", fields: [responsibleUserId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([projectId])
+  @@index([responsibleUserId])
+  @@map("risks")
 }
 
 model PasswordResetToken {

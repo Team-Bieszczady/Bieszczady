@@ -2,6 +2,7 @@ import { useMutation } from '@tanstack/react-query';
 import { useAuthToken } from '../../../context/useAuthToken';
 import { api } from '../../../lib/api';
 import { fromModuleFlags, type ModuleFlags } from '../../../lib/modules';
+import type { ProjectRoleValue } from '../../../lib/projectsApi';
 
 export interface AddUserFormInputs {
   firstName: string;
@@ -10,7 +11,7 @@ export interface AddUserFormInputs {
   email: string;
   password: string;
   modules: ModuleFlags;
-  role?: string;
+  role?: ProjectRoleValue | '';
   projectId?: string;
 }
 

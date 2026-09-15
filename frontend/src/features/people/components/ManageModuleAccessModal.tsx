@@ -6,6 +6,7 @@ import { Button } from '../../../components/ui/Button';
 import {
   MODULES,
   MODULE_LABELS,
+  applyModuleDependencies,
   fromModuleFlags,
   toModuleFlags,
   type ModuleFlags,
@@ -46,7 +47,9 @@ export default function ManageModuleAccessModal({
       toast.success(`Dostęp do modułów dla ${userName} został zaktualizowany`);
       onClose();
     } catch {
-      toast.error('Nie udało się zaktualizować dostępu. Spróbuj ponownie.');
+      toast.error('Nie udało się zaktualizować dostępu. Spróbuj ponownie.', {
+        id: 'module-access-error',
+      });
     }
   };
 
@@ -57,20 +60,28 @@ export default function ManageModuleAccessModal({
       title={`Zarządzaj dostępem: ${userName}`}
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          {MODULES.map((module) => (
-            <Controller
-              key={module}
-              name={`modules.${module}`}
-              control={control}
-              render={({ field }) => (
-                <label className="flex items-center gap-2 cursor-pointer">
+        <Controller
+          name="modules"
+          control={control}
+          render={({ field }) => (
+            <div className="grid grid-cols-2 gap-4">
+              {MODULES.map((module) => (
+                <label
+                  key={module}
+                  className="flex items-center gap-2 cursor-pointer"
+                >
                   <input
                     type="checkbox"
-                    name={field.name}
-                    ref={field.ref}
-                    checked={field.value}
-                    onChange={field.onChange}
+                    checked={field.value[module]}
+                    onChange={(event) =>
+                      field.onChange(
+                        applyModuleDependencies(
+                          field.value,
+                          module,
+                          event.target.checked,
+                        ),
+                      )
+                    }
                     onBlur={field.onBlur}
                     className="w-4 h-4 rounded border-gray-300"
                   />
@@ -78,10 +89,10 @@ export default function ManageModuleAccessModal({
                     {MODULE_LABELS[module]}
                   </span>
                 </label>
-              )}
-            />
-          ))}
-        </div>
+              ))}
+            </div>
+          )}
+        />
 
         <div className="flex gap-2 justify-end pt-4">
           <Button

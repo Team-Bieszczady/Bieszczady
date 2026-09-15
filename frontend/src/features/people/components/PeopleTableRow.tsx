@@ -43,16 +43,15 @@ export default function PeopleTableRow({ person }: PeopleTableRowProps) {
         <ProjectChips projects={person.projects} />
       </td>
 
-      <td className="px-4 py-3 text-xs text-gray-800">{person.tasksCount} zadań</td>
+      <td className="px-4 py-3 text-xs text-gray-800">
+        {person.tasksCount} zadań
+      </td>
 
       <td className="px-4 py-3">
         <StatusPill status={person.status} size="md" />
       </td>
 
-      <td
-        className="px-4 py-3"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-end">
           <PersonRowActions person={person} />
         </div>
