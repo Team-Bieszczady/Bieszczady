@@ -108,13 +108,16 @@ export class DocumentsService {
   async getDocuments(projectId: string, folderId: string) {
     await this.assertFolderExists(folderId, projectId);
     const documents = await this.prisma.document.findMany({
-      where: { projectId: projectId, folderId: folderId, deletedAt: null },
       include: {
         versions: {
           orderBy: { versionNo: 'desc' },
           take: 1,
+          include: {
+            uploadedBy: { select: { firstName: true, lastName: true } },
+          },
         },
       },
+
       orderBy: { updatedAt: 'desc' },
     });
     return documents;
@@ -142,6 +145,9 @@ export class DocumentsService {
     const versions = await this.prisma.documentVersion.findMany({
       where: {
         document: { projectId, id: documentId, deletedAt: null },
+      },
+      include: {
+        uploadedBy: { select: { firstName: true, lastName: true } },
       },
       orderBy: {
         versionNo: 'desc',
