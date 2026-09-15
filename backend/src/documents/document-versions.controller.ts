@@ -1,10 +1,12 @@
-import { Body, Controller, Get, Param, ParseIntPipe, ParseUUIDPipe, Res, StreamableFile, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
+import { Body, Controller, Get, Param, ParseIntPipe, ParseUUIDPipe, Post, Res, StreamableFile, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { PasswordChangeGuard } from "../auth/guards/password-change.guard";
 import { DocumentsService } from "./documents.service";
 import { type Response } from 'express';
 import { FileInterceptor } from "@nestjs/platform-express";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
+import {type AuthenticatedUser } from "../auth/types/auth.types";
+import { CreateVersionDto } from "./dto/create-version.dto";
 
 @Controller('/projects/:projectId/documents')
 export class DocumentVersionsController {
@@ -32,11 +34,22 @@ export class DocumentVersionsController {
     return new StreamableFile(buffer);
   }
 
-  @UseInterceptors(FileInterceptor('file'));
-  @Body() dto;
-  @CurrentUser() user;
-  @UploadedFile() file: Express.Multer.File;
-  async createVersion (documentId, projectId, user, dto, file){
-
+  @Post('/:documentId/versions')
+  @UseGuards(JwtAuthGuard, PasswordChangeGuard)
+  @UseInterceptors(FileInterceptor('file'))
+  async createVersion(
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('documentId', ParseUUIDPipe) documentId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: CreateVersionDto,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return await this.documentService.createVersion(
+      documentId,
+      projectId,
+      user.id,
+      dto,
+      file,
+    );
   }
 }
