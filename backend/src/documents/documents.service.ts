@@ -4,6 +4,15 @@ import { StorageService } from './storage.service';
 import { randomUUID } from 'crypto';
 import { CreateDocumentDto } from './dto/create-document.dto';
 import { buffer } from 'stream/consumers';
+import { CreateVersionDto } from './dto/create-version.dto';
+
+
+interface UploadedFile {
+  buffer: Buffer;
+  originalname: string;
+  mimetype: string;
+  size: number;
+}
 
 @Injectable()
 export class DocumentsService {
@@ -27,12 +36,7 @@ export class DocumentsService {
     folderId: string,
     ownerId: string,
     dto: CreateDocumentDto,
-    file: {
-      buffer: Buffer;
-      originalname: string;
-      mimetype: string;
-      size: number;
-    },
+    file: UploadedFile,
   ) {
     await this.assertFolderExists(folderId, projectId);
     const documentId = randomUUID();
@@ -67,6 +71,41 @@ export class DocumentsService {
     return { ...document, versions: [version] };
   }
 
+  async createVersion(
+    documentId: string,
+    projectId: string,
+    ownerId: string,
+    dto: CreateVersionDto,
+    file: UploadedFile,
+  ) {
+    const versionLast = await this.prisma.documentVersion.findFirst({
+      where: {
+        document: { projectId, id: documentId, deletedAt: null },
+      },
+      orderBy: { versionNo: 'desc' },
+    });
+    if (!versionLast) {
+      throw new NotFoundException('nie ma');
+    }
+    const newVersion = versionLast.versionNo + 1;
+    const key = `${projectId}/${documentId}/v${newVersion}`;
+    await this.storage.save(key, file.buffer, file.mimetype);
+    const version = await this.prisma.documentVersion.create({
+      data: {
+        documentId: documentId,
+        versionNo: newVersion,
+        storageKey: key,
+        fileName: file.originalname,
+        mimeType: file.mimetype,
+        sizeBytes: file.size,
+        uploadedById: ownerId,
+        changeNote: dto.changeNote
+      },
+    });
+
+    return version;
+  }
+
   async getDocuments(projectId: string, folderId: string) {
     await this.assertFolderExists(folderId, projectId);
     const documents = await this.prisma.document.findMany({
@@ -82,18 +121,24 @@ export class DocumentsService {
     return documents;
   }
 
-  async downloadDocument(projectId: string, documentId: string, versionNo: number) {
+  async downloadDocument(
+    projectId: string,
+    documentId: string,
+    versionNo: number,
+  ) {
     const version = await this.prisma.documentVersion.findFirst({
       where: {
         document: { projectId, id: documentId, deletedAt: null },
         versionNo: versionNo,
       },
     });
-if (!version) {
-  throw new NotFoundException('Nie znaleziono wskazanej wersji dokumentu');
-}
+    if (!version) {
+      throw new NotFoundException('Nie znaleziono wskazanej wersji dokumentu');
+    }
     const buffer = await this.storage.read(version.storageKey);
-    return {buffer, fileName: version.fileName, mimeType: version.mimeType}
-
+    return { buffer, fileName: version.fileName, mimeType: version.mimeType };
   }
+
+
+  
 }
