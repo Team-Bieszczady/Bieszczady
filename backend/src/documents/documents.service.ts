@@ -108,6 +108,7 @@ export class DocumentsService {
   async getDocuments(projectId: string, folderId: string) {
     await this.assertFolderExists(folderId, projectId);
     const documents = await this.prisma.document.findMany({
+      where: { projectId, folderId, deletedAt: null },
       include: {
         versions: {
           orderBy: { versionNo: 'desc' },
