@@ -180,10 +180,6 @@ async function sendWithRefresh(
 
 
 export const api = {
-
-
-
-
   async login(email: string, password: string): Promise<AuthResponse> {
     const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
       method: 'POST',
@@ -390,7 +386,7 @@ export const api = {
   async getDocuments(
     accessToken: string,
     projectId: string,
-    folderId: string
+    folderId: string,
   ): Promise<BackendDocument[]> {
     return request<BackendDocument[]>(
       `/api/v1/projects/${projectId}/folders/${folderId}/documents`,
@@ -402,53 +398,77 @@ export const api = {
     );
   },
 
-async downloadVersion(accessToken: string, projectId:string, documentId: string, versionNo: number): Promise<Blob>{
-
- const response = await sendWithRefresh(
-   `/api/v1/projects/${projectId}/documents/${documentId}/versions/${versionNo}/download`,
-   { method: 'GET', credentials: 'include' },
-   accessToken
- );
-
+  async downloadVersion(
+    accessToken: string,
+    projectId: string,
+    documentId: string,
+    versionNo: number,
+  ): Promise<Blob> {
+    const response = await sendWithRefresh(
+      `/api/v1/projects/${projectId}/documents/${documentId}/versions/${versionNo}/download`,
+      { method: 'GET', credentials: 'include' },
+      accessToken,
+    );
 
     if (!response.ok) {
       throw createApiError(response.status, 'Nie udało się pobrać pliku');
     }
 
     return response.blob();
-},
+  },
 
-async uploadDocument(accessToken: string, projectId: string, folderId: string, formData: FormData): Promise<BackendDocument> {
+  async uploadDocument(
+    accessToken: string,
+    projectId: string,
+    folderId: string,
+    formData: FormData,
+  ): Promise<BackendDocument> {
+    const response = await sendWithRefresh(
+      `/api/v1/projects/${projectId}/folders/${folderId}/documents`,
+      { method: 'POST', credentials: 'include', body: formData },
+      accessToken,
+    );
 
- const response = await sendWithRefresh(
-   `/api/v1/projects/${projectId}/folders/${folderId}/documents`,
-   { method: 'POST', credentials: 'include', body: formData },
-   accessToken,
- );
+    if (!response.ok) {
+      throw createApiError(response.status, 'Nie udało się wgrać pliku');
+    }
 
- if (!response.ok) {
-   throw createApiError(response.status, 'Nie udało się wgrać pliku');
- }
+    return response.json();
+  },
 
- return response.json();
+  async uploadVersion(
+    accessToken: string,
+    projectId: string,
+    documentId: string,
+    formData: FormData,
+  ): Promise<BackendDocumentVersion> {
+    const response = await sendWithRefresh(
+      `/api/v1/projects/${projectId}/documents/${documentId}/versions`,
+      { method: 'POST', credentials: 'include', body: formData },
+      accessToken,
+    );
 
+    if (!response.ok) {
+      throw createApiError(response.status, 'Nie udało się wgrać wersji');
+    }
 
-},
+    return response.json();
+  },
+
   async getVersions(
     accessToken: string,
     projectId: string,
-    documentId: string
+    documentId: string,
   ): Promise<BackendDocumentVersion[]> {
     return request<BackendDocumentVersion[]>(
       `/api/v1/projects/${projectId}/documents/${documentId}/versions`,
       {
         method: 'GET',
         accessToken,
-       fallbackMessage: 'Nie udało się pobrać historii wersji',
+        fallbackMessage: 'Nie udało się pobrać historii wersji',
       },
     );
   },
-
 };
 
 

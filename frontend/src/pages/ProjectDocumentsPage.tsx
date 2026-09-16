@@ -15,6 +15,12 @@ import { formatFileSize } from '../features/documents/utils/formatters';
 import { IoCloudUploadOutline, IoFolderOutline } from 'react-icons/io5';
 import { Select } from '../components/ui/Select';
 import toast from 'react-hot-toast';
+import { useUploadVersion } from '../features/documents/hooks/useUploadVersion';
+import { FileDropzone } from '../components/ui/FileDropzone';
+import {
+  FIELD_LABEL_CLASSES,
+  INPUT_CLASSES,
+} from '../components/ui/formStyles';
 
 
 
@@ -32,8 +38,34 @@ export default function ProjectDocumentsPage() {
   const [file, setFile] = useState<File | null>(null);
   const [showUpload, setShowUpload] = useState(false);
 const [expandedIds, setExpandedIds] = useState<string[]>([]);
+const [versionForId, setVersionForId] = useState<string | null>(null);
+const [changeNote, setChangeNote] = useState('');
+const [mode, setMode] = useState<'document' | 'version'>('document');
 
 
+
+const uploadVersion = useUploadVersion                (
+  PROJECT_ID,
+  folderId ?? '',
+  versionForId ?? '',
+);
+const uploadNewVersion = () => {
+  if (!file) {
+    return;
+  }
+  uploadVersion.mutate(
+    { file, changeNote },
+    {
+      onSuccess: () => clear(),
+      onError: (error) => {
+        const message = isApiError(error)
+          ? error.message
+          : 'Coś poszło nie tak';
+        toast.error(message);
+      },
+    },
+  );
+};
 
 
 const toggleExpanded = (documentId: string) => {
@@ -46,10 +78,21 @@ setExpandedIds(newExpandsIds)
 };
   const upload = useUploadDocument(PROJECT_ID, folderId ?? '');
   const clear = () => {
-    setName("");
-    setShowUpload(false)
-setFile(null)
-  }
+    setShowUpload(false);
+    setName('');
+    setFile(null);
+    setChangeNote('');
+    setVersionForId(null);
+    setMode('document');
+  };
+  
+  const openNewVersion = (documentId: string) => {
+    setVersionForId(documentId);
+    setMode('version');
+    setShowUpload(true);
+  };
+
+
   const down = async (
     documentId: string,
     versionNo: number,
@@ -107,6 +150,14 @@ setFile(null)
   }
 
   const nameFolder = folders.find((el) => el.id === folderId)?.name;
+
+ const documentOptions = 
+   documents?.map((doc) => ({
+     value: doc.id,
+     label: doc.versions[0]
+       ? `${doc.name} (v${doc.versions[0].versionNo})`
+       : doc.name,
+   })) ?? [];
 
   const bytes =
     documents?.reduce(
@@ -186,56 +237,133 @@ setFile(null)
               onDownload={down}
               expandedIds={expandedIds}
               onToggle={toggleExpanded}
+              onNewVersion={openNewVersion}
             />
           )}
         </section>
       </div>
 
       <Modal isOpen={showUpload} onClose={clear} title="Wgraj plik">
-        <div className="flex flex-col gap-3">
-          <label className="flex flex-col gap-1 text-xs text-gray-600">
-            Nazwa dokumentu
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="rounded border border-gray-200 px-3 py-2 text-sm text-dark"
-            />
-          </label>
+        <div className="space-y-5">
+          <FileDropzone value={file} onChange={setFile} />
+          <div className="grid grid-cols-2 gap-4">
+            <label className="flex items-center gap-2 text-xs font-semibold text-dark/75 cursor-pointer">
+              <input
+                type="radio"
+                checked={mode === 'document'}
+                onChange={() => setMode('document')}
+                className="accent-darkGreen"
+              />
+              Nowy dokument
+            </label>
 
-          <label className="flex flex-col gap-1 text-xs text-gray-600">
-            Rodzaj
-            <Select
-              options={DOCUMENT_KINDS_OPTIONS}
-              value={kind}
-              onChange={(v) => setKind(v as DocumentKind)}
-              placeholder="Wybierz rodzaj"
-            />
-          </label>
+            <label className="flex items-center gap-2 text-xs font-semibold text-dark/75 cursor-pointer">
+              <input
+                type="radio"
+                checked={mode === 'version'}
+                onChange={() => setMode('version')}
+                className="accent-darkGreen"
+              />
+              Nowa wersja
+            </label>
+          </div>
 
-          <label className="flex flex-col gap-1 text-xs text-gray-600">
-            Plik
-            <input
-              type="file"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              className="text-sm"
-            />
-          </label>
-        </div>
+          {mode === 'document' && (
+            <>
+              <p className="text-xs text-gray-400">
+                Dokument trafi do folderu:{' '}
+                <span className="font-semibold text-dark">{nameFolder}</span>
+              </p>
 
-        <div className="mt-4 flex justify-end gap-2">
-          <Button variant="ghost" size="small" onClick={clear}>
-            Anuluj
-          </Button>
-          <Button
-            variant="primary"
-            size="small"
-            onClick={uploadDoc}
-            disabled={!name || !file || !kind}
-            isPending={upload.isPending}
-          >
-            Wgraj
-          </Button>
+              <div>
+                <label className={FIELD_LABEL_CLASSES}>
+                  Nazwa dokumentu <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Podaj nazwę..."
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className={INPUT_CLASSES}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className={FIELD_LABEL_CLASSES}>
+                    Rodzaj <span className="text-red-500">*</span>
+                  </label>
+                  <Select
+                    size="md"
+                    options={DOCUMENT_KINDS_OPTIONS}
+                    value={kind}
+                    onChange={(v) => setKind(v as DocumentKind)}
+                    placeholder="Wybierz"
+                  />
+                </div>
+              </div>
+            </>
+          )}
+
+          {mode === 'version' && (
+            <>
+              <div>
+                <label className={FIELD_LABEL_CLASSES}>
+                  Dokument, do którego dodajesz wersję: {' '}
+                  <span className="text-red-500">*</span>
+                </label>
+                <Select
+                  size="md"
+                  options={documentOptions}
+                  value={versionForId ?? ''}
+                  onChange={(v) => setVersionForId(v)}
+                  placeholder="Wybierz"
+                />
+                <p className="mt-1 text-xs text-gray-400">
+                  Lista zawiera dokumenty z folderu: {' '}
+                  <span className="font-semibold text-dark">{nameFolder}</span>
+                </p>
+              </div>
+
+              <div>
+                <label className={FIELD_LABEL_CLASSES}>Opis zmiany</label>
+                <input
+                  type="text"
+                  placeholder="Dodaj notatkę, np. Uzupełniono załącznik nr 2"
+                  value={changeNote}
+                  onChange={(e) => setChangeNote(e.target.value)}
+                  className={INPUT_CLASSES}
+                />
+              </div>
+            </>
+          )}
+
+          <div className="border-t border-gray-200 flex gap-3 justify-end pt-4">
+            <Button
+              variant="outline"
+              size="small"
+              type="button"
+              onClick={clear}
+            >
+              Anuluj
+            </Button>
+            <Button
+              variant="primary"
+              size="small"
+              onClick={mode === 'document' ? uploadDoc : uploadNewVersion}
+              disabled={
+                mode === 'document'
+                  ? !name || !file || !kind
+                  : !file || !versionForId
+              }
+              isPending={
+                mode === 'document' ? upload.isPending : uploadVersion.isPending
+              }
+              className="font-medium!"
+            >
+              Zapisz
+            </Button>
+          </div>
         </div>
       </Modal>
     </div>

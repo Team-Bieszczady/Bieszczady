@@ -13,10 +13,11 @@ interface Props {
   isExpanded: boolean;
   onToggle: (documentId: string) => void;
   onDownload: (documentId: string, versionNo: number, fileName: string) => void;
+  onNewVersion: (documentId: string) => void
 }
 
 
-export const DocumentRow = ({document, projectId, isExpanded, onToggle, onDownload}: Props) => {
+export const DocumentRow = ({document, projectId, isExpanded, onToggle, onDownload, onNewVersion}: Props) => {
          const version = document.versions[0];
 const { data: versions, error, isPending } = useVersions(
   projectId,
@@ -95,7 +96,13 @@ return (
           <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">
             Historia wersji
           </p>
-
+          <button
+            type="button"
+            onClick={() => onNewVersion(document.id)}
+            className="cursor-pointer text-xs font-medium text-darkGreen hover:text-darkGreenHover"
+          >
+            Wgraj nową wersję
+          </button>
           {error && <p>Error</p>}
           {isPending && <p>Pending...</p>}
           <div className="flex flex-col gap-4">

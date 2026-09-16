@@ -8,6 +8,7 @@ interface Props {
   onDownload: (documentId: string, versionNo: number, fileName: string) => void;
   expandedIds: string[];
   onToggle: (documentId: string) => void;
+  onNewVersion: (documentId: string) => void;
 }
 
 const HEAD_CLASS =
@@ -19,6 +20,7 @@ export function DocumentsTable({
   onDownload,
   expandedIds,
   onToggle,
+  onNewVersion
 }: Props) {
   if (documents.length === 0) {
     return (
@@ -50,6 +52,7 @@ export function DocumentsTable({
               isExpanded={expandedIds.includes(doc.id)}
               onToggle={onToggle}
               onDownload={onDownload}
+              onNewVersion={onNewVersion}
             />
           ))}
         </tbody>
