@@ -12,7 +12,7 @@ import { DocumentsTable } from '../features/documents/components/DocumentsTable'
 import { Modal } from '../components/ui/Modal';
 import { Button } from '../components/ui/Button';
 import { formatFileSize } from '../features/documents/utils/formatters';
-import { IoCloudUploadOutline, IoFolderOutline } from 'react-icons/io5';
+import { IoCloudUploadOutline,IoInformationCircleOutline } from 'react-icons/io5';
 import { Select } from '../components/ui/Select';
 import toast from 'react-hot-toast';
 import { useUploadVersion } from '../features/documents/hooks/useUploadVersion';
@@ -21,6 +21,7 @@ import {
   FIELD_LABEL_CLASSES,
   INPUT_CLASSES,
 } from '../components/ui/formStyles';
+import { FolderTree } from '../features/documents/components/FolderTree';
 
 
 
@@ -159,6 +160,12 @@ setExpandedIds(newExpandsIds)
        : doc.name,
    })) ?? [];
 
+  const nextVersionNo = versionForId
+    ? (documents?.find((doc) => doc.id === versionForId)?.versions[0]
+        ?.versionNo ?? 0) + 1
+    : null;
+
+
   const bytes =
     documents?.reduce(
       (accumulator, currentValue) =>
@@ -192,21 +199,13 @@ setExpandedIds(newExpandsIds)
             Foldery
           </p>
           <div className="flex flex-col gap-1">
-            {folders.map((el) => (
-              <button
-                type="button"
-                key={el.id}
-                onClick={() => setFolderId(el.id)}
-                className={`flex items-center gap-2 rounded px-3 py-2 text-left text-sm ${
-                  el.id === folderId
-                    ? 'bg-lightGreen text-darkGreen'
-                    : 'text-dark hover:bg-gray-50'
-                }`}
-              >
-                <IoFolderOutline className="h-4 w-4 shrink-0" />
-                {el.name}
-              </button>
-            ))}
+            <FolderTree
+              folders={folders}
+              parentId={null}
+              level={0}
+              selectedId={folderId}
+              onSelect={setFolderId}
+            />
           </div>
         </aside>
 
@@ -309,7 +308,7 @@ setExpandedIds(newExpandsIds)
             <>
               <div>
                 <label className={FIELD_LABEL_CLASSES}>
-                  Dokument, do którego dodajesz wersję: {' '}
+                  Dokument, do którego dodajesz wersję:{' '}
                   <span className="text-red-500">*</span>
                 </label>
                 <Select
@@ -320,11 +319,20 @@ setExpandedIds(newExpandsIds)
                   placeholder="Wybierz"
                 />
                 <p className="mt-1 text-xs text-gray-400">
-                  Lista zawiera dokumenty z folderu: {' '}
+                  Lista zawiera dokumenty z folderu:{' '}
                   <span className="font-semibold text-dark">{nameFolder}</span>
                 </p>
               </div>
-
+              {nextVersionNo && (
+                <div className="flex items-center gap-2 rounded-lg bg-lightGreen px-3 py-2 text-xs text-darkGreen">
+                  <IoInformationCircleOutline className="h-4 w-4 shrink-0" />
+                  <span>
+                    Zostanie zapisana jako{' '}
+                    <span className="font-bold">v{nextVersionNo}</span>,
+                    poprzednie wersje pozostaną w historii
+                  </span>
+                </div>
+              )}
               <div>
                 <label className={FIELD_LABEL_CLASSES}>Opis zmiany</label>
                 <input
