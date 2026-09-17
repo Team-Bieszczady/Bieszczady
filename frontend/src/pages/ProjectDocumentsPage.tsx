@@ -253,6 +253,7 @@ const parentFolderName = folders.find((el) => el.id === newFolderParentId)?.name
               level={0}
               selectedId={folderId}
               onSelect={setFolderId}
+              onAddSubfolder={openNewFolder}
             />
           </div>
         </aside>
