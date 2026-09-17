@@ -2,8 +2,7 @@ import { useState, forwardRef } from 'react';
 import { SlLock } from 'react-icons/sl';
 import { IoEyeOutline } from 'react-icons/io5';
 
-interface PasswordInputProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {
+interface PasswordInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string;
 }
 

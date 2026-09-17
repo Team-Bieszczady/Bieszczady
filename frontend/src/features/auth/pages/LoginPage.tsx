@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { FieldError } from '../../../components/ui/FieldError';
 import { useForm } from 'react-hook-form';
 import { Link, useNavigate } from 'react-router';
 import toast from 'react-hot-toast';
@@ -93,17 +94,7 @@ export default function LoginPage() {
               })}
             />
           </div>
-          <div className="min-h-4 mt-0.5">
-            <p
-              className={`text-red-500 text-xs transition duration-200 ease-out ${
-                errors.email
-                  ? 'opacity-100 translate-y-0'
-                  : 'opacity-0 -translate-y-0.5'
-              }`}
-            >
-              {errors.email?.message}
-            </p>
-          </div>
+          <FieldError message={errors.email?.message} />
         </div>
 
         <div>
@@ -112,17 +103,7 @@ export default function LoginPage() {
             placeholder="Podaj hasło..."
             {...register('password', { required: 'Hasło jest wymagane' })}
           />
-          <div className="min-h-4 mt-0.5">
-            <p
-              className={`text-red-500 text-xs transition duration-200 ease-out ${
-                errors.password
-                  ? 'opacity-100 translate-y-0'
-                  : 'opacity-0 -translate-y-0.5'
-              }`}
-            >
-              {errors.password?.message}
-            </p>
-          </div>
+          <FieldError message={errors.password?.message} />
         </div>
 
         <div className="text-right">

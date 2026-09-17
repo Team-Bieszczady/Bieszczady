@@ -12,14 +12,26 @@ export const MODULES = [
 
 export type ModuleKey = (typeof MODULES)[number];
 
-export const DEFAULT_USER_MODULES: ModuleKey[] = ['OVERVIEW', 'TASKS', 'CALENDAR'];
+export const DEFAULT_USER_MODULES: ModuleKey[] = [
+  'PROJECTS',
+  'OVERVIEW',
+  'TASKS',
+  'CALENDAR',
+];
+
+export const PROJECT_TAB_MODULES: ModuleKey[] = [
+  'OVERVIEW',
+  'TASKS',
+  'BUDGET',
+  'DOCUMENTS',
+];
 
 export const MODULE_LABELS: Record<ModuleKey, string> = {
   PROJECTS: 'Projekty',
   PEOPLE: 'Ludzie',
   CALENDAR: 'Kalendarz',
   DECISIONS: 'Decyzje',
-  SETTINGS: 'Ustawienia',
+  SETTINGS: 'Archiwum',
   OVERVIEW: 'Przegląd',
   TASKS: 'Zadania',
   BUDGET: 'Budżet',
@@ -37,6 +49,24 @@ export function toModuleFlags(granted: readonly ModuleKey[]): ModuleFlags {
 
 export function fromModuleFlags(flags: ModuleFlags): ModuleKey[] {
   return MODULES.filter((module) => flags[module]);
+}
+
+export function applyModuleDependencies(
+  flags: ModuleFlags,
+  changed: ModuleKey,
+  checked: boolean,
+): ModuleFlags {
+  const next = { ...flags, [changed]: checked };
+
+  if (checked && PROJECT_TAB_MODULES.includes(changed)) {
+    next.PROJECTS = true;
+  }
+
+  if (!checked && changed === 'PROJECTS') {
+    for (const tab of PROJECT_TAB_MODULES) next[tab] = false;
+  }
+
+  return next;
 }
 
 export function hasModule(

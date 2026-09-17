@@ -4,7 +4,10 @@ import { MdKeyboardArrowRight } from 'react-icons/md';
 const MAX_VISIBLE_PAGES = 5;
 const ELLIPSIS = '...';
 
-function getPageItems(currentPage: number, totalPages: number): (number | string)[] {
+function getPageItems(
+  currentPage: number,
+  totalPages: number,
+): (number | string)[] {
   const pages: (number | string)[] = [];
   let startPage = Math.max(1, currentPage - Math.floor(MAX_VISIBLE_PAGES / 2));
   const endPage = Math.min(totalPages, startPage + MAX_VISIBLE_PAGES - 1);
@@ -38,9 +41,15 @@ interface PaginationProps {
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
+  className?: string;
 }
 
-export default function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) {
+export default function Pagination({
+  currentPage,
+  totalPages,
+  onPageChange,
+  className = '',
+}: PaginationProps) {
   if (totalPages <= 1) return null;
 
   const pages = getPageItems(currentPage, totalPages);
@@ -49,7 +58,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
     'p-1 text-dark hover:text-darkGreen disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors duration-200';
 
   return (
-    <div className="flex items-center justify-center gap-3 mt-6">
+    <div className={`flex items-center justify-center gap-3 ${className}`}>
       <button
         onClick={() => onPageChange(Math.max(1, currentPage - 1))}
         disabled={currentPage === 1}

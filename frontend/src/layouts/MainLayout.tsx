@@ -5,7 +5,7 @@ export default function MainLayout() {
   return (
     <div className="flex flex-col lg:flex-row min-h-screen bg-white">
       <Navigation />
-      <main className="flex-1 lg:ml-64 pb-24 lg:pb-0">
+      <main className="flex-1 lg:ml-64 pb-24 lg:pb-0 lg:h-screen lg:overflow-y-auto nav-scrollbar">
         <Outlet />
       </main>
     </div>

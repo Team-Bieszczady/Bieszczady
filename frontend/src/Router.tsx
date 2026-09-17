@@ -4,6 +4,7 @@ import LoginPage from './features/auth/pages/LoginPage';
 import SetPasswordPage from './features/auth/pages/SetPasswordPage';
 import RequireAuth from './components/RequireAuth';
 import RequireModule from './components/RequireModule';
+import RequireDirector from './components/RequireDirector';
 import MainLayout from './layouts/MainLayout';
 import DashboardPage from './pages/DashboardPage';
 import ProfilePage from './pages/ProfilePage';
@@ -14,6 +15,7 @@ import PeoplePage from './pages/PeoplePage';
 import CalendarPage from './pages/CalendarPage';
 import DecisionsPage from './pages/DecisionsPage';
 import SettingsPage from './pages/SettingsPage';
+import PartnersPage from './pages/PartnersPage';
 import ProjectOverviewPage from './pages/ProjectOverviewPage';
 import ProjectTasksPage from './pages/ProjectTasksPage';
 import ProjectBudgetPage from './pages/ProjectBudgetPage';
@@ -57,26 +59,31 @@ export default function Router() {
             <Route element={<RequireModule module="DECISIONS" />}>
               <Route path="/decisions" element={<DecisionsPage />} />
             </Route>
+            <Route element={<RequireDirector />}>
+              <Route path="/partners" element={<PartnersPage />} />
+            </Route>
             <Route element={<RequireModule module="SETTINGS" />}>
               <Route path="/settings" element={<SettingsPage />} />
             </Route>
-            <Route element={<RequireModule module="OVERVIEW" />}>
-              <Route
-                path="/project/overview"
-                element={<ProjectOverviewPage />}
-              />
-            </Route>
-            <Route element={<RequireModule module="TASKS" />}>
-              <Route path="/project/tasks" element={<ProjectTasksPage />} />
-            </Route>
-            <Route element={<RequireModule module="BUDGET" />}>
-              <Route path="/project/budget" element={<ProjectBudgetPage />} />
-            </Route>
-            <Route element={<RequireModule module="DOCUMENTS" />}>
-              <Route
-                path="/project/documents"
-                element={<ProjectDocumentsPage />}
-              />
+            <Route element={<RequireModule module="PROJECTS" />}>
+              <Route element={<RequireModule module="OVERVIEW" />}>
+                <Route
+                  path="/project/overview"
+                  element={<ProjectOverviewPage />}
+                />
+              </Route>
+              <Route element={<RequireModule module="TASKS" />}>
+                <Route path="/project/tasks" element={<ProjectTasksPage />} />
+              </Route>
+              <Route element={<RequireModule module="BUDGET" />}>
+                <Route path="/project/budget" element={<ProjectBudgetPage />} />
+              </Route>
+              <Route element={<RequireModule module="DOCUMENTS" />}>
+                <Route
+                  path="/project/documents"
+                  element={<ProjectDocumentsPage />}
+                />
+              </Route>
             </Route>
           </Route>
         </Route>

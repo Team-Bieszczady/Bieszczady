@@ -12,6 +12,7 @@ import DeleteAccountDialog from '../features/people/components/DeleteAccountDial
 import { usePerson } from '../features/people/hooks/usePerson';
 import { useSetAccountStatus } from '../features/people/hooks/useSetAccountStatus';
 import { toastAccountError } from '../features/people/utils/accountErrorMessage';
+import { isSelf } from '../features/people/utils/peoplePermissions';
 import { useAuth } from '../context/useAuth';
 import type { AccountStatus } from '../lib/api';
 import type { Person } from '../features/people/data';
@@ -69,7 +70,9 @@ function PersonDetail({ person }: { person: Person }) {
     );
   };
 
-  const actions = user?.isDirector ? (
+  const canManageAccount = !!user?.isDirector && !isSelf(user, person.id);
+
+  const actions = canManageAccount ? (
     <>
       {isActive ? (
         <Button

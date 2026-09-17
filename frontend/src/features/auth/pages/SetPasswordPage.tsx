@@ -1,4 +1,5 @@
 import { useForm, useWatch } from 'react-hook-form';
+import { FieldError } from '../../../components/ui/FieldError';
 import { useLocation, useNavigate } from 'react-router';
 import toast from 'react-hot-toast';
 import { IoCheckmarkCircle } from 'react-icons/io5';
@@ -16,7 +17,10 @@ interface PasswordRule {
 
 const passwordRules: PasswordRule[] = [
   { label: 'Co najmniej 8 znaków', test: (v) => v.length >= 8 },
-  { label: 'Wielka i mała litera', test: (v) => /[a-z]/.test(v) && /[A-Z]/.test(v) },
+  {
+    label: 'Wielka i mała litera',
+    test: (v) => /[a-z]/.test(v) && /[A-Z]/.test(v),
+  },
   { label: 'Co najmniej jedna cyfra', test: (v) => /\d/.test(v) },
   { label: 'Znak specjalny: @ $ ! % * ? &', test: (v) => /[@$!%*?&]/.test(v) },
 ];
@@ -34,15 +38,24 @@ export default function SetPasswordPage() {
   const { user, accessToken } = useAuth();
   const { state } = useLocation() as { state: LocationState | null };
   const navigate = useNavigate();
-  const { register, handleSubmit, control, formState: { errors } } = useForm<SetPasswordFormInputs>({
+  const {
+    register,
+    handleSubmit,
+    control,
+    formState: { errors },
+  } = useForm<SetPasswordFormInputs>({
     mode: 'onChange',
   });
-  const setPasswordMutation = useSetPassword({ accessToken: accessToken ?? '' });
+  const setPasswordMutation = useSetPassword({
+    accessToken: accessToken ?? '',
+  });
   const newPasswordValue = useWatch({ control, name: 'newPassword' }) ?? '';
 
   const onSubmit = (data: SetPasswordFormInputs) => {
     if (!accessToken || !state?.tempPassword) {
-      toast.error('Musisz zalogować się, aby ustawić hasło');
+      toast.error('Musisz zalogować się, aby ustawić hasło', {
+        id: 'set-password-error',
+      });
       return;
     }
 
@@ -55,12 +68,16 @@ export default function SetPasswordPage() {
         },
         onError: (error) => {
           if (isApiError(error) && error.status === 401) {
-            toast.error('Nieprawidłowe hasło tymczasowe');
+            toast.error('Nieprawidłowe hasło tymczasowe', {
+              id: 'set-password-error',
+            });
           } else {
-            toast.error('Coś poszło nie tak. Spróbuj ponownie.');
+            toast.error('Coś poszło nie tak. Spróbuj ponownie.', {
+              id: 'set-password-error',
+            });
           }
         },
-      }
+      },
     );
   };
 
@@ -91,15 +108,7 @@ export default function SetPasswordPage() {
               minLength: { value: 8, message: 'Hasło musi mieć min. 8 znaków' },
             })}
           />
-          <div className="min-h-4 mt-0.5">
-            <p
-              className={`text-red-500 text-xs transition duration-200 ease-out ${
-                errors.newPassword ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-0.5'
-              }`}
-            >
-              {errors.newPassword?.message}
-            </p>
-          </div>
+          <FieldError message={errors.newPassword?.message} />
 
           <div className="mt-1.5 space-y-1">
             {passwordRules.map((rule) => {
@@ -137,18 +146,11 @@ export default function SetPasswordPage() {
             placeholder="Wpisz hasło ponownie"
             {...register('confirmPassword', {
               required: 'Powtórz hasło',
-              validate: (value, formValues) => value === formValues.newPassword || 'Hasła nie są takie same',
+              validate: (value, formValues) =>
+                value === formValues.newPassword || 'Hasła nie są takie same',
             })}
           />
-          <div className="min-h-4 mt-0.5">
-            <p
-              className={`text-red-500 text-xs transition duration-200 ease-out ${
-                errors.confirmPassword ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-0.5'
-              }`}
-            >
-              {errors.confirmPassword?.message}
-            </p>
-          </div>
+          <FieldError message={errors.confirmPassword?.message} />
         </div>
 
         <div className="flex justify-center">

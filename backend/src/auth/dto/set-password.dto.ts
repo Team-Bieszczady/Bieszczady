@@ -6,7 +6,7 @@ export class SetPasswordDto {
   @MinLength(8)
   @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).+$/, {
     message:
-      'Password must contain at least one uppercase letter, one lowercase letter, one digit, and one special character (@$!%*?&)',
+      'Hasło musi zawierać wielką literę, małą literę, cyfrę i znak specjalny (@$!%*?&)',
   })
   newPassword!: string;
 

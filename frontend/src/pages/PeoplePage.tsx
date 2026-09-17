@@ -30,7 +30,11 @@ const FILTER_FIELDS: ReadonlyArray<{
 }> = [
   { name: 'role', placeholder: 'Rola', options: ROLE_FILTER_SELECT_OPTIONS },
   { name: 'status', placeholder: 'Konto', options: STATUS_OPTIONS },
-  { name: 'projectId', placeholder: 'Projekt', options: PROJECT_SELECT_OPTIONS },
+  {
+    name: 'projectId',
+    placeholder: 'Projekt',
+    options: PROJECT_SELECT_OPTIONS,
+  },
   { name: 'sort', placeholder: 'Sortuj', options: SORT_OPTIONS },
 ];
 
@@ -65,6 +69,8 @@ export default function PeoplePage() {
     setVisibleCount(PAGE_SIZE);
   }
 
+  if (page > totalPages) setPage(totalPages);
+
   const listedPeople = isWideLayout
     ? visiblePeople.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
     : visiblePeople.slice(0, visibleCount);
@@ -78,9 +84,11 @@ export default function PeoplePage() {
   });
 
   return (
-    <div className="px-4 min-[400px]:px-6 sm:px-8 pt-20 pb-8 lg:pt-8 max-w-7xl mx-auto">
+    <div className="px-4 min-[400px]:px-6 sm:px-8 pt-16 pb-8 lg:pt-4 max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl lg:text-4xl font-bold text-dark">Ludzie</h1>
+        <h1 className="text-base font-bold text-dark 500:text-xl lg:text-2xl">
+          Ludzie
+        </h1>
         {user?.isDirector && (
           <Button
             variant="primary"
@@ -148,12 +156,20 @@ export default function PeoplePage() {
       </div>
 
       {isWideLayout ? (
-        <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          className="mt-6"
+        />
       ) : (
         <div ref={sentinelRef} aria-hidden="true" className="h-px" />
       )}
 
-      <AddUserModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <AddUserModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+      />
     </div>
   );
 }

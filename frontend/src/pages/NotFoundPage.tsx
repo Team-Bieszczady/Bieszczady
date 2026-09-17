@@ -29,11 +29,7 @@ export default function NotFoundPage() {
             Nie znaleźliśmy strony, której szukasz.
           </p>
 
-          <Button
-            onClick={() => navigate(-1)}
-            variant="primary"
-            size="medium"
-          >
+          <Button onClick={() => navigate(-1)} variant="primary" size="medium">
             Cofnij
           </Button>
         </div>

@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../../context/useAuth';
+import { clearStoredProjectId } from '../../../context/SelectedProjectContextValue';
 import { api } from '../../../lib/api';
 
 export function useLogout(): () => Promise<void> {
   const navigate = useNavigate();
-  const { clearSession } = useAuth();
+  const { user, clearSession } = useAuth();
   const queryClient = useQueryClient();
+  const userId = user?.id ?? null;
 
   return useCallback(async () => {
     try {
@@ -19,7 +21,8 @@ export function useLogout(): () => Promise<void> {
 
     clearSession();
     queryClient.clear();
+    if (userId) clearStoredProjectId(userId);
     navigate('/login', { replace: true });
     toast.success('Zostałeś wylogowany');
-  }, [clearSession, queryClient, navigate]);
+  }, [clearSession, queryClient, navigate, userId]);
 }

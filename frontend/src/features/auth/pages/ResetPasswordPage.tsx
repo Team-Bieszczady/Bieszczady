@@ -104,8 +104,6 @@ export default function ResetPasswordPage() {
       {
         onSuccess: () => {
           toast.success('Hasło zostało ustawione');
-          // The backend just revoked every session for this user; drop ours too,
-          // so a logged-in visitor cannot keep browsing on the old one.
           clearSession();
           queryClient.clear();
           navigate('/login');
@@ -114,7 +112,9 @@ export default function ResetPasswordPage() {
           if (isApiError(error) && error.status === 400) {
             setLinkDead(true);
           } else {
-            toast.error('Coś poszło nie tak. Spróbuj ponownie.');
+            toast.error('Coś poszło nie tak. Spróbuj ponownie.', {
+              id: 'reset-password-error',
+            });
           }
         },
       },

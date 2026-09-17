@@ -1,9 +1,9 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import { PROJECTS, seedProjects, upsertUserWithModules } from './seed-projects';
+import { DEFAULT_USER_MODULES } from '../src/common/enums/module.enum';
 
 const prisma = new PrismaClient();
-
-const DEFAULT_USER_MODULES = ['OVERVIEW', 'TASKS', 'CALENDAR'];
 
 async function main() {
   const passwordHash = await bcrypt.hash('ChangeMe123!', 10);
@@ -68,28 +68,21 @@ async function main() {
   ];
 
   for (const u of regularUsers) {
-    const user = await prisma.user.upsert({
-      where: { email: u.email },
-      update: {},
-      create: {
-        ...u,
-        passwordHash,
-        isDirector: false,
-        mustChangePassword: false,
-      },
+    await upsertUserWithModules(prisma, {
+      ...u,
+      passwordHash,
+      modules: DEFAULT_USER_MODULES,
+      grantedById: director1Id!,
     });
-    for (const module of DEFAULT_USER_MODULES) {
-      await prisma.userModuleAccess.upsert({
-        where: { userId_module: { userId: user.id, module } },
-        update: {},
-        create: {
-          userId: user.id,
-          module,
-          grantedById: director1Id!,
-        },
-      });
-    }
   }
+
+  await seedProjects(
+    prisma,
+    passwordHash,
+    director1Id!,
+    DEFAULT_USER_MODULES,
+    PROJECTS,
+  );
 }
 
 main()

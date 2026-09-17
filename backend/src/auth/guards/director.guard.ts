@@ -14,7 +14,9 @@ export class DirectorGuard implements CanActivate {
       .getRequest<{ user?: AuthenticatedUser }>();
 
     if (!user?.isDirector) {
-      throw new ForbiddenException();
+      throw new ForbiddenException(
+        'Nie masz uprawnień do wykonania tej operacji',
+      );
     }
 
     return true;

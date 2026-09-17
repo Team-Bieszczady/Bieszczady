@@ -47,6 +47,11 @@
   2. **Route guarding** — every gated route in `Router.tsx` is wrapped in
      `<RequireModule module="X" />` (mirrors `RequireAuth.tsx`), so direct
      URL entry is blocked, not just hidden nav links.
+- A nav item may instead carry `directorOnly: true` and no `module` — a page
+  no grant can unlock, gated on `is_director` at both points (`canSee` in
+  `useNavData`, `<RequireDirector />` in `Router.tsx`). Partnerzy is the one
+  today. Prefer a module when the access should be grantable; `directorOnly`
+  keeps a page out of `MODULES` and therefore out of the backend enum mirror.
 - `/` (Dashboard) and `/profile` are baseline routes, never gated by module —
   only by `RequireAuth`.
 - Adding a new gated module/route end-to-end: see
