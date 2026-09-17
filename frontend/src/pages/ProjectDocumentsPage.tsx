@@ -233,7 +233,7 @@ const parentFolderName = folders.find((el) => el.id === newFolderParentId)?.name
       </div>
 
       <div className="flex gap-6">
-        <aside className="w-64 shrink-0 rounded-lg border border-gray-200 bg-white p-4">
+        <aside className="w-72 shrink-0 rounded-lg border border-gray-200 bg-white p-4">
           <div className="mb-3 flex items-center justify-between">
             <p className="text-xs uppercase tracking-wide text-gray-400">
               Foldery

@@ -23,30 +23,30 @@ export const FolderTree = ({folders, parentId, level, selectedId, onSelect,onAdd
             <div className="group flex items-center">
               <button
                 type="button"
+                title={folder.name}
                 onClick={() => onSelect(folder.id)}
                 style={{ paddingLeft: 12 + level * 16 }}
-                className={`flex flex-1 items-center gap-2 rounded py-2 pr-3 text-left text-sm ${
+                className={`flex flex-1 items-center gap-2 rounded py-2 pr-3 text-left text-sm min-w-0 ${
                   folder.id === selectedId
                     ? 'bg-lightGreen text-darkGreen'
                     : 'text-dark hover:bg-gray-50'
                 }`}
               >
                 <IoFolderOutline className="h-4 w-4 shrink-0" />
-                {folder.name}
+                <span className="truncate">{folder.name}</span>
               </button>
-           <ActionMenu
-  ariaLabel={`Akcje folderu ${folder.name}`}
-  className="opacity-0 group-hover:opacity-100"
-  items={[
-    {
-      id: 'add-subfolder',
-      label: 'Dodaj podfolder',
-      icon: <IoFolderOutline className="h-4 w-4" />,
-      onSelect: () => onAddSubfolder(folder.id)
-    },
-  ]}
-/>
-
+              <ActionMenu
+                ariaLabel={`Akcje folderu ${folder.name}`}
+                className="opacity-0 group-hover:opacity-100"
+                items={[
+                  {
+                    id: 'add-subfolder',
+                    label: 'Dodaj podfolder',
+                    icon: <IoFolderOutline className="h-4 w-4" />,
+                    onSelect: () => onAddSubfolder(folder.id),
+                  },
+                ]}
+              />
             </div>
             <FolderTree
               folders={folders}

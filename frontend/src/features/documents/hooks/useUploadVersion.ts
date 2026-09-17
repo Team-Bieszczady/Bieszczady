@@ -22,10 +22,8 @@ mutationFn: (payload: UploadVersionInput) => {
 
 },
 onSuccess: async () => {
-  
-      queryClient.invalidateQueries({ queryKey: ['versions', projectId, documentId] });
-  queryClient.invalidateQueries({ queryKey: ['documents', projectId, folderId] });
-
+    queryClient.invalidateQueries({ queryKey: ['versions', projectId, documentId] });
+    queryClient.invalidateQueries({ queryKey: ['documents', projectId, folderId] });
 }
 
     })
