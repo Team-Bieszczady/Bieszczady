@@ -35,6 +35,8 @@ export function DocumentsTable({
       <table className="w-full border-collapse text-left">
         <thead>
           <tr className="border-b border-gray-200 bg-gray-50">
+            <th className={HEAD_CLASS}></th>
+
             <th className={HEAD_CLASS}>Nazwa dokumentu</th>
             <th className={HEAD_CLASS}>Rodzaj</th>
             <th className={HEAD_CLASS}>Zmieniono</th>

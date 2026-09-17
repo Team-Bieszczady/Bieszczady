@@ -22,6 +22,7 @@ import {
   INPUT_CLASSES,
 } from '../components/ui/formStyles';
 import { FolderTree } from '../features/documents/components/FolderTree';
+import { useCreateFolder } from '../features/documents/hooks/useCreateFolder';
 
 
 
@@ -42,9 +43,13 @@ const [expandedIds, setExpandedIds] = useState<string[]>([]);
 const [versionForId, setVersionForId] = useState<string | null>(null);
 const [changeNote, setChangeNote] = useState('');
 const [mode, setMode] = useState<'document' | 'version'>('document');
+const [showNewFolder, setShowNewFolder] = useState(false);
+const [newFolderName, setNewFolderName] = useState('');
+const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null);
 
-
-
+const createFolder = useCreateFolder(
+  PROJECT_ID
+)
 const uploadVersion = useUploadVersion                (
   PROJECT_ID,
   folderId ?? '',
@@ -66,6 +71,38 @@ const uploadNewVersion = () => {
       },
     },
   );
+};
+
+
+const openNewFolder = (parentId: string | null) => {
+
+setNewFolderParentId(parentId)
+setShowNewFolder(true)
+};
+
+const clearNewFolder = () => {
+setShowNewFolder(false)
+setNewFolderParentId(null)
+setNewFolderName("")
+};
+
+const submitNewFolder = () => {
+  if (newFolderName.trim() === '') {
+    return;
+  }
+  const payload: { name: string; parentId?: string } = {
+    name: newFolderName.trim(),
+  };
+  if (newFolderParentId) {
+    payload.parentId = newFolderParentId;
+  }
+  createFolder.mutate(payload, {
+    onSuccess: () => clearNewFolder(),
+    onError: (error) => {
+      const message = isApiError(error) ? error.message : 'Coś poszło nie tak';
+      toast.error(message);
+    },
+  });
 };
 
 
@@ -172,6 +209,8 @@ setExpandedIds(newExpandsIds)
         accumulator + currentValue.versions[0].sizeBytes,
       0,
     ) ?? 0;
+const parentFolderName = folders.find((el) => el.id === newFolderParentId)?.name
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-start justify-between">
@@ -195,9 +234,18 @@ setExpandedIds(newExpandsIds)
 
       <div className="flex gap-6">
         <aside className="w-64 shrink-0 rounded-lg border border-gray-200 bg-white p-4">
-          <p className="mb-3 text-xs uppercase tracking-wide text-gray-400">
-            Foldery
-          </p>
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-xs uppercase tracking-wide text-gray-400">
+              Foldery
+            </p>
+            <button
+              type="button"
+              onClick={() => openNewFolder(null)}
+              className="cursor-pointer text-xs font-medium text-darkGreen hover:text-darkGreenHover"
+            >
+              + Nowy folder
+            </button>
+          </div>
           <div className="flex flex-col gap-1">
             <FolderTree
               folders={folders}
@@ -367,6 +415,57 @@ setExpandedIds(newExpandsIds)
               isPending={
                 mode === 'document' ? upload.isPending : uploadVersion.isPending
               }
+              className="font-medium!"
+            >
+              Zapisz
+            </Button>
+          </div>
+        </div>
+      </Modal>
+      <Modal
+        isOpen={showNewFolder}
+        onClose={clearNewFolder}
+        title="Nowy folder"
+      >
+        <div className="space-y-5">
+          <p className="text-xs text-gray-400">
+            Folder powstanie{' '}
+            <span className="font-semibold text-dark">
+              {!newFolderParentId
+                ? 'na głównym poziomie'
+                : `w folderze ${parentFolderName}`}
+            </span>
+          </p>
+
+          <div>
+            <label className={FIELD_LABEL_CLASSES}>
+              Nazwa folderu <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              placeholder="Podaj nazwę..."
+              maxLength={40}
+              value={newFolderName}
+              onChange={(e) => setNewFolderName(e.target.value)}
+              className={INPUT_CLASSES}
+            />
+          </div>
+
+          <div className="border-t border-gray-200 flex gap-3 justify-end pt-4">
+            <Button
+              variant="outline"
+              size="small"
+              type="button"
+              onClick={clearNewFolder}
+            >
+              Anuluj
+            </Button>
+            <Button
+              variant="primary"
+              size="small"
+              onClick={submitNewFolder}
+              disabled={newFolderName.trim() === '' || createFolder.isPending}
+              isPending={createFolder.isPending}
               className="font-medium!"
             >
               Zapisz

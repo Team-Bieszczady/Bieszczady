@@ -381,6 +381,24 @@ export const api = {
       fallbackMessage: 'Nie udało się pobrać folderów',
     });
   },
+
+
+async createFolder(
+  accessToken: string,
+  projectId: string,
+  body: {name: string; parentId?: string},
+): Promise<BackendFolder>{
+return request<BackendFolder>(`/api/v1/projects/${projectId}/folders`, {
+  method: 'POST',
+  accessToken,
+  body,
+  fallbackMessage: 'Nie udało się dodać folderu',
+});
+},
+
+
+
+
   async getDocuments(
     accessToken: string,
     projectId: string,
