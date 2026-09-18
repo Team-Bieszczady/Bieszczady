@@ -131,7 +131,7 @@ export class DocumentsService {
   ) {
     const version = await this.prisma.documentVersion.findFirst({
       where: {
-        document: { projectId, id: documentId, deletedAt: null },
+        document: { projectId, id: documentId},
         versionNo: versionNo,
       },
     });
@@ -145,7 +145,7 @@ export class DocumentsService {
   async getVersions(projectId: string, documentId: string) {
     const versions = await this.prisma.documentVersion.findMany({
       where: {
-        document: { projectId, id: documentId, deletedAt: null },
+        document: { projectId, id: documentId},
       },
       include: {
         uploadedBy: { select: { firstName: true, lastName: true } },

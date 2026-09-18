@@ -14,6 +14,9 @@ export function useDeleteDocument(projectId: string, folderId: string) {
       queryClient.invalidateQueries({
         queryKey: ['documents', projectId, folderId],
       });
+            queryClient.invalidateQueries({
+              queryKey: ['trash', projectId],
+            });
     },
   });
 }

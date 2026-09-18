@@ -12,7 +12,7 @@ import { DocumentsTable } from '../features/documents/components/DocumentsTable'
 import { Modal } from '../components/ui/Modal';
 import { Button } from '../components/ui/Button';
 import { formatFileSize } from '../features/documents/utils/formatters';
-import { IoCloudUploadOutline,IoInformationCircleOutline } from 'react-icons/io5';
+import { IoCloudUploadOutline,IoInformationCircleOutline, IoTrashOutline } from 'react-icons/io5';
 import { Select } from '../components/ui/Select';
 import toast from 'react-hot-toast';
 import { useUploadVersion } from '../features/documents/hooks/useUploadVersion';
@@ -27,6 +27,7 @@ import { useDeleteFolder } from '../features/documents/hooks/useDeleteFolder';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { useUpdateFolder } from '../features/documents/hooks/useUpdateFolder';
 import { useDeleteDocument } from '../features/documents/hooks/useDeleteDocument';
+import { useTrash } from '../features/documents/hooks/useTrash';
 
 
 
@@ -58,9 +59,9 @@ const [deleteDocumentId, setDeleteDocumentId] = useState<string | null>(null);
 const [renameFolderId, setRenameFolderId] = useState<string | null>(null);
 const [renameFolderName, setRenameFolderName] = useState('');
 
+const [showTrash, setShowTrash] = useState(false)
 
-
-
+const {data: trash} = useTrash(PROJECT_ID)
 const updateFolder = useUpdateFolder(PROJECT_ID);
 
 const deleteDocument = useDeleteDocument(PROJECT_ID, folderId ?? '');
@@ -85,6 +86,13 @@ const delDocument = () => {
       },
     });
 }
+
+
+const selectFolder = (folderId: string) => {
+  setFolderId(folderId)
+  setShowTrash(false)
+};
+
 
 const openRename = (folderId: string) => {
 
@@ -353,23 +361,51 @@ const parentFolderName = folders.find((el) => el.id === newFolderParentId)?.name
               folders={folders}
               parentId={null}
               level={0}
-              selectedId={folderId}
-              onSelect={setFolderId}
+              selectedId={showTrash ? null : folderId}
+              onSelect={selectFolder}
               onAddSubfolder={openNewFolder}
               onDeleteFolder={setDeleteFolderId}
               onRename={openRename}
             />
           </div>
+          <div className="my-2 border-t border-gray-200" />
+          <button
+            type="button"
+            onClick={() => setShowTrash(true)}
+            className={`flex w-full items-center gap-2 rounded px-3 py-2 text-left text-sm ${showTrash ? 'bg-lightGreen text-darkGreen' : 'text-dark hover:bg-gray-50'}`}
+          >
+            <IoTrashOutline className="h-4 w-4 shrink-0" />
+            Kosz
+          </button>
         </aside>
-
         <section className="flex-1 rounded-lg border border-gray-200 bg-white">
-          {!folderId && (
+          {showTrash && (
+            <div className="border-b border-gray-200 px-4 py-4">
+              <p className="text-base font-semibold text-dark">Kosz</p>
+
+              <p className="mt-0.5 text-xs text-gray-400">
+                {trash?.length ?? 0} usuniętych dokumentów
+              </p>
+            </div>
+          )}
+          {showTrash && trash && (
+            <DocumentsTable
+              documents={trash}
+              projectId={PROJECT_ID}
+              onDownload={down}
+              expandedIds={expandedIds}
+              onToggle={toggleExpanded}
+              onNewVersion={openNewVersion}
+              onDeleteDocument={setDeleteDocumentId}
+            />
+          )}
+          {!showTrash && !folderId && (
             <p className="px-4 py-10 text-center text-xs text-gray-400">
               Wybierz folder
             </p>
           )}
 
-          {folderId && (
+          {!showTrash && folderId && (
             <div className="border-b border-gray-200 px-4 py-4">
               <p className="text-base font-semibold text-dark">{nameFolder}</p>
               <p className="mt-0.5 text-xs text-gray-400">
@@ -377,12 +413,12 @@ const parentFolderName = folders.find((el) => el.id === newFolderParentId)?.name
               </p>
             </div>
           )}
-          {folderId && documentsPending && (
+          {folderId && documentsPending && !showTrash && (
             <p className="px-4 py-10 text-center text-xs text-gray-400">
               Ładowanie...
             </p>
           )}
-          {documents && (
+          {documents && !showTrash && (
             <DocumentsTable
               documents={documents}
               projectId={PROJECT_ID}

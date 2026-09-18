@@ -441,6 +441,21 @@ export const api = {
     );
   },
 
+async getTrash(
+  accessToken: string,
+  projectId: string,
+): Promise<BackendDocument[]>{
+  return request<BackendDocument[]>(
+
+  `/api/v1/projects/${projectId}/documents/trash`,
+  {
+    method: 'GET',
+    accessToken,
+    fallbackMessage: 'Nie udało się pobrać dokumentów',
+  });
+},
+
+
   async downloadVersion(
     accessToken: string,
     projectId: string,
