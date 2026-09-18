@@ -6,18 +6,20 @@ import {
   DOCUMENT_STATUS_LABELS,
 } from '../../../lib/documents';
 import { fileExtension, formatDate, formatFileSize } from '../utils/formatters';
-import { IoChevronDown, IoChevronForward } from "react-icons/io5";
+import { IoChevronDown, IoChevronForward, IoTrashOutline } from "react-icons/io5";
+import { ActionMenu } from "../../../components/ui/ActionMenu";
 interface Props {
   document: BackendDocument;
   projectId: string;
   isExpanded: boolean;
   onToggle: (documentId: string) => void;
   onDownload: (documentId: string, versionNo: number, fileName: string) => void;
-  onNewVersion: (documentId: string) => void
+  onNewVersion: (documentId: string) => void;
+  onDeleteDocument: (documentId: string) => void;
 }
 
 
-export const DocumentRow = ({document, projectId, isExpanded, onToggle, onDownload, onNewVersion}: Props) => {
+export const DocumentRow = ({document, projectId, isExpanded, onToggle, onDownload, onNewVersion, onDeleteDocument}: Props) => {
          const version = document.versions[0];
 const { data: versions, error, isPending } = useVersions(
   projectId,
@@ -76,18 +78,33 @@ return (
         </span>
       </td>
 
-      <td className="px-4 py-3 text-right">
-        {version && (
-          <button
-            type="button"
-            onClick={() =>
-              onDownload(document.id, version.versionNo, version.fileName)
-            }
-            className="cursor-pointer text-xs font-medium text-darkGreen hover:text-darkGreenHover"
-          >
-            Pobierz
-          </button>
-        )}
+      <td className="px-4 py-3">
+        <div className="flex items-center justify-end gap-2">
+          {version && (
+            <button
+              type="button"
+              onClick={() =>
+                onDownload(document.id, version.versionNo, version.fileName)
+              }
+              className="cursor-pointer text-xs font-medium text-darkGreen hover:text-darkGreenHover"
+            >
+              Pobierz
+            </button>
+          )}
+          <ActionMenu
+            ariaLabel={`Akcje dokumentu ${document.name}`}
+
+            items={[
+              {
+                id: 'delete-document',
+                label: 'Usuń',
+                icon: <IoTrashOutline className="h-4 w-4" />,
+                tone: 'danger',
+                onSelect: () => onDeleteDocument(document.id),
+              },
+            ]}
+          />
+        </div>
       </td>
     </tr>
     {isExpanded && (

@@ -160,4 +160,24 @@ export class DocumentsService {
 
     return versions;
   }
-}
+
+  async deleteDocument(projectId: string, documentId: string) {
+
+const document = await this.prisma.document.findFirst({
+  where: {id: documentId, projectId: projectId, deletedAt: null}
+})
+    if (!document) {
+      throw new NotFoundException(
+        'Wskazany dokument nie należy do tego projektu',
+      );
+    }
+         return await this.prisma.document.update({
+          where: { id: documentId },
+          data: { deletedAt: new Date() },
+        });
+  }
+
+
+    }
+  
+

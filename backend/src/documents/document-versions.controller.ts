@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -73,5 +74,14 @@ export class DocumentVersionsController {
     @Param('documentId', ParseUUIDPipe) documentId: string,
   ) {
     return await this.documentService.getVersions(projectId, documentId);
+  }
+
+  @Delete('/:documentId')
+  @UseGuards(JwtAuthGuard, PasswordChangeGuard)
+  async deleteDocument(
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('documentId', ParseUUIDPipe) documentId: string,
+  ) {
+    return await this.documentService.deleteDocument(projectId, documentId);
   }
 }

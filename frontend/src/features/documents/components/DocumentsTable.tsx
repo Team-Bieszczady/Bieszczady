@@ -9,6 +9,7 @@ interface Props {
   expandedIds: string[];
   onToggle: (documentId: string) => void;
   onNewVersion: (documentId: string) => void;
+  onDeleteDocument: (documentId: string) => void;
 }
 
 const HEAD_CLASS =
@@ -20,7 +21,8 @@ export function DocumentsTable({
   onDownload,
   expandedIds,
   onToggle,
-  onNewVersion
+  onNewVersion,
+  onDeleteDocument
 }: Props) {
   if (documents.length === 0) {
     return (
@@ -55,6 +57,7 @@ export function DocumentsTable({
               onToggle={onToggle}
               onDownload={onDownload}
               onNewVersion={onNewVersion}
+              onDeleteDocument={onDeleteDocument}
             />
           ))}
         </tbody>

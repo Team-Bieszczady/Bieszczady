@@ -26,6 +26,7 @@ import { useCreateFolder } from '../features/documents/hooks/useCreateFolder';
 import { useDeleteFolder } from '../features/documents/hooks/useDeleteFolder';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { useUpdateFolder } from '../features/documents/hooks/useUpdateFolder';
+import { useDeleteDocument } from '../features/documents/hooks/useDeleteDocument';
 
 
 
@@ -51,10 +52,39 @@ const [newFolderName, setNewFolderName] = useState('');
 const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null);
 
 const [deleteFolderId, setDeleteFolderId] = useState<string | null>(null)
+const [deleteDocumentId, setDeleteDocumentId] = useState<string | null>(null);
+
 
 const [renameFolderId, setRenameFolderId] = useState<string | null>(null);
 const [renameFolderName, setRenameFolderName] = useState('');
+
+
+
+
 const updateFolder = useUpdateFolder(PROJECT_ID);
+
+const deleteDocument = useDeleteDocument(PROJECT_ID, folderId ?? '');
+
+const clearDeleteDocument  = ()=> {
+  setDeleteDocumentId(null)
+}
+
+const delDocument = () => {
+    if (deleteDocumentId === null) {
+      return;
+    }
+    deleteDocument.mutate(deleteDocumentId, {
+      onSuccess: () => {
+        clearDeleteDocument();
+      },
+      onError: (error) => {
+        const message = isApiError(error)
+          ? error.message
+          : 'Coś poszło nie tak';
+        toast.error(message);
+      },
+    });
+}
 
 const openRename = (folderId: string) => {
 
@@ -176,6 +206,7 @@ const submitNewFolder = () => {
   });
 };
 
+const deleteDocumentName  = documents?.find(el => el.id === deleteDocumentId)?.name
 
 const toggleExpanded = (documentId: string) => {
   if(expandedIds.includes(documentId)){
@@ -359,6 +390,7 @@ const parentFolderName = folders.find((el) => el.id === newFolderParentId)?.name
               expandedIds={expandedIds}
               onToggle={toggleExpanded}
               onNewVersion={openNewVersion}
+              onDeleteDocument={setDeleteDocumentId}
             />
           )}
         </section>
@@ -597,6 +629,16 @@ const parentFolderName = folders.find((el) => el.id === newFolderParentId)?.name
         onConfirm={delFolder}
         title="Usuń folder"
         description={`Czy na pewno chcesz usunąć folder „${deleteFolderName}"?`}
+        confirmLabel="Usuń"
+      />
+      <ConfirmDialog
+        tone="danger"
+        isPending={deleteDocument.isPending}
+        isOpen={deleteDocumentId !== null}
+        onClose={clearDeleteDocument}
+        onConfirm={delDocument}
+        title="Usuń dokument"
+        description={`Czy na pewno chcesz usunąć dokument „${deleteDocumentName}"?`}
         confirmLabel="Usuń"
       />
     </div>
