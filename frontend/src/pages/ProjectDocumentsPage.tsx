@@ -23,6 +23,9 @@ import {
 } from '../components/ui/formStyles';
 import { FolderTree } from '../features/documents/components/FolderTree';
 import { useCreateFolder } from '../features/documents/hooks/useCreateFolder';
+import { useDeleteFolder } from '../features/documents/hooks/useDeleteFolder';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { useUpdateFolder } from '../features/documents/hooks/useUpdateFolder';
 
 
 
@@ -47,6 +50,44 @@ const [showNewFolder, setShowNewFolder] = useState(false);
 const [newFolderName, setNewFolderName] = useState('');
 const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null);
 
+const [deleteFolderId, setDeleteFolderId] = useState<string | null>(null)
+
+const [renameFolderId, setRenameFolderId] = useState<string | null>(null);
+const [renameFolderName, setRenameFolderName] = useState('');
+const updateFolder = useUpdateFolder(PROJECT_ID);
+
+const openRename = (folderId: string) => {
+
+  setRenameFolderId(folderId)
+  const currentName = folders?.find((el) => el.id === folderId)?.name ?? '';
+  setRenameFolderName(currentName);
+
+
+};
+const clearRename = () => {
+  setRenameFolderId(null);
+  setRenameFolderName('');
+};
+const submitRename = () => {
+  if (renameFolderId === null || renameFolderName.trim() === '') {
+    return;
+  }
+updateFolder.mutate({
+  folderId: renameFolderId,
+  name: renameFolderName.trim()
+},
+{
+  onSuccess: () => {
+    clearRename()
+  },
+  onError: (error) => {
+const message = isApiError(error) ? error.message : 'Coś poszło nie tak';
+toast.error(message);
+  }
+}
+)
+
+};
 const createFolder = useCreateFolder(
   PROJECT_ID
 )
@@ -73,6 +114,36 @@ const uploadNewVersion = () => {
   );
 };
 
+const clearDelete = () => {
+  setDeleteFolderId(null)
+};
+
+const deleteFolder = useDeleteFolder(PROJECT_ID)
+
+
+const delFolder = () => {
+  if (deleteFolderId === null) {
+    return;
+  }
+  deleteFolder.mutate(
+ deleteFolderId,
+    {
+      onSuccess: () => {
+        if(folderId === deleteFolderId){
+          setFolderId(null)
+        }
+        clearDelete();
+      },
+      onError: (error) => {
+      const message = isApiError(error) ? error.message : 'Coś poszło nie tak';
+      toast.error(message);
+
+      },
+    },
+  );
+}
+
+const deleteFolderName = folders?.find((el) => el.id === deleteFolderId)?.name;
 
 const openNewFolder = (parentId: string | null) => {
 
@@ -254,6 +325,8 @@ const parentFolderName = folders.find((el) => el.id === newFolderParentId)?.name
               selectedId={folderId}
               onSelect={setFolderId}
               onAddSubfolder={openNewFolder}
+              onDeleteFolder={setDeleteFolderId}
+              onRename={openRename}
             />
           </div>
         </aside>
@@ -474,6 +547,58 @@ const parentFolderName = folders.find((el) => el.id === newFolderParentId)?.name
           </div>
         </div>
       </Modal>
+      <Modal
+        isOpen={renameFolderId !== null}
+        onClose={clearRename}
+        title="Zmień nazwę"
+      >
+        <div className="space-y-5">
+          <div>
+            <label className={FIELD_LABEL_CLASSES}>
+              Nazwa folderu <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              placeholder="Podaj nazwę..."
+              maxLength={40}
+              value={renameFolderName}
+              onChange={(e) => setRenameFolderName(e.target.value)}
+              className={INPUT_CLASSES}
+            />
+          </div>
+
+          <div className="border-t border-gray-200 flex gap-3 justify-end pt-4">
+            <Button
+              variant="outline"
+              size="small"
+              type="button"
+              onClick={clearRename}
+            >
+              Anuluj
+            </Button>
+            <Button
+              variant="primary"
+              size="small"
+              onClick={submitRename}
+              disabled={renameFolderName.trim() === ''}
+              isPending={updateFolder.isPending}
+              className="font-medium!"
+            >
+              Zapisz
+            </Button>
+          </div>
+        </div>
+      </Modal>
+      <ConfirmDialog
+        tone="danger"
+        isPending={deleteFolder.isPending}
+        isOpen={deleteFolderId !== null}
+        onClose={clearDelete}
+        onConfirm={delFolder}
+        title="Usuń folder"
+        description={`Czy na pewno chcesz usunąć folder „${deleteFolderName}"?`}
+        confirmLabel="Usuń"
+      />
     </div>
   );
 }

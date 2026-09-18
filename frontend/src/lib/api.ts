@@ -382,22 +382,49 @@ export const api = {
     });
   },
 
+  async createFolder(
+    accessToken: string,
+    projectId: string,
+    body: { name: string; parentId?: string },
+  ): Promise<BackendFolder> {
+    return request<BackendFolder>(`/api/v1/projects/${projectId}/folders`, {
+      method: 'POST',
+      accessToken,
+      body,
+      fallbackMessage: 'Nie udało się dodać folderu',
+    });
+  },
+  async updateFolder(
+    accessToken: string,
+    projectId: string,
+    folderId: string,
+    body: { name?: string; parentId?: string },
+  ): Promise<BackendFolder> {
+    return request<BackendFolder>(
+      `/api/v1/projects/${projectId}/folders/${folderId}`,
+      {
+        method: 'PATCH',
+        accessToken,
+        body,
+        fallbackMessage: 'Nie udało się zaktualizować folderu',
+      },
+    );
+  },
 
-async createFolder(
-  accessToken: string,
-  projectId: string,
-  body: {name: string; parentId?: string},
-): Promise<BackendFolder>{
-return request<BackendFolder>(`/api/v1/projects/${projectId}/folders`, {
-  method: 'POST',
-  accessToken,
-  body,
-  fallbackMessage: 'Nie udało się dodać folderu',
-});
-},
-
-
-
+  async deleteFolder(
+    accessToken: string,
+    projectId: string,
+    folderId: string,
+  ): Promise<BackendFolder> {
+    return request<BackendFolder>(
+      `/api/v1/projects/${projectId}/folders/${folderId}`,
+      {
+        method: 'DELETE',
+        accessToken,
+        fallbackMessage: 'Nie udało się usunąć folderu',
+      },
+    );
+  },
 
   async getDocuments(
     accessToken: string,
