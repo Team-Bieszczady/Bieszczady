@@ -26,6 +26,12 @@ import { CreateVersionDto } from './dto/create-version.dto';
 export class DocumentVersionsController {
   constructor(private readonly documentService: DocumentsService) {}
 
+  @Get('/trash')
+  @UseGuards(JwtAuthGuard, PasswordChangeGuard)
+  async getTrash(@Param('projectId', ParseUUIDPipe) projectId: string) {
+    return await this.documentService.getTrash(projectId);
+  }
+
   @Get('/:documentId/versions/:versionNo/download')
   @UseGuards(JwtAuthGuard, PasswordChangeGuard)
   async downloadDocument(

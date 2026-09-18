@@ -162,22 +162,41 @@ export class DocumentsService {
   }
 
   async deleteDocument(projectId: string, documentId: string) {
-
-const document = await this.prisma.document.findFirst({
-  where: {id: documentId, projectId: projectId, deletedAt: null}
-})
+    const document = await this.prisma.document.findFirst({
+      where: { id: documentId, projectId: projectId, deletedAt: null },
+    });
     if (!document) {
       throw new NotFoundException(
         'Wskazany dokument nie należy do tego projektu',
       );
     }
-         return await this.prisma.document.update({
-          where: { id: documentId },
-          data: { deletedAt: new Date() },
-        });
+    return await this.prisma.document.update({
+      where: { id: documentId },
+      data: { deletedAt: new Date() },
+    });
   }
 
-
-    }
+  async getTrash(projectId: string) {
+    const documents = await this.prisma.document.findMany({
+      where: { projectId: projectId, deletedAt: { not: null } },
+      orderBy: {deletedAt: 'desc'},
+      include: {
+        versions: {
+          orderBy: { versionNo: 'desc' },
+          take: 1,
+          include: {
+            uploadedBy: { select: { firstName: true, lastName: true } },
+          },
+        },
+        folder: {select: {name: true, deletedAt: true}
+        }
+        
+      },
+      
+      
+    });
+    return documents
+  }
+}
   
 
