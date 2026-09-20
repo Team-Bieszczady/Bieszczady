@@ -1,10 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from './storage.service';
 import { randomUUID } from 'crypto';
 import { CreateDocumentDto } from './dto/create-document.dto';
-import { buffer } from 'stream/consumers';
 import { CreateVersionDto } from './dto/create-version.dto';
+import { RestoreDocumentDto } from './dto/restore-document.dto';
 
 interface UploadedFile {
   buffer: Buffer;
@@ -131,7 +131,7 @@ export class DocumentsService {
   ) {
     const version = await this.prisma.documentVersion.findFirst({
       where: {
-        document: { projectId, id: documentId},
+        document: { projectId, id: documentId },
         versionNo: versionNo,
       },
     });
@@ -141,11 +141,43 @@ export class DocumentsService {
     const buffer = await this.storage.read(version.storageKey);
     return { buffer, fileName: version.fileName, mimeType: version.mimeType };
   }
+  async restoreDocument(
+    projectId: string,
+    documentId: string,
+    dto: RestoreDocumentDto,
+  ) {
+    const document = await this.prisma.document.findFirst({
+      where: { projectId, id: documentId, deletedAt: { not: null } },
+      include: { folder: { select: { deletedAt: true } } },
+    });
+    if (!document) {
+      throw new NotFoundException('Nie znaleziono dokumentu w Koszu');
+    }
+
+    if (dto.folderId) {
+      await this.assertFolderExists(dto.folderId, projectId);
+      return await this.prisma.document.update({
+        where: { id: documentId },
+        data: { folderId: dto.folderId, deletedAt: null },
+      });
+    }
+
+    if (document.folder.deletedAt === null) {
+      return await this.prisma.document.update({
+        where: { id: documentId },
+        data: { deletedAt: null },
+      });
+    }
+
+    throw new BadRequestException(
+      'Folder tego dokumentu został usunięty, wskaż nowy',
+    );
+  }
 
   async getVersions(projectId: string, documentId: string) {
     const versions = await this.prisma.documentVersion.findMany({
       where: {
-        document: { projectId, id: documentId},
+        document: { projectId, id: documentId },
       },
       include: {
         uploadedBy: { select: { firstName: true, lastName: true } },
@@ -179,7 +211,7 @@ export class DocumentsService {
   async getTrash(projectId: string) {
     const documents = await this.prisma.document.findMany({
       where: { projectId: projectId, deletedAt: { not: null } },
-      orderBy: {deletedAt: 'desc'},
+      orderBy: { deletedAt: 'desc' },
       include: {
         versions: {
           orderBy: { versionNo: 'desc' },
@@ -188,14 +220,10 @@ export class DocumentsService {
             uploadedBy: { select: { firstName: true, lastName: true } },
           },
         },
-        folder: {select: {name: true, deletedAt: true}
-        }
-        
+        folder: { select: { name: true, deletedAt: true } },
       },
-      
-      
     });
-    return documents
+    return documents;
   }
 }
   

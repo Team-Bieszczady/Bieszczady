@@ -21,6 +21,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { type AuthenticatedUser } from '../auth/types/auth.types';
 import { CreateVersionDto } from './dto/create-version.dto';
+import { RestoreDocumentDto } from './dto/restore-document.dto';
 
 @Controller('/projects/:projectId/documents')
 export class DocumentVersionsController {
@@ -89,5 +90,15 @@ export class DocumentVersionsController {
     @Param('documentId', ParseUUIDPipe) documentId: string,
   ) {
     return await this.documentService.deleteDocument(projectId, documentId);
+  }
+
+  @Post('/:documentId/restore')
+  @UseGuards(JwtAuthGuard, PasswordChangeGuard)
+  async restoreDocument(
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('documentId', ParseUUIDPipe) documentId: string,
+    @Body() body: RestoreDocumentDto
+  ) {
+    return await this.documentService.restoreDocument(projectId,documentId,body)
   }
 }
