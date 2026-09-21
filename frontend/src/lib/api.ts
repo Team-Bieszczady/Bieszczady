@@ -441,20 +441,19 @@ export const api = {
     );
   },
 
-async getTrash(
-  accessToken: string,
-  projectId: string,
-): Promise<BackendDocument[]>{
-  return request<BackendDocument[]>(
-
-  `/api/v1/projects/${projectId}/documents/trash`,
-  {
-    method: 'GET',
-    accessToken,
-    fallbackMessage: 'Nie udało się pobrać dokumentów',
-  });
-},
-
+  async getTrash(
+    accessToken: string,
+    projectId: string,
+  ): Promise<BackendDocument[]> {
+    return request<BackendDocument[]>(
+      `/api/v1/projects/${projectId}/documents/trash`,
+      {
+        method: 'GET',
+        accessToken,
+        fallbackMessage: 'Nie udało się pobrać dokumentów',
+      },
+    );
+  },
 
   async downloadVersion(
     accessToken: string,
@@ -533,14 +532,31 @@ async getTrash(
     projectId: string,
     documentId: string,
   ): Promise<BackendDocument> {
-       return request<BackendDocument>(
-         `/api/v1/projects/${projectId}/documents/${documentId}`,
-         {
-           method: 'DELETE',
-           accessToken,
-           fallbackMessage: 'Nie udało się usunąć dokumentu',
-         },
-       );
+    return request<BackendDocument>(
+      `/api/v1/projects/${projectId}/documents/${documentId}`,
+      {
+        method: 'DELETE',
+        accessToken,
+        fallbackMessage: 'Nie udało się usunąć dokumentu',
+      },
+    );
+  },
+
+  async restoreDocument(
+    accessToken: string,
+    projectId: string,
+    documentId: string,
+    body?: { folderId?: string },
+  ): Promise<BackendDocument> {
+    return request<BackendDocument>(
+      `/api/v1/projects/${projectId}/documents/${documentId}/restore`,
+      {
+        method: 'POST',
+        accessToken,
+        body,
+        fallbackMessage: 'Nie udało się przywrócić dokumentu',
+      },
+    );
   },
 };
 

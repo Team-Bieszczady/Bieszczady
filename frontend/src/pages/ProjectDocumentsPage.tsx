@@ -28,6 +28,7 @@ import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { useUpdateFolder } from '../features/documents/hooks/useUpdateFolder';
 import { useDeleteDocument } from '../features/documents/hooks/useDeleteDocument';
 import { useTrash } from '../features/documents/hooks/useTrash';
+import { useRestoreDocument } from '../features/documents/hooks/useRestoreDocument';
 
 
 
@@ -65,7 +66,7 @@ const {data: trash} = useTrash(PROJECT_ID)
 const updateFolder = useUpdateFolder(PROJECT_ID);
 
 const deleteDocument = useDeleteDocument(PROJECT_ID, folderId ?? '');
-
+const restoreDocument = useRestoreDocument(PROJECT_ID)
 const clearDeleteDocument  = ()=> {
   setDeleteDocumentId(null)
 }
@@ -87,6 +88,18 @@ const delDocument = () => {
     });
 }
 
+
+const restore = (documentId: string) => {
+ restoreDocument.mutate(
+   { documentId },
+   {
+     onError: (error) => {
+       const message = isApiError(error) ? error.message : 'Coś poszło nie tak';
+       toast.error(message);
+     },
+   },
+ );
+}
 
 const selectFolder = (folderId: string) => {
   setFolderId(folderId)
@@ -397,6 +410,8 @@ const parentFolderName = folders.find((el) => el.id === newFolderParentId)?.name
               onToggle={toggleExpanded}
               onNewVersion={openNewVersion}
               onDeleteDocument={setDeleteDocumentId}
+              onRestoreDocument={restore}
+              variant='trash'
             />
           )}
           {!showTrash && !folderId && (
@@ -427,6 +442,8 @@ const parentFolderName = folders.find((el) => el.id === newFolderParentId)?.name
               onToggle={toggleExpanded}
               onNewVersion={openNewVersion}
               onDeleteDocument={setDeleteDocumentId}
+              onRestoreDocument={restore}
+              variant='folder'
             />
           )}
         </section>
