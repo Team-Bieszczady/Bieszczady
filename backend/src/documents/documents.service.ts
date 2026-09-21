@@ -5,6 +5,7 @@ import { randomUUID } from 'crypto';
 import { CreateDocumentDto } from './dto/create-document.dto';
 import { CreateVersionDto } from './dto/create-version.dto';
 import { RestoreDocumentDto } from './dto/restore-document.dto';
+import { UpdateDocumentDto } from './dto/update-document.dto';
 
 interface UploadedFile {
   buffer: Buffer;
@@ -208,6 +209,24 @@ export class DocumentsService {
     });
   }
 
+  async updateDocument(
+    projectId: string,
+    documentId: string,
+    dto: UpdateDocumentDto,
+  ) {
+
+     const document = await this.prisma.document.findFirst({
+       where: { id: documentId, projectId: projectId, deletedAt: null },
+     });
+     if (!document) {
+       throw new NotFoundException('Nie znaleziono dokumentu');
+     }
+     return await this.prisma.document.update({
+       where: { id: documentId },
+       data: { name: dto.name },
+     });
+  }
+
   async getTrash(projectId: string) {
     const documents = await this.prisma.document.findMany({
       where: { projectId: projectId, deletedAt: { not: null } },
@@ -227,22 +246,20 @@ export class DocumentsService {
   }
 
   async deleteDocumentPermanently(projectId: string, documentId: string) {
-   const document =  await this.prisma.document.findFirst({
- 
-        where: { id: documentId, projectId: projectId, deletedAt: {not: null}},
-    include: {versions: true}
+    const document = await this.prisma.document.findFirst({
+      where: { id: documentId, projectId: projectId, deletedAt: { not: null } },
+      include: { versions: true },
     });
 
-    if(!document){
-        throw new NotFoundException('Nie znaleziono dokumentu w Koszu');
+    if (!document) {
+      throw new NotFoundException('Nie znaleziono dokumentu w Koszu');
     }
 
-    for(const version of document.versions){
-      await this.storage.remove(version.storageKey)
-
+    for (const version of document.versions) {
+      await this.storage.remove(version.storageKey);
     }
-     await this.prisma.documentVersion.deleteMany({ where: { documentId } });
-     await this.prisma.document.delete({ where: { id: documentId } });
+    await this.prisma.documentVersion.deleteMany({ where: { documentId } });
+    await this.prisma.document.delete({ where: { id: documentId } });
   }
 }
   

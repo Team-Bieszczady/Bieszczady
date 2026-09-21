@@ -7,6 +7,7 @@ import {
   Param,
   ParseIntPipe,
   ParseUUIDPipe,
+  Patch,
   Post,
   Res,
   StreamableFile,
@@ -24,6 +25,7 @@ import { type AuthenticatedUser } from '../auth/types/auth.types';
 import { CreateVersionDto } from './dto/create-version.dto';
 import { RestoreDocumentDto } from './dto/restore-document.dto';
 import { DOCUMENT_UPLOAD_OPTIONS } from './upload.config';
+import { UpdateDocumentDto } from './dto/update-document.dto';
 
 @Controller('/projects/:projectId/documents')
 export class DocumentVersionsController {
@@ -92,7 +94,10 @@ export class DocumentVersionsController {
     @Param('projectId', ParseUUIDPipe) projectId: string,
     @Param('documentId', ParseUUIDPipe) documentId: string,
   ) {
-    return await this.documentService.deleteDocumentPermanently(projectId, documentId);
+    return await this.documentService.deleteDocumentPermanently(
+      projectId,
+      documentId,
+    );
   }
 
   @Delete('/:documentId')
@@ -112,6 +117,19 @@ export class DocumentVersionsController {
     @Body() body: RestoreDocumentDto,
   ) {
     return await this.documentService.restoreDocument(
+      projectId,
+      documentId,
+      body,
+    );
+  }
+  @Patch('/:documentId')
+  @UseGuards(JwtAuthGuard, PasswordChangeGuard)
+  async updateDocument(
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('documentId', ParseUUIDPipe) documentId: string,
+    @Body() body: UpdateDocumentDto,
+  ) {
+    return await this.documentService.updateDocument(
       projectId,
       documentId,
       body,
