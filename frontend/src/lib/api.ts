@@ -69,6 +69,7 @@ export interface BackendDocument {
   updatedAt: string;
   deletedAt: string | null;
   versions: BackendDocumentVersion[];
+  folder?: { name: string; deletedAt: string | null };
 }
 
 export interface AuthResponse {
@@ -541,7 +542,20 @@ export const api = {
       },
     );
   },
-
+  async deleteDocumentPermanently(
+    accessToken: string,
+    projectId: string,
+    documentId: string,
+  ): Promise<void> {
+    return request<void>(
+      `/api/v1/projects/${projectId}/documents/${documentId}/permanent`,
+      {
+        method: 'DELETE',
+        accessToken,
+        fallbackMessage: 'Nie udało się trwale usunąć dokumentu',
+      },
+    );
+  },
   async restoreDocument(
     accessToken: string,
     projectId: string,

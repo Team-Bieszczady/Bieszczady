@@ -59,6 +59,8 @@ const [deleteDocumentId, setDeleteDocumentId] = useState<string | null>(null);
 
 const [renameFolderId, setRenameFolderId] = useState<string | null>(null);
 const [renameFolderName, setRenameFolderName] = useState('');
+const [restoreDocumentId, setRestoreDocumentId] = useState<string | null>(null);
+const [restoreFolderId, setRestoreFolderId] = useState('');
 
 const [showTrash, setShowTrash] = useState(false)
 
@@ -88,18 +90,59 @@ const delDocument = () => {
     });
 }
 
+const clearRestore = () => {
+
+setRestoreDocumentId(null)
+setRestoreFolderId("")
+}
 
 const restore = (documentId: string) => {
- restoreDocument.mutate(
-   { documentId },
-   {
-     onError: (error) => {
-       const message = isApiError(error) ? error.message : 'Coś poszło nie tak';
-       toast.error(message);
-     },
-   },
- );
+  const doc = trash?.find((el) => el.id === documentId);
+  if (doc?.folder?.deletedAt) {
+    setRestoreDocumentId(documentId);
+    return;
+  }
+  restoreDocument.mutate(
+    { documentId },
+    {
+      onError: (error) => {
+        const message = isApiError(error)
+          ? error.message
+          : 'Coś poszło nie tak';
+        toast.error(message);
+      },
+    },
+  );
+};
+
+
+
+
+const submitRestore = () => {
+if (restoreDocumentId === null || restoreFolderId === '') {
+  return
 }
+restoreDocument.mutate(
+  { documentId: restoreDocumentId, folderId: restoreFolderId },
+  {
+    onSuccess: () => {
+      clearRestore()
+    },
+
+        onError: (error) => {
+        const message = isApiError(error)
+          ? error.message
+          : 'Coś poszło nie tak';
+        toast.error(message);
+      },
+  }
+
+);
+
+};
+
+
+
 
 const selectFolder = (folderId: string) => {
   setFolderId(folderId)
@@ -320,6 +363,11 @@ setExpandedIds(newExpandsIds)
        : doc.name,
    })) ?? [];
 
+   const folderOptions = folders?.map((folder) => ({
+     value: folder.id,
+     label: folder.name,
+   }));
+
   const nextVersionNo = versionForId
     ? (documents?.find((doc) => doc.id === versionForId)?.versions[0]
         ?.versionNo ?? 0) + 1
@@ -348,7 +396,7 @@ const parentFolderName = folders.find((el) => el.id === newFolderParentId)?.name
           variant="primary"
           size="small"
           onClick={() => setShowUpload(true)}
-          disabled={!folderId}
+          disabled={!folderId || showTrash}
         >
           <IoCloudUploadOutline className="h-4 w-4" />
           Wgraj plik
@@ -411,7 +459,7 @@ const parentFolderName = folders.find((el) => el.id === newFolderParentId)?.name
               onNewVersion={openNewVersion}
               onDeleteDocument={setDeleteDocumentId}
               onRestoreDocument={restore}
-              variant='trash'
+              variant="trash"
             />
           )}
           {!showTrash && !folderId && (
@@ -443,7 +491,7 @@ const parentFolderName = folders.find((el) => el.id === newFolderParentId)?.name
               onNewVersion={openNewVersion}
               onDeleteDocument={setDeleteDocumentId}
               onRestoreDocument={restore}
-              variant='folder'
+              variant="folder"
             />
           )}
         </section>
@@ -674,6 +722,53 @@ const parentFolderName = folders.find((el) => el.id === newFolderParentId)?.name
           </div>
         </div>
       </Modal>
+
+      <Modal
+        isOpen={restoreDocumentId !== null}
+        onClose={clearRestore}
+        title="Przywróć dokument"
+      >
+        <div className="space-y-5">
+          <p className="text-sm text-dark/75">
+            Folder tego dokumentu został usunięty. Wybierz, gdzie go przywrócić.
+          </p>
+
+          <div>
+            <label className={FIELD_LABEL_CLASSES}>
+              Folder <span className="text-red-500">*</span>
+            </label>
+            <Select
+              size="md"
+              options={folderOptions}
+              value={restoreFolderId}
+              onChange={(v) => setRestoreFolderId(v)}
+              placeholder="Wybierz"
+            />
+          </div>
+
+          <div className="border-t border-gray-200 flex gap-3 justify-end pt-4">
+            <Button
+              variant="outline"
+              size="small"
+              type="button"
+              onClick={clearRestore}
+            >
+              Anuluj
+            </Button>
+            <Button
+              variant="primary"
+              size="small"
+              onClick={submitRestore}
+              disabled={restoreFolderId === ''}
+              isPending={restoreDocument.isPending}
+              className="font-medium!"
+            >
+              Przywróć
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
       <ConfirmDialog
         tone="danger"
         isPending={deleteFolder.isPending}
