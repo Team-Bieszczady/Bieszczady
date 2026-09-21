@@ -572,6 +572,22 @@ export const api = {
       },
     );
   },
+  async updateDocument(
+    accessToken: string,
+    projectId: string,
+    documentId: string,
+    body: { name: string },
+  ): Promise<BackendDocument> {
+    return request<BackendDocument>(
+      `/api/v1/projects/${projectId}/documents/${documentId}`,
+      {
+        method: 'PATCH',
+        accessToken,
+        body,
+        fallbackMessage: 'Nie udało się zmienić nazwy dokumentu',
+      },
+    );
+  },
 };
 
 

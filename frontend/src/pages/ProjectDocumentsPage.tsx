@@ -30,6 +30,7 @@ import { useDeleteDocument } from '../features/documents/hooks/useDeleteDocument
 import { useTrash } from '../features/documents/hooks/useTrash';
 import { useRestoreDocument } from '../features/documents/hooks/useRestoreDocument';
 import { useDeleteDocumentPermanently } from '../features/documents/hooks/useDeleteDocumentPermanently';
+import { useUpdateDocument } from '../features/documents/hooks/useUpdateDocument';
 
 
 
@@ -67,6 +68,9 @@ const [showTrash, setShowTrash] = useState(false)
 
 const [permanentDeleteId, setPermanentDeleteId] = useState<string | null>(null);
 
+const [renameDocumentId, setRenameDocumentId] = useState<string | null>(null);
+const [renameDocumentName, setRenameDocumentName] = useState('');
+
 
 const {data: trash} = useTrash(PROJECT_ID)
 const updateFolder = useUpdateFolder(PROJECT_ID);
@@ -74,6 +78,7 @@ const updateFolder = useUpdateFolder(PROJECT_ID);
 const deleteDocument = useDeleteDocument(PROJECT_ID, folderId ?? '');
 const restoreDocument = useRestoreDocument(PROJECT_ID)
 
+const updateDocument = useUpdateDocument(PROJECT_ID, folderId ?? '');
 const deletePermanentlyDocument = useDeleteDocumentPermanently(PROJECT_ID);
 const clearDeleteDocument  = ()=> {
   setDeleteDocumentId(null)
@@ -95,6 +100,35 @@ const delDocument = () => {
       },
     });
 }
+
+const openRenameDocument = (documentId: string) => {
+  setRenameDocumentId(documentId);
+  const currentName = documents?.find((el) => el.id === documentId)?.name ?? '';
+  setRenameDocumentName(currentName);
+};
+
+const clearRenameDocument = () => {
+  setRenameDocumentId(null);
+  setRenameDocumentName('');
+};
+
+const submitRenameDocument = () => {
+  if (renameDocumentId === null || renameDocumentName.trim() === '') {
+    return;
+  }
+  updateDocument.mutate(
+    { documentId: renameDocumentId, name: renameDocumentName.trim() },
+    {
+      onSuccess: () => clearRenameDocument(),
+      onError: (error) => {
+        const message = isApiError(error)
+          ? error.message
+          : 'Coś poszło nie tak';
+        toast.error(message);
+      },
+    },
+  );
+};
 
 
 const clearPermanentDelete = () => {
@@ -494,6 +528,7 @@ const parentFolderName = folders.find((el) => el.id === newFolderParentId)?.name
               onRestoreDocument={restore}
               variant="trash"
               onDeletePermanently={setPermanentDeleteId}
+              onRenameDocument={openRenameDocument}
             />
           )}
           {!showTrash && !folderId && (
@@ -527,6 +562,7 @@ const parentFolderName = folders.find((el) => el.id === newFolderParentId)?.name
               onRestoreDocument={restore}
               variant="folder"
               onDeletePermanently={setPermanentDeleteId}
+              onRenameDocument={openRenameDocument}
             />
           )}
         </section>
@@ -799,6 +835,48 @@ const parentFolderName = folders.find((el) => el.id === newFolderParentId)?.name
               className="font-medium!"
             >
               Przywróć
+            </Button>
+          </div>
+        </div>
+      </Modal>
+      <Modal
+        isOpen={renameDocumentId !== null}
+        onClose={clearRenameDocument}
+        title="Zmień nazwę dokumentu"
+      >
+        <div className="space-y-5">
+          <div>
+            <label className={FIELD_LABEL_CLASSES}>
+              Nazwa dokumentu <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              placeholder="Podaj nazwę..."
+              maxLength={200}
+              value={renameDocumentName}
+              onChange={(e) => setRenameDocumentName(e.target.value)}
+              className={INPUT_CLASSES}
+            />
+          </div>
+
+          <div className="border-t border-gray-200 flex gap-3 justify-end pt-4">
+            <Button
+              variant="outline"
+              size="small"
+              type="button"
+              onClick={clearRenameDocument}
+            >
+              Anuluj
+            </Button>
+            <Button
+              variant="primary"
+              size="small"
+              onClick={submitRenameDocument}
+              disabled={renameDocumentName.trim() === ''}
+              isPending={updateDocument.isPending}
+              className="font-medium!"
+            >
+              Zapisz
             </Button>
           </div>
         </div>

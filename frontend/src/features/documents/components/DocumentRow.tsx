@@ -6,7 +6,7 @@ import {
   DOCUMENT_STATUS_LABELS,
 } from '../../../lib/documents';
 import { fileExtension, formatDate, formatFileSize } from '../utils/formatters';
-import { IoArrowUndoOutline, IoChevronDown, IoChevronForward, IoTrashOutline } from "react-icons/io5";
+import { IoArrowUndoOutline, IoChevronDown, IoChevronForward, IoCreateOutline, IoTrashOutline } from "react-icons/io5";
 import { ActionMenu } from "../../../components/ui/ActionMenu";
 interface Props {
   document: BackendDocument;
@@ -19,6 +19,7 @@ interface Props {
   variant: 'folder' | 'trash';
   onRestoreDocument: (documentId: string) => void;
   onDeletePermanently: (documentId: string) => void;
+  onRenameDocument: (documentId: string) => void;
 }
 
 
@@ -33,6 +34,7 @@ export const DocumentRow = ({
   variant,
   onRestoreDocument,
   onDeletePermanently,
+  onRenameDocument
 }: Props) => {
   const version = document.versions[0];
   const {
@@ -113,6 +115,12 @@ export const DocumentRow = ({
                     icon: <IoTrashOutline className="h-4 w-4" />,
                     tone: 'danger',
                     onSelect: () => onDeleteDocument(document.id),
+                  },
+                  {
+                    id: 'rename-document',
+                    label: 'Zmień nazwę',
+                    icon: <IoCreateOutline className="h-4 w-4" />,
+                    onSelect: () => onRenameDocument(document.id),
                   },
                 ]}
               />
