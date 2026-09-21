@@ -12,6 +12,7 @@ interface Props {
   onDeleteDocument: (documentId: string) => void;
   variant: 'folder' | 'trash';
   onRestoreDocument: (documentId: string) => void;
+  onDeletePermanently: (documentId: string) => void;
 }
 
 const HEAD_CLASS =
@@ -26,7 +27,8 @@ export function DocumentsTable({
   onNewVersion,
   onDeleteDocument,
   variant,
-    onRestoreDocument
+  onRestoreDocument,
+  onDeletePermanently,
 }: Props) {
   if (documents.length === 0) {
     return (
@@ -64,6 +66,7 @@ export function DocumentsTable({
               onDeleteDocument={onDeleteDocument}
               variant={variant}
               onRestoreDocument={onRestoreDocument}
+              onDeletePermanently = {onDeletePermanently}
             />
           ))}
         </tbody>

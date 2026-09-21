@@ -29,6 +29,7 @@ import { useUpdateFolder } from '../features/documents/hooks/useUpdateFolder';
 import { useDeleteDocument } from '../features/documents/hooks/useDeleteDocument';
 import { useTrash } from '../features/documents/hooks/useTrash';
 import { useRestoreDocument } from '../features/documents/hooks/useRestoreDocument';
+import { useDeleteDocumentPermanently } from '../features/documents/hooks/useDeleteDocumentPermanently';
 
 
 
@@ -64,11 +65,16 @@ const [restoreFolderId, setRestoreFolderId] = useState('');
 
 const [showTrash, setShowTrash] = useState(false)
 
+const [permanentDeleteId, setPermanentDeleteId] = useState<string | null>(null);
+
+
 const {data: trash} = useTrash(PROJECT_ID)
 const updateFolder = useUpdateFolder(PROJECT_ID);
 
 const deleteDocument = useDeleteDocument(PROJECT_ID, folderId ?? '');
 const restoreDocument = useRestoreDocument(PROJECT_ID)
+
+const deletePermanentlyDocument = useDeleteDocumentPermanently(PROJECT_ID);
 const clearDeleteDocument  = ()=> {
   setDeleteDocumentId(null)
 }
@@ -89,6 +95,26 @@ const delDocument = () => {
       },
     });
 }
+
+
+const clearPermanentDelete = () => {
+  setPermanentDeleteId(null)
+}
+const delPermanentlyDoc = () => {
+  if (permanentDeleteId === null) {
+    return;
+  }
+  deletePermanentlyDocument.mutate(permanentDeleteId, {
+    onSuccess: () => {
+      clearPermanentDelete();
+    },
+    onError: (error) => {
+      const message = isApiError(error) ? error.message : 'Coś poszło nie tak';
+      toast.error(message);
+    },
+  });
+};
+
 
 const clearRestore = () => {
 
@@ -352,8 +378,15 @@ setExpandedIds(newExpandsIds)
   if (!folders) {
     return null;
   }
+  if(!trash){
+    return null
+  }
 
   const nameFolder = folders.find((el) => el.id === folderId)?.name;
+const permanentDeleteName = trash?.find(
+  (el) => el.id === permanentDeleteId,
+)?.name;
+
 
  const documentOptions = 
    documents?.map((doc) => ({
@@ -460,6 +493,7 @@ const parentFolderName = folders.find((el) => el.id === newFolderParentId)?.name
               onDeleteDocument={setDeleteDocumentId}
               onRestoreDocument={restore}
               variant="trash"
+              onDeletePermanently={setPermanentDeleteId}
             />
           )}
           {!showTrash && !folderId && (
@@ -492,6 +526,7 @@ const parentFolderName = folders.find((el) => el.id === newFolderParentId)?.name
               onDeleteDocument={setDeleteDocumentId}
               onRestoreDocument={restore}
               variant="folder"
+              onDeletePermanently={setPermanentDeleteId}
             />
           )}
         </section>
@@ -788,6 +823,16 @@ const parentFolderName = folders.find((el) => el.id === newFolderParentId)?.name
         title="Usuń dokument"
         description={`Czy na pewno chcesz usunąć dokument „${deleteDocumentName}"?`}
         confirmLabel="Usuń"
+      />
+      <ConfirmDialog
+        tone="danger"
+        isPending={deletePermanentlyDocument.isPending}
+        isOpen={permanentDeleteId !== null}
+        onClose={clearPermanentDelete}
+        onConfirm={delPermanentlyDoc}
+        title="Usuń trwale"
+        description={`Dokument „${permanentDeleteName}" i wszystkie jego wersje zostaną usunięte na zawsze. Tej operacji nie da się cofnąć.`}
+        confirmLabel="Usuń trwale"
       />
     </div>
   );

@@ -18,6 +18,7 @@ interface Props {
   onDeleteDocument: (documentId: string) => void;
   variant: 'folder' | 'trash';
   onRestoreDocument: (documentId: string) => void;
+  onDeletePermanently: (documentId: string) => void;
 }
 
 
@@ -31,6 +32,7 @@ export const DocumentRow = ({
   onDeleteDocument,
   variant,
   onRestoreDocument,
+  onDeletePermanently,
 }: Props) => {
   const version = document.versions[0];
   const {
@@ -124,6 +126,13 @@ export const DocumentRow = ({
                     label: 'Przywróć',
                     icon: <IoArrowUndoOutline className="h-4 w-4" />,
                     onSelect: () => onRestoreDocument(document.id),
+                  },
+                  {
+                    id: 'delete-permanently',
+                    label: 'Usuń trwale',
+                    icon: <IoTrashOutline className="h-4 w-4" />,
+                    tone: 'danger',
+                    onSelect: () => onDeletePermanently(document.id),
                   },
                 ]}
               />
