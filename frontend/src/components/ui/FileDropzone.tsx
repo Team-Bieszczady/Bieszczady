@@ -56,6 +56,8 @@ useEffect(() => {
       }`}
     >
       <input
+  
+
         type="file"
         className="hidden"
         onChange={(e) => onChange(e.target.files?.[0] ?? null)}
@@ -77,7 +79,7 @@ useEffect(() => {
             </span>
           </p>
           <p className="text-xs text-gray-400">
-            PDF, DOCX, XLSX, PPTX, JPG, PNG
+            Dokumenty, arkusze, obrazy i archiwa · maks. 25 MB
           </p>
         </>
       )}

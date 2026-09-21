@@ -23,6 +23,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { type AuthenticatedUser } from '../auth/types/auth.types';
 import { CreateVersionDto } from './dto/create-version.dto';
 import { RestoreDocumentDto } from './dto/restore-document.dto';
+import { DOCUMENT_UPLOAD_OPTIONS } from './upload.config';
 
 @Controller('/projects/:projectId/documents')
 export class DocumentVersionsController {
@@ -58,7 +59,7 @@ export class DocumentVersionsController {
 
   @Post('/:documentId/versions')
   @UseGuards(JwtAuthGuard, PasswordChangeGuard)
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', DOCUMENT_UPLOAD_OPTIONS))
   async createVersion(
     @Param('projectId', ParseUUIDPipe) projectId: string,
     @Param('documentId', ParseUUIDPipe) documentId: string,

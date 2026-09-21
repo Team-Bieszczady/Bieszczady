@@ -16,6 +16,7 @@ import { type AuthenticatedUser } from '../auth/types/auth.types';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PasswordChangeGuard } from '../auth/guards/password-change.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { DOCUMENT_UPLOAD_OPTIONS } from './upload.config';
 
 @Controller('/projects/:projectId/folders/:folderId/documents')
 export class DocumentsController {
@@ -23,7 +24,7 @@ export class DocumentsController {
 
   @Post()
   @UseGuards(JwtAuthGuard, PasswordChangeGuard)
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', DOCUMENT_UPLOAD_OPTIONS))
   async createDocument(
     @Param('projectId') projectId: string,
     @Param('folderId') folderId: string,
