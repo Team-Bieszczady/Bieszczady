@@ -21,6 +21,7 @@ interface Props {
   onDeletePermanently: (documentId: string) => void;
   onRenameDocument: (documentId: string) => void;
   onPreview: (documentId: string, versionNo: number) => void;
+  onRestoreVersion: (documentId: string, versionNo: number) => void;
 }
 
 const canPreview = (mimeType: string) => {
@@ -40,7 +41,8 @@ export const DocumentRow = ({
   onRestoreDocument,
   onDeletePermanently,
   onRenameDocument,
-  onPreview
+  onPreview,
+  onRestoreVersion
 }: Props) => {
   const version = document.versions[0];
   const {
@@ -233,6 +235,18 @@ export const DocumentRow = ({
                           Podgląd
                         </button>
                       )}
+                      {variant === 'folder' &&
+                        wersja.storageKey !== versions[0].storageKey && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onRestoreVersion(document.id, wersja.versionNo)
+                            }
+                            className="cursor-pointer text-xs font-medium text-darkGreen hover:text-darkGreenHover"
+                          >
+                            Przywróć jako v{versions[0].versionNo + 1}
+                          </button>
+                        )}
                     </div>
                   </div>
                 ))}

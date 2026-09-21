@@ -494,6 +494,23 @@ export const api = {
     return response.json();
   },
 
+  async restoreVersion(
+    accessToken: string,
+    projectId: string,
+    documentId: string,
+    versionNo: number,
+  ): Promise<BackendDocumentVersion> {
+      return request<BackendDocumentVersion>(
+        `/api/v1/projects/${projectId}/documents/${documentId}/versions/${versionNo}/restore`,
+        {
+          method: 'POST',
+          accessToken,
+          fallbackMessage: 'Nie udało się przywrócić wersji',
+        },
+      );
+
+  },
+
   async uploadVersion(
     accessToken: string,
     projectId: string,
@@ -572,6 +589,7 @@ export const api = {
       },
     );
   },
+
   async updateDocument(
     accessToken: string,
     projectId: string,

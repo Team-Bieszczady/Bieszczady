@@ -135,4 +135,19 @@ export class DocumentVersionsController {
       body,
     );
   }
+  @Post('/:documentId/versions/:versionNo/restore')
+  @UseGuards(JwtAuthGuard, PasswordChangeGuard)
+  async restoreVersion(
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('documentId', ParseUUIDPipe) documentId: string,
+    @Param('versionNo', ParseIntPipe) versionNo: number,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return await this.documentService.restoreVersion(
+      projectId,
+      documentId,
+      versionNo,
+      user.id,
+    );
+  }
 }

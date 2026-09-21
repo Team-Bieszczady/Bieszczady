@@ -15,6 +15,7 @@ interface Props {
   onDeletePermanently: (documentId: string) => void;
   onRenameDocument: (documentId: string) => void;
   onPreview: (documentId: string, versionNo: number) => void;
+  onRestoreVersion: (documentId: string, versionNo: number) => void
 }
 
 const HEAD_CLASS =
@@ -32,7 +33,8 @@ export function DocumentsTable({
   onRestoreDocument,
   onDeletePermanently,
   onRenameDocument,
-  onPreview
+  onPreview,
+  onRestoreVersion
 }: Props) {
   if (documents.length === 0) {
     return (
@@ -73,6 +75,7 @@ export function DocumentsTable({
               onDeletePermanently={onDeletePermanently}
               onRenameDocument={onRenameDocument}
               onPreview={onPreview}
+              onRestoreVersion={onRestoreVersion}
             />
           ))}
         </tbody>

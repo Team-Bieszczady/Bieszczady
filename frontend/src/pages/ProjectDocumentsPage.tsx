@@ -31,6 +31,7 @@ import { useTrash } from '../features/documents/hooks/useTrash';
 import { useRestoreDocument } from '../features/documents/hooks/useRestoreDocument';
 import { useDeleteDocumentPermanently } from '../features/documents/hooks/useDeleteDocumentPermanently';
 import { useUpdateDocument } from '../features/documents/hooks/useUpdateDocument';
+import { useRestoreVersion } from '../features/documents/hooks/useRestoreVersion';
 
 
 
@@ -80,6 +81,10 @@ const restoreDocument = useRestoreDocument(PROJECT_ID)
 
 const updateDocument = useUpdateDocument(PROJECT_ID, folderId ?? '');
 const deletePermanentlyDocument = useDeleteDocumentPermanently(PROJECT_ID);
+
+const restoreVersionMutation = useRestoreVersion(PROJECT_ID);
+
+
 const clearDeleteDocument  = ()=> {
   setDeleteDocumentId(null)
 }
@@ -175,7 +180,19 @@ const restore = (documentId: string) => {
   );
 };
 
-
+const restoreVersion = (documentId: string, versionNo: number) => {
+  restoreVersionMutation.mutate(
+    { documentId, versionNo },
+    {
+      onError: (error) => {
+        const message = isApiError(error)
+          ? error.message
+          : 'Coś poszło nie tak';
+        toast.error(message);
+      },
+    },
+  );
+};
 
 
 const submitRestore = () => {
@@ -559,6 +576,7 @@ const parentFolderName = folders.find((el) => el.id === newFolderParentId)?.name
               onDeletePermanently={setPermanentDeleteId}
               onRenameDocument={openRenameDocument}
               onPreview={preview}
+              onRestoreVersion={restoreVersion}
             />
           )}
           {!showTrash && !folderId && (
@@ -594,6 +612,7 @@ const parentFolderName = folders.find((el) => el.id === newFolderParentId)?.name
               onDeletePermanently={setPermanentDeleteId}
               onRenameDocument={openRenameDocument}
               onPreview={preview}
+              onRestoreVersion={restoreVersion}
             />
           )}
         </section>

@@ -194,6 +194,44 @@ export class DocumentsService {
     return versions;
   }
 
+  async restoreVersion(
+    projectId: string,
+    documentId: string,
+    versionNo: number,
+    userId: string,
+  ) {
+
+    const source = await this.prisma.documentVersion.findFirst({
+      where: { documentId, versionNo, document: { projectId, deletedAt: null } },
+    });
+    if (!source) {
+      throw new NotFoundException('Nie znaleziono wersji');
+    }
+
+    const latest = await this.prisma.documentVersion.findFirst({
+      where: {documentId},
+      orderBy: { versionNo: 'desc'},
+    });
+
+if (!latest || latest.storageKey === source.storageKey) {
+  throw new BadRequestException('Aktualna wersja ma już tę treść');
+}
+
+
+    return await this.prisma.documentVersion.create({
+      data: {
+        documentId,
+        versionNo: latest.versionNo + 1,
+        storageKey: source?.storageKey,
+        fileName: source.fileName,
+        mimeType: source.mimeType,
+        sizeBytes: source.sizeBytes,
+        uploadedById: userId,
+        changeNote: `Przywrócono wersję v${versionNo}`,
+      },
+    });
+  }
+
   async deleteDocument(projectId: string, documentId: string) {
     const document = await this.prisma.document.findFirst({
       where: { id: documentId, projectId: projectId, deletedAt: null },
@@ -214,17 +252,16 @@ export class DocumentsService {
     documentId: string,
     dto: UpdateDocumentDto,
   ) {
-
-     const document = await this.prisma.document.findFirst({
-       where: { id: documentId, projectId: projectId, deletedAt: null },
-     });
-     if (!document) {
-       throw new NotFoundException('Nie znaleziono dokumentu');
-     }
-     return await this.prisma.document.update({
-       where: { id: documentId },
-       data: { name: dto.name },
-     });
+    const document = await this.prisma.document.findFirst({
+      where: { id: documentId, projectId: projectId, deletedAt: null },
+    });
+    if (!document) {
+      throw new NotFoundException('Nie znaleziono dokumentu');
+    }
+    return await this.prisma.document.update({
+      where: { id: documentId },
+      data: { name: dto.name },
+    });
   }
 
   async getTrash(projectId: string) {
