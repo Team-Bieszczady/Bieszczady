@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   Param,
   ParseIntPipe,
   ParseUUIDPipe,
@@ -84,6 +85,7 @@ export class DocumentVersionsController {
   }
 
   @Delete('/:documentId/permanent')
+  @HttpCode(204)
   @UseGuards(JwtAuthGuard, PasswordChangeGuard)
   async deleteDocumentPermanent(
     @Param('projectId', ParseUUIDPipe) projectId: string,
