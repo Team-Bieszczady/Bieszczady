@@ -20,7 +20,12 @@ interface Props {
   onRestoreDocument: (documentId: string) => void;
   onDeletePermanently: (documentId: string) => void;
   onRenameDocument: (documentId: string) => void;
+  onPreview: (documentId: string, versionNo: number) => void;
 }
+
+const canPreview = (mimeType: string) => {
+  return mimeType === 'application/pdf' || mimeType.startsWith('image/');
+};
 
 
 export const DocumentRow = ({
@@ -34,7 +39,8 @@ export const DocumentRow = ({
   variant,
   onRestoreDocument,
   onDeletePermanently,
-  onRenameDocument
+  onRenameDocument,
+  onPreview
 }: Props) => {
   const version = document.versions[0];
   const {
@@ -43,6 +49,9 @@ export const DocumentRow = ({
     isPending,
   } = useVersions(projectId, isExpanded ? document.id : null);
 
+
+
+  
   return (
     <>
       <tr
@@ -94,17 +103,27 @@ export const DocumentRow = ({
 
         <td className="px-4 py-3">
           <div className="flex items-center justify-end gap-2">
-            {version && (
-              <button
-                type="button"
-                onClick={() =>
-                  onDownload(document.id, version.versionNo, version.fileName)
-                }
-                className="cursor-pointer text-xs font-medium text-darkGreen hover:text-darkGreenHover"
-              >
-                Pobierz
-              </button>
-            )}
+            <div className="flex gap-4">
+              {version && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    onDownload(document.id, version.versionNo, version.fileName)
+                  }
+                  className="cursor-pointer text-xs font-medium text-darkGreen hover:text-darkGreenHover"
+                >
+                  Pobierz
+                </button>
+              )}
+              {version && canPreview(version.mimeType) && (
+                <button
+                  className="cursor-pointer text-xs font-medium text-darkGreen hover:text-darkGreenHover"
+                  onClick={() => onPreview(document.id, version.versionNo)}
+                >
+                  Podgląd
+                </button>
+              )}
+            </div>
             {variant === 'folder' && (
               <ActionMenu
                 ariaLabel={`Akcje dokumentu ${document.name}`}
@@ -190,20 +209,31 @@ export const DocumentRow = ({
                       · {formatDate(wersja.createdAt)} ·{' '}
                       {formatFileSize(wersja.sizeBytes)}
                     </p>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onDownload(
-                          document.id,
-                          wersja.versionNo,
-                          wersja.fileName,
-                        );
-                      }}
-                      className="w-fit cursor-pointer text-xs font-medium text-darkGreen hover:text-darkGreenHover"
-                    >
-                      Pobierz
-                    </button>
+                    <div className="flex gap-4">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onDownload(
+                            document.id,
+                            wersja.versionNo,
+                            wersja.fileName,
+                          );
+                        }}
+                        className="w-fit cursor-pointer text-xs font-medium text-darkGreen hover:text-darkGreenHover"
+                      >
+                        Pobierz
+                      </button>
+                      {canPreview(wersja.mimeType) && (
+                        <button
+                          className="w-fit cursor-pointer text-xs font-medium text-darkGreen hover:text-darkGreenHover"
+                          onClick={() =>
+                            onPreview(document.id, wersja.versionNo)
+                          }
+                        >
+                          Podgląd
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
             </div>

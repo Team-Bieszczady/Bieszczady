@@ -386,6 +386,35 @@ setExpandedIds(newExpandsIds)
     }
   };
 
+
+const preview = async (documentId: string, versionNo: number) => {
+
+  const tab = window.open('', '_blank');
+
+  try {
+    const blob = await api.downloadVersion(
+      requireToken(),
+      PROJECT_ID,
+      documentId,
+      versionNo,
+    );
+
+    const url = URL.createObjectURL(blob);
+
+    if (tab) {
+      tab.location.href = url;
+    }
+  } catch (error) {
+    tab?.close();
+    const message =
+      error instanceof Error && isApiError(error)
+        ? error.message
+        : 'Coś poszło nie tak';
+    toast.error(message);
+  }
+};
+
+
   const uploadDoc = () => {
     if (!file) {
       return null;
@@ -529,6 +558,7 @@ const parentFolderName = folders.find((el) => el.id === newFolderParentId)?.name
               variant="trash"
               onDeletePermanently={setPermanentDeleteId}
               onRenameDocument={openRenameDocument}
+              onPreview={preview}
             />
           )}
           {!showTrash && !folderId && (
@@ -563,6 +593,7 @@ const parentFolderName = folders.find((el) => el.id === newFolderParentId)?.name
               variant="folder"
               onDeletePermanently={setPermanentDeleteId}
               onRenameDocument={openRenameDocument}
+              onPreview={preview}
             />
           )}
         </section>
