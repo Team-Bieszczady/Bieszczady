@@ -225,6 +225,25 @@ export class DocumentsService {
     });
     return documents;
   }
+
+  async deleteDocumentPermanently(projectId: string, documentId: string) {
+   const document =  await this.prisma.document.findFirst({
+ 
+        where: { id: documentId, projectId: projectId, deletedAt: {not: null}},
+    include: {versions: true}
+    });
+
+    if(!document){
+        throw new NotFoundException('Nie znaleziono dokumentu w Koszu');
+    }
+
+    for(const version of document.versions){
+      await this.storage.remove(version.storageKey)
+
+    }
+     await this.prisma.documentVersion.deleteMany({ where: { documentId } });
+     await this.prisma.document.delete({ where: { id: documentId } });
+  }
 }
   
 

@@ -83,6 +83,15 @@ export class DocumentVersionsController {
     return await this.documentService.getVersions(projectId, documentId);
   }
 
+  @Delete('/:documentId/permanent')
+  @UseGuards(JwtAuthGuard, PasswordChangeGuard)
+  async deleteDocumentPermanent(
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('documentId', ParseUUIDPipe) documentId: string,
+  ) {
+    return await this.documentService.deleteDocumentPermanently(projectId, documentId);
+  }
+
   @Delete('/:documentId')
   @UseGuards(JwtAuthGuard, PasswordChangeGuard)
   async deleteDocument(
@@ -97,8 +106,12 @@ export class DocumentVersionsController {
   async restoreDocument(
     @Param('projectId', ParseUUIDPipe) projectId: string,
     @Param('documentId', ParseUUIDPipe) documentId: string,
-    @Body() body: RestoreDocumentDto
+    @Body() body: RestoreDocumentDto,
   ) {
-    return await this.documentService.restoreDocument(projectId,documentId,body)
+    return await this.documentService.restoreDocument(
+      projectId,
+      documentId,
+      body,
+    );
   }
 }
