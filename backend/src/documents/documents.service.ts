@@ -48,6 +48,7 @@ export class DocumentsService {
     actor: AuthenticatedUser,
   ) {
     await this.access.assertCanRead(actor, projectId);
+    await this.access.assertNotArchived(projectId);
     await this.assertFolderExists(folderId, projectId,actor);
     const documentId = randomUUID();
     const key = `${projectId}/${documentId}/v1`;
@@ -90,6 +91,7 @@ export class DocumentsService {
     actor: AuthenticatedUser,
   ) {
     await this.access.assertCanRead(actor, projectId);
+    await this.access.assertNotArchived(projectId);
     const versionLast = await this.prisma.documentVersion.findFirst({
       where: {
         document: { projectId, id: documentId, deletedAt: null },
@@ -168,6 +170,7 @@ export class DocumentsService {
     actor: AuthenticatedUser,
   ) {
     await this.access.assertCanRead(actor, projectId);
+    await this.access.assertNotArchived(projectId);
     const document = await this.prisma.document.findFirst({
       where: { projectId, id: documentId, deletedAt: { not: null } },
       include: { folder: { select: { deletedAt: true } } },
@@ -228,6 +231,7 @@ export class DocumentsService {
     actor: AuthenticatedUser,
   ) {
     await this.access.assertCanRead(actor, projectId);
+    await this.access.assertNotArchived(projectId);
     const source = await this.prisma.documentVersion.findFirst({
       where: {
         documentId,
@@ -268,6 +272,7 @@ export class DocumentsService {
     actor: AuthenticatedUser,
   ) {
     await this.access.assertCanRead(actor, projectId);
+    await this.access.assertNotArchived(projectId);
     const document = await this.prisma.document.findFirst({
       where: { id: documentId, projectId: projectId, deletedAt: null },
     });
@@ -289,6 +294,7 @@ export class DocumentsService {
     actor: AuthenticatedUser,
   ) {
     await this.access.assertCanRead(actor, projectId);
+    await this.access.assertNotArchived(projectId);
     const document = await this.prisma.document.findFirst({
       where: { id: documentId, projectId: projectId, deletedAt: null },
     });
@@ -326,6 +332,7 @@ export class DocumentsService {
     actor: AuthenticatedUser,
   ) {
     await this.access.assertCanRead(actor, projectId);
+    await this.access.assertNotArchived(projectId);
     const document = await this.prisma.document.findFirst({
       where: { id: documentId, projectId: projectId, deletedAt: { not: null } },
       include: { versions: true },

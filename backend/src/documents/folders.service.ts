@@ -32,7 +32,19 @@ export class FoldersService {
     dto: CreateFolderDto,
     actor: AuthenticatedUser,
   ) {
-    await this.access.assertCanRead(actor, id);
+     await this.access.assertCanRead(actor, id);
+     await this.access.assertNotArchived(id);
+    
+    if (dto.parentId) {
+      const parentFolder = await this.prisma.folder.findFirst({
+        where: { id: dto.parentId, projectId: id, deletedAt: null},
+      });
+      if (!parentFolder) {
+        throw new BadRequestException(
+          'Wskazany folder nadrzędny nie należy do tego projektu',
+        );
+      }
+    }
     const name = dto.name;
     const parentId = dto.parentId;
     return await this.prisma.folder.create({
@@ -40,19 +52,22 @@ export class FoldersService {
     });
   }
 
+
   async updateFolder(
     id: string,
     projectId: string,
     dto: UpdateFolderDto,
     actor: AuthenticatedUser,
   ) {
-    await this.access.assertCanRead(actor, projectId);
+     await this.access.assertCanRead(actor, projectId);
+     await this.access.assertNotArchived(projectId);
+
     const name = dto.name;
     const parentId = dto.parentId;
 
     if (parentId) {
       const parentFolder = await this.prisma.folder.findFirst({
-        where: { id: parentId, projectId: projectId },
+        where: { id: parentId, projectId: projectId, deletedAt: null },
       });
       if (!parentFolder) {
         throw new BadRequestException(
@@ -64,7 +79,7 @@ export class FoldersService {
     }
 
     const folder = await this.prisma.folder.findFirst({
-      where: { id: id, projectId: projectId },
+      where: { id: id, projectId: projectId, deletedAt: null },
     });
     if (!folder) {
       throw new NotFoundException('Nie znaleziono folderu');
@@ -80,8 +95,10 @@ export class FoldersService {
   }
   async deleteFolder(id: string, projectId: string, actor: AuthenticatedUser) {
     await this.access.assertCanRead(actor, projectId);
+    await this.access.assertNotArchived(projectId);
+
     const folder = await this.prisma.folder.findFirst({
-      where: { id: id, projectId: projectId },
+      where: { id: id, projectId: projectId, deletedAt: null },
     });
     if (!folder) {
       throw new NotFoundException(

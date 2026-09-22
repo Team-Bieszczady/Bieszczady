@@ -101,7 +101,10 @@ describe('FoldersService', () => {
   const ACTOR = { id: OWNER, isDirector: true } as AuthenticatedUser;
 
   // These tests cover folder rules, not permissions, so access always passes.
-  const fakeAccess = { assertCanRead: () => Promise.resolve() };
+  const fakeAccess = {
+    assertCanRead: () => Promise.resolve(),
+    assertNotArchived: () => Promise.resolve(),
+  };
 
   let prisma: ReturnType<typeof createFakePrisma>;
   let service: FoldersService;
