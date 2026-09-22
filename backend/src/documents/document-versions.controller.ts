@@ -28,6 +28,7 @@ import { DOCUMENT_UPLOAD_OPTIONS } from './upload.config';
 import { UpdateDocumentDto } from './dto/update-document.dto';
 import { ModuleAccessGuard } from '../auth/guards/module-access.guard';
 import { RequireModule } from '../auth/decorators/require-module.decorator';
+import { DirectorGuard } from '../auth/guards/director.guard';
 
 @Controller('/projects/:projectId/documents')
 @UseGuards(JwtAuthGuard, PasswordChangeGuard, ModuleAccessGuard)
@@ -94,6 +95,7 @@ export class DocumentVersionsController {
     return await this.documentService.getVersions(projectId, documentId, user);
   }
 
+  @UseGuards(DirectorGuard)
   @Delete('/:documentId/permanent')
   @HttpCode(204)
   async deleteDocumentPermanent(
@@ -146,7 +148,7 @@ export class DocumentVersionsController {
       projectId,
       documentId,
       body,
-      user
+      user,
     );
   }
   @Post('/:documentId/versions/:versionNo/restore')
@@ -161,7 +163,7 @@ export class DocumentVersionsController {
       documentId,
       versionNo,
       user.id,
-      user
+      user,
     );
   }
 }
