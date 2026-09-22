@@ -26,19 +26,21 @@ import { CreateVersionDto } from './dto/create-version.dto';
 import { RestoreDocumentDto } from './dto/restore-document.dto';
 import { DOCUMENT_UPLOAD_OPTIONS } from './upload.config';
 import { UpdateDocumentDto } from './dto/update-document.dto';
+import { ModuleAccessGuard } from '../auth/guards/module-access.guard';
+import { RequireModule } from '../auth/decorators/require-module.decorator';
 
 @Controller('/projects/:projectId/documents')
+@UseGuards(JwtAuthGuard, PasswordChangeGuard, ModuleAccessGuard)
+@RequireModule('DOCUMENTS')
 export class DocumentVersionsController {
   constructor(private readonly documentService: DocumentsService) {}
 
   @Get('/trash')
-  @UseGuards(JwtAuthGuard, PasswordChangeGuard)
   async getTrash(@Param('projectId', ParseUUIDPipe) projectId: string) {
     return await this.documentService.getTrash(projectId);
   }
 
   @Get('/:documentId/versions/:versionNo/download')
-  @UseGuards(JwtAuthGuard, PasswordChangeGuard)
   async downloadDocument(
     @Param('projectId', ParseUUIDPipe) projectId: string,
     @Param('documentId', ParseUUIDPipe) documentId: string,
@@ -60,7 +62,6 @@ export class DocumentVersionsController {
   }
 
   @Post('/:documentId/versions')
-  @UseGuards(JwtAuthGuard, PasswordChangeGuard)
   @UseInterceptors(FileInterceptor('file', DOCUMENT_UPLOAD_OPTIONS))
   async createVersion(
     @Param('projectId', ParseUUIDPipe) projectId: string,
@@ -79,7 +80,6 @@ export class DocumentVersionsController {
   }
 
   @Get('/:documentId/versions')
-  @UseGuards(JwtAuthGuard, PasswordChangeGuard)
   async getDocumentsVersions(
     @Param('projectId', ParseUUIDPipe) projectId: string,
     @Param('documentId', ParseUUIDPipe) documentId: string,
@@ -89,7 +89,6 @@ export class DocumentVersionsController {
 
   @Delete('/:documentId/permanent')
   @HttpCode(204)
-  @UseGuards(JwtAuthGuard, PasswordChangeGuard)
   async deleteDocumentPermanent(
     @Param('projectId', ParseUUIDPipe) projectId: string,
     @Param('documentId', ParseUUIDPipe) documentId: string,
@@ -101,7 +100,6 @@ export class DocumentVersionsController {
   }
 
   @Delete('/:documentId')
-  @UseGuards(JwtAuthGuard, PasswordChangeGuard)
   async deleteDocument(
     @Param('projectId', ParseUUIDPipe) projectId: string,
     @Param('documentId', ParseUUIDPipe) documentId: string,
@@ -110,7 +108,6 @@ export class DocumentVersionsController {
   }
 
   @Post('/:documentId/restore')
-  @UseGuards(JwtAuthGuard, PasswordChangeGuard)
   async restoreDocument(
     @Param('projectId', ParseUUIDPipe) projectId: string,
     @Param('documentId', ParseUUIDPipe) documentId: string,
@@ -123,7 +120,6 @@ export class DocumentVersionsController {
     );
   }
   @Patch('/:documentId')
-  @UseGuards(JwtAuthGuard, PasswordChangeGuard)
   async updateDocument(
     @Param('projectId', ParseUUIDPipe) projectId: string,
     @Param('documentId', ParseUUIDPipe) documentId: string,
@@ -136,7 +132,6 @@ export class DocumentVersionsController {
     );
   }
   @Post('/:documentId/versions/:versionNo/restore')
-  @UseGuards(JwtAuthGuard, PasswordChangeGuard)
   async restoreVersion(
     @Param('projectId', ParseUUIDPipe) projectId: string,
     @Param('documentId', ParseUUIDPipe) documentId: string,

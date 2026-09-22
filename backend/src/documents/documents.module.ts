@@ -5,6 +5,8 @@ import { StorageService } from './storage.service';
 import { DocumentsController } from './documents.controller';
 import { DocumentsService } from './documents.service';
 import { DocumentVersionsController } from './document-versions.controller';
+import { UsersModule } from '../users/users.module';
+import { ProjectsModule } from '../projects/projects.module';
 
 @Module({
   controllers: [
@@ -13,5 +15,6 @@ import { DocumentVersionsController } from './document-versions.controller';
     DocumentVersionsController,
   ],
   providers: [FoldersService, StorageService, DocumentsService],
+  imports: [UsersModule, ProjectsModule],
 })
 export class DocumentsModule {}

@@ -16,18 +16,23 @@ import { CreateFolderDto } from './dto/create-folder.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { type AuthenticatedUser } from '../auth/types/auth.types';
 import { UpdateFolderDto } from './dto/update-folder.dto';
+import { ModuleAccessGuard } from '../auth/guards/module-access.guard';
+import { RequireModule } from '../auth/decorators/require-module.decorator';
+
 
 @Controller('/projects/:projectId/folders')
+@UseGuards(JwtAuthGuard, PasswordChangeGuard, ModuleAccessGuard)
+@RequireModule("DOCUMENTS")
 export class FoldersController {
   constructor(private readonly foldersService: FoldersService) {}
 
-  @UseGuards(JwtAuthGuard, PasswordChangeGuard)
+
   @Get()
   async getFolders(@Param('projectId', ParseUUIDPipe) projectId: string) {
     return await this.foldersService.findAllForProject(projectId);
   }
 
-  @UseGuards(JwtAuthGuard, PasswordChangeGuard)
+
   @Post()
   async createFolder(
     @Param('projectId', ParseUUIDPipe) projectId: string,
@@ -37,7 +42,7 @@ export class FoldersController {
     return await this.foldersService.createFolder(projectId, user.id, dto);
   }
 
-  @UseGuards(JwtAuthGuard, PasswordChangeGuard)
+
   @Patch('/:folderId')
   async updateFolder(
     @Param('projectId', ParseUUIDPipe) projectId: string,
@@ -52,7 +57,6 @@ export class FoldersController {
     );
   }
 
-  @UseGuards(JwtAuthGuard, PasswordChangeGuard)
   @Delete('/:folderId')
   async deleteFolder(
     @Param('projectId', ParseUUIDPipe) projectId: string,

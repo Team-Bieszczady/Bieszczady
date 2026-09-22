@@ -17,13 +17,16 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PasswordChangeGuard } from '../auth/guards/password-change.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { DOCUMENT_UPLOAD_OPTIONS } from './upload.config';
+import { ModuleAccessGuard } from '../auth/guards/module-access.guard';
+import { RequireModule } from '../auth/decorators/require-module.decorator';
 
 @Controller('/projects/:projectId/folders/:folderId/documents')
+@UseGuards(JwtAuthGuard, PasswordChangeGuard, ModuleAccessGuard)
+@RequireModule('DOCUMENTS')
 export class DocumentsController {
   constructor(private readonly documentService: DocumentsService) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard, PasswordChangeGuard)
   @UseInterceptors(FileInterceptor('file', DOCUMENT_UPLOAD_OPTIONS))
   async createDocument(
     @Param('projectId') projectId: string,
@@ -42,14 +45,10 @@ export class DocumentsController {
   }
 
   @Get()
-  @UseGuards(JwtAuthGuard, PasswordChangeGuard)
   async getDocument(
     @Param('projectId') projectId: string,
     @Param('folderId') folderId: string,
   ) {
     return await this.documentService.getDocuments(projectId, folderId);
   }
-
-
-
 }
