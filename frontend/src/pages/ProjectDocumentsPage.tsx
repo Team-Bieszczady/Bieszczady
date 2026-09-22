@@ -26,12 +26,12 @@ import { useCreateFolder } from '../features/documents/hooks/useCreateFolder';
 import { useDeleteFolder } from '../features/documents/hooks/useDeleteFolder';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { useUpdateFolder } from '../features/documents/hooks/useUpdateFolder';
-import { useDeleteDocument } from '../features/documents/hooks/useDeleteDocument';
 import { useTrash } from '../features/documents/hooks/useTrash';
 import { useRestoreDocument } from '../features/documents/hooks/useRestoreDocument';
 import { useDeleteDocumentPermanently } from '../features/documents/hooks/useDeleteDocumentPermanently';
 import { useUpdateDocument } from '../features/documents/hooks/useUpdateDocument';
 import { useRestoreVersion } from '../features/documents/hooks/useRestoreVersion';
+import { DeleteDocumentDialog } from '../features/documents/components/DeleteDocumentDialog';
 
 
 
@@ -76,35 +76,13 @@ const [renameDocumentName, setRenameDocumentName] = useState('');
 const {data: trash} = useTrash(PROJECT_ID)
 const updateFolder = useUpdateFolder(PROJECT_ID);
 
-const deleteDocument = useDeleteDocument(PROJECT_ID, folderId ?? '');
+
 const restoreDocument = useRestoreDocument(PROJECT_ID)
 
 const updateDocument = useUpdateDocument(PROJECT_ID, folderId ?? '');
 const deletePermanentlyDocument = useDeleteDocumentPermanently(PROJECT_ID);
 
 const restoreVersionMutation = useRestoreVersion(PROJECT_ID);
-
-
-const clearDeleteDocument  = ()=> {
-  setDeleteDocumentId(null)
-}
-
-const delDocument = () => {
-    if (deleteDocumentId === null) {
-      return;
-    }
-    deleteDocument.mutate(deleteDocumentId, {
-      onSuccess: () => {
-        clearDeleteDocument();
-      },
-      onError: (error) => {
-        const message = isApiError(error)
-          ? error.message
-          : 'Coś poszło nie tak';
-        toast.error(message);
-      },
-    });
-}
 
 const openRenameDocument = (documentId: string) => {
   setRenameDocumentId(documentId);
@@ -942,16 +920,14 @@ const parentFolderName = folders.find((el) => el.id === newFolderParentId)?.name
         description={`Czy na pewno chcesz usunąć folder „${deleteFolderName}"?`}
         confirmLabel="Usuń"
       />
-      <ConfirmDialog
-        tone="danger"
-        isPending={deleteDocument.isPending}
-        isOpen={deleteDocumentId !== null}
-        onClose={clearDeleteDocument}
-        onConfirm={delDocument}
-        title="Usuń dokument"
-        description={`Czy na pewno chcesz usunąć dokument „${deleteDocumentName}"?`}
-        confirmLabel="Usuń"
+      <DeleteDocumentDialog
+        projectId={PROJECT_ID}
+        folderId={folderId ?? ''}
+        documentId={deleteDocumentId}
+        documentName={deleteDocumentName}
+        onClose={() => setDeleteDocumentId(null)}
       />
+
       <ConfirmDialog
         tone="danger"
         isPending={deletePermanentlyDocument.isPending}
