@@ -41,6 +41,7 @@ export class DocumentsController {
       user.id,
       dto,
       file,
+      user,
     );
   }
 
@@ -48,7 +49,8 @@ export class DocumentsController {
   async getDocument(
     @Param('projectId') projectId: string,
     @Param('folderId') folderId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return await this.documentService.getDocuments(projectId, folderId);
+    return await this.documentService.getDocuments(projectId, folderId,user);
   }
 }

@@ -1,6 +1,8 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { FoldersService } from './folders.service';
+import { ProjectAccessService } from '../projects/project-access.service';
+import { type AuthenticatedUser } from '../auth/types/auth.types';
 
 interface FolderRow {
   [key: string]: unknown;
@@ -96,6 +98,10 @@ describe('FoldersService', () => {
   const PROJECT = 'project-1';
   const OTHER_PROJECT = 'project-2';
   const OWNER = 'user-1';
+  const ACTOR = { id: OWNER, isDirector: true } as AuthenticatedUser;
+
+  // These tests cover folder rules, not permissions, so access always passes.
+  const fakeAccess = { assertCanRead: () => Promise.resolve() };
 
   let prisma: ReturnType<typeof createFakePrisma>;
   let service: FoldersService;
@@ -115,7 +121,10 @@ describe('FoldersService', () => {
 
   beforeEach(() => {
     prisma = createFakePrisma();
-    service = new FoldersService(prisma as unknown as PrismaService);
+    service = new FoldersService(
+      prisma as unknown as PrismaService,
+      fakeAccess as unknown as ProjectAccessService,
+    );
   });
 
   describe('findAllForProject', () => {
@@ -123,7 +132,7 @@ describe('FoldersService', () => {
       addFolder({ id: 'a' });
       addFolder({ id: 'b', projectId: OTHER_PROJECT });
 
-      const found = await service.findAllForProject(PROJECT);
+      const found = await service.findAllForProject(PROJECT, ACTOR);
 
       expect(found.map((f) => f.id)).toEqual(['a']);
     });
@@ -132,7 +141,7 @@ describe('FoldersService', () => {
       addFolder({ id: 'a' });
       addFolder({ id: 'b', deletedAt: new Date() });
 
-      const found = await service.findAllForProject(PROJECT);
+      const found = await service.findAllForProject(PROJECT, ACTOR);
 
       expect(found.map((f) => f.id)).toEqual(['a']);
     });
@@ -141,7 +150,7 @@ describe('FoldersService', () => {
       addFolder({ id: 'a', name: 'Robocze' });
       addFolder({ id: 'b', name: 'Archiwum' });
 
-      const found = await service.findAllForProject(PROJECT);
+      const found = await service.findAllForProject(PROJECT, ACTOR);
 
       expect(found.map((f) => f.name)).toEqual(['Archiwum', 'Robocze']);
     });
@@ -149,9 +158,14 @@ describe('FoldersService', () => {
 
   describe('createFolder', () => {
     it('creates a top level folder with no parent', async () => {
-      const created = await service.createFolder(PROJECT, OWNER, {
-        name: 'Robocze',
-      });
+      const created = await service.createFolder(
+        PROJECT,
+        OWNER,
+        {
+          name: 'Robocze',
+        },
+        ACTOR,
+      );
 
       expect(created.parentId).toBeNull();
       expect(created.projectId).toBe(PROJECT);
@@ -161,10 +175,15 @@ describe('FoldersService', () => {
     it('creates a folder inside another one', async () => {
       const parent = addFolder({ id: 'parent' });
 
-      const created = await service.createFolder(PROJECT, OWNER, {
-        name: 'Oznakowanie',
-        parentId: parent.id,
-      });
+      const created = await service.createFolder(
+        PROJECT,
+        OWNER,
+        {
+          name: 'Oznakowanie',
+          parentId: parent.id,
+        },
+        ACTOR,
+      );
 
       expect(created.parentId).toBe('parent');
     });
@@ -175,9 +194,14 @@ describe('FoldersService', () => {
       addFolder({ id: 'a', parentId: 'p', name: 'Stara' });
       addFolder({ id: 'p' });
 
-      const updated = await service.updateFolder('a', PROJECT, {
-        name: 'Nowa',
-      });
+      const updated = await service.updateFolder(
+        'a',
+        PROJECT,
+        {
+          name: 'Nowa',
+        },
+        ACTOR,
+      );
 
       expect(updated.name).toBe('Nowa');
       expect(updated.parentId).toBe('p');
@@ -187,9 +211,14 @@ describe('FoldersService', () => {
       addFolder({ id: 'a', name: 'Robocze' });
       addFolder({ id: 'b' });
 
-      const updated = await service.updateFolder('a', PROJECT, {
-        parentId: 'b',
-      });
+      const updated = await service.updateFolder(
+        'a',
+        PROJECT,
+        {
+          parentId: 'b',
+        },
+        ACTOR,
+      );
 
       expect(updated.parentId).toBe('b');
       expect(updated.name).toBe('Robocze');
@@ -200,7 +229,7 @@ describe('FoldersService', () => {
       addFolder({ id: 'obcy', projectId: OTHER_PROJECT });
 
       await expect(
-        service.updateFolder('a', PROJECT, { parentId: 'obcy' }),
+        service.updateFolder('a', PROJECT, { parentId: 'obcy' }, ACTOR),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -208,7 +237,7 @@ describe('FoldersService', () => {
       addFolder({ id: 'a', projectId: OTHER_PROJECT });
 
       await expect(
-        service.updateFolder('a', PROJECT, { name: 'Nowa' }),
+        service.updateFolder('a', PROJECT, { name: 'Nowa' }, ACTOR),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -216,7 +245,7 @@ describe('FoldersService', () => {
       addFolder({ id: 'a' });
 
       await expect(
-        service.updateFolder('a', PROJECT, { parentId: 'a' }),
+        service.updateFolder('a', PROJECT, { parentId: 'a' }, ACTOR),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -225,7 +254,7 @@ describe('FoldersService', () => {
       addFolder({ id: 'b', parentId: 'a' });
 
       await expect(
-        service.updateFolder('a', PROJECT, { parentId: 'b' }),
+        service.updateFolder('a', PROJECT, { parentId: 'b' }, ACTOR),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -235,7 +264,7 @@ describe('FoldersService', () => {
       addFolder({ id: 'c', parentId: 'b' });
 
       await expect(
-        service.updateFolder('a', PROJECT, { parentId: 'c' }),
+        service.updateFolder('a', PROJECT, { parentId: 'c' }, ACTOR),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -244,9 +273,14 @@ describe('FoldersService', () => {
       addFolder({ id: 'b', parentId: 'a' });
       addFolder({ id: 'archiwum' });
 
-      const updated = await service.updateFolder('a', PROJECT, {
-        parentId: 'archiwum',
-      });
+      const updated = await service.updateFolder(
+        'a',
+        PROJECT,
+        {
+          parentId: 'archiwum',
+        },
+        ACTOR,
+      );
 
       expect(updated.parentId).toBe('archiwum');
     });
@@ -257,7 +291,7 @@ describe('FoldersService', () => {
       addFolder({ id: 'y', parentId: 'x' });
 
       await expect(
-        service.updateFolder('a', PROJECT, { parentId: 'x' }),
+        service.updateFolder('a', PROJECT, { parentId: 'x' }, ACTOR),
       ).rejects.toThrow(BadRequestException);
     });
   });
@@ -266,7 +300,7 @@ describe('FoldersService', () => {
     it('marks the folder as deleted instead of removing the row', async () => {
       addFolder({ id: 'a' });
 
-      await service.deleteFolder('a', PROJECT);
+      await service.deleteFolder('a', PROJECT, ACTOR);
 
       expect(prisma.folders).toHaveLength(1);
       expect(prisma.folders[0].deletedAt).toBeInstanceOf(Date);
@@ -276,7 +310,7 @@ describe('FoldersService', () => {
       addFolder({ id: 'a' });
       addFolder({ id: 'b', parentId: 'a' });
 
-      await expect(service.deleteFolder('a', PROJECT)).rejects.toThrow(
+      await expect(service.deleteFolder('a', PROJECT, ACTOR)).rejects.toThrow(
         BadRequestException,
       );
     });
@@ -285,7 +319,7 @@ describe('FoldersService', () => {
       addFolder({ id: 'a' });
       prisma.documents.push({ id: 'doc', folderId: 'a', deletedAt: null });
 
-      await expect(service.deleteFolder('a', PROJECT)).rejects.toThrow(
+      await expect(service.deleteFolder('a', PROJECT, ACTOR)).rejects.toThrow(
         BadRequestException,
       );
     });
@@ -299,7 +333,7 @@ describe('FoldersService', () => {
         deletedAt: new Date(),
       });
 
-      await service.deleteFolder('a', PROJECT);
+      await service.deleteFolder('a', PROJECT, ACTOR);
 
       expect(prisma.folders[0].deletedAt).toBeInstanceOf(Date);
     });
@@ -307,7 +341,7 @@ describe('FoldersService', () => {
     it('rejects a folder from another project', async () => {
       addFolder({ id: 'a', projectId: OTHER_PROJECT });
 
-      await expect(service.deleteFolder('a', PROJECT)).rejects.toThrow(
+      await expect(service.deleteFolder('a', PROJECT, ACTOR)).rejects.toThrow(
         NotFoundException,
       );
     });

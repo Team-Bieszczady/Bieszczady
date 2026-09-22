@@ -36,8 +36,11 @@ export class DocumentVersionsController {
   constructor(private readonly documentService: DocumentsService) {}
 
   @Get('/trash')
-  async getTrash(@Param('projectId', ParseUUIDPipe) projectId: string) {
-    return await this.documentService.getTrash(projectId);
+  async getTrash(
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return await this.documentService.getTrash(projectId, user);
   }
 
   @Get('/:documentId/versions/:versionNo/download')
@@ -46,12 +49,14 @@ export class DocumentVersionsController {
     @Param('documentId', ParseUUIDPipe) documentId: string,
     @Param('versionNo', ParseIntPipe) versionNo: number,
     @Res({ passthrough: true }) res: Response,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     const { buffer, fileName, mimeType } =
       await this.documentService.downloadDocument(
         projectId,
         documentId,
         versionNo,
+        user,
       );
     res.set({
       'Content-Type': mimeType,
@@ -76,6 +81,7 @@ export class DocumentVersionsController {
       user.id,
       dto,
       file,
+      user,
     );
   }
 
@@ -83,8 +89,9 @@ export class DocumentVersionsController {
   async getDocumentsVersions(
     @Param('projectId', ParseUUIDPipe) projectId: string,
     @Param('documentId', ParseUUIDPipe) documentId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return await this.documentService.getVersions(projectId, documentId);
+    return await this.documentService.getVersions(projectId, documentId, user);
   }
 
   @Delete('/:documentId/permanent')
@@ -92,10 +99,12 @@ export class DocumentVersionsController {
   async deleteDocumentPermanent(
     @Param('projectId', ParseUUIDPipe) projectId: string,
     @Param('documentId', ParseUUIDPipe) documentId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     return await this.documentService.deleteDocumentPermanently(
       projectId,
       documentId,
+      user,
     );
   }
 
@@ -103,8 +112,13 @@ export class DocumentVersionsController {
   async deleteDocument(
     @Param('projectId', ParseUUIDPipe) projectId: string,
     @Param('documentId', ParseUUIDPipe) documentId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return await this.documentService.deleteDocument(projectId, documentId);
+    return await this.documentService.deleteDocument(
+      projectId,
+      documentId,
+      user,
+    );
   }
 
   @Post('/:documentId/restore')
@@ -112,11 +126,13 @@ export class DocumentVersionsController {
     @Param('projectId', ParseUUIDPipe) projectId: string,
     @Param('documentId', ParseUUIDPipe) documentId: string,
     @Body() body: RestoreDocumentDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     return await this.documentService.restoreDocument(
       projectId,
       documentId,
       body,
+      user,
     );
   }
   @Patch('/:documentId')
@@ -124,11 +140,13 @@ export class DocumentVersionsController {
     @Param('projectId', ParseUUIDPipe) projectId: string,
     @Param('documentId', ParseUUIDPipe) documentId: string,
     @Body() body: UpdateDocumentDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     return await this.documentService.updateDocument(
       projectId,
       documentId,
       body,
+      user
     );
   }
   @Post('/:documentId/versions/:versionNo/restore')
@@ -143,6 +161,7 @@ export class DocumentVersionsController {
       documentId,
       versionNo,
       user.id,
+      user
     );
   }
 }

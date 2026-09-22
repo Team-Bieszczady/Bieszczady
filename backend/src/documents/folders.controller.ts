@@ -22,16 +22,17 @@ import { RequireModule } from '../auth/decorators/require-module.decorator';
 
 @Controller('/projects/:projectId/folders')
 @UseGuards(JwtAuthGuard, PasswordChangeGuard, ModuleAccessGuard)
-@RequireModule("DOCUMENTS")
+@RequireModule('DOCUMENTS')
 export class FoldersController {
   constructor(private readonly foldersService: FoldersService) {}
 
-
   @Get()
-  async getFolders(@Param('projectId', ParseUUIDPipe) projectId: string) {
-    return await this.foldersService.findAllForProject(projectId);
+  async getFolders(
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return await this.foldersService.findAllForProject(projectId, user);
   }
-
 
   @Post()
   async createFolder(
@@ -39,21 +40,22 @@ export class FoldersController {
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: CreateFolderDto,
   ) {
-    return await this.foldersService.createFolder(projectId, user.id, dto);
+    return await this.foldersService.createFolder(projectId, user.id, dto, user);
   }
-
 
   @Patch('/:folderId')
   async updateFolder(
     @Param('projectId', ParseUUIDPipe) projectId: string,
     @Param('folderId', ParseUUIDPipe) folderId: string,
     @Body() dto: UpdateFolderDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     return await this.foldersService.updateFolder(
       folderId,
       projectId,
 
       dto,
+      user
     );
   }
 
@@ -61,7 +63,9 @@ export class FoldersController {
   async deleteFolder(
     @Param('projectId', ParseUUIDPipe) projectId: string,
     @Param('folderId', ParseUUIDPipe) folderId: string,
+    
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return await this.foldersService.deleteFolder(folderId, projectId);
+    return await this.foldersService.deleteFolder(folderId, projectId,user);
   }
 }

@@ -6,6 +6,8 @@ import { CreateDocumentDto } from './dto/create-document.dto';
 import { CreateVersionDto } from './dto/create-version.dto';
 import { RestoreDocumentDto } from './dto/restore-document.dto';
 import { UpdateDocumentDto } from './dto/update-document.dto';
+import { AuthenticatedUser } from '../auth/types/auth.types';
+import { ProjectAccessService } from '../projects/project-access.service';
 
 interface UploadedFile {
   buffer: Buffer;
@@ -19,9 +21,15 @@ export class DocumentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
+    private readonly access: ProjectAccessService,
   ) {}
 
-  private async assertFolderExists(folderId: string, projectId: string) {
+  private async assertFolderExists(
+    folderId: string,
+    projectId: string,
+    actor: AuthenticatedUser,
+  ) {
+    await this.access.assertCanRead(actor, projectId);
     const folder = await this.prisma.folder.findFirst({
       where: { id: folderId, projectId: projectId, deletedAt: null },
     });
@@ -37,8 +45,10 @@ export class DocumentsService {
     ownerId: string,
     dto: CreateDocumentDto,
     file: UploadedFile,
+    actor: AuthenticatedUser,
   ) {
-    await this.assertFolderExists(folderId, projectId);
+    await this.access.assertCanRead(actor, projectId);
+    await this.assertFolderExists(folderId, projectId,actor);
     const documentId = randomUUID();
     const key = `${projectId}/${documentId}/v1`;
 
@@ -77,7 +87,9 @@ export class DocumentsService {
     ownerId: string,
     dto: CreateVersionDto,
     file: UploadedFile,
+    actor: AuthenticatedUser,
   ) {
+    await this.access.assertCanRead(actor, projectId);
     const versionLast = await this.prisma.documentVersion.findFirst({
       where: {
         document: { projectId, id: documentId, deletedAt: null },
@@ -106,8 +118,13 @@ export class DocumentsService {
     return version;
   }
 
-  async getDocuments(projectId: string, folderId: string) {
-    await this.assertFolderExists(folderId, projectId);
+  async getDocuments(
+    projectId: string,
+    folderId: string,
+    actor: AuthenticatedUser,
+  ) {
+    await this.access.assertCanRead(actor, projectId);
+    await this.assertFolderExists(folderId, projectId,actor);
     const documents = await this.prisma.document.findMany({
       where: { projectId, folderId, deletedAt: null },
       include: {
@@ -129,7 +146,9 @@ export class DocumentsService {
     projectId: string,
     documentId: string,
     versionNo: number,
+    actor: AuthenticatedUser,
   ) {
+    await this.access.assertCanRead(actor, projectId);
     const version = await this.prisma.documentVersion.findFirst({
       where: {
         document: { projectId, id: documentId },
@@ -146,7 +165,9 @@ export class DocumentsService {
     projectId: string,
     documentId: string,
     dto: RestoreDocumentDto,
+    actor: AuthenticatedUser,
   ) {
+    await this.access.assertCanRead(actor, projectId);
     const document = await this.prisma.document.findFirst({
       where: { projectId, id: documentId, deletedAt: { not: null } },
       include: { folder: { select: { deletedAt: true } } },
@@ -156,7 +177,7 @@ export class DocumentsService {
     }
 
     if (dto.folderId) {
-      await this.assertFolderExists(dto.folderId, projectId);
+      await this.assertFolderExists(dto.folderId, projectId,actor);
       return await this.prisma.document.update({
         where: { id: documentId },
         data: { folderId: dto.folderId, deletedAt: null },
@@ -175,7 +196,12 @@ export class DocumentsService {
     );
   }
 
-  async getVersions(projectId: string, documentId: string) {
+  async getVersions(
+    projectId: string,
+    documentId: string,
+    actor: AuthenticatedUser,
+  ) {
+    await this.access.assertCanRead(actor, projectId);
     const versions = await this.prisma.documentVersion.findMany({
       where: {
         document: { projectId, id: documentId },
@@ -199,24 +225,28 @@ export class DocumentsService {
     documentId: string,
     versionNo: number,
     userId: string,
+    actor: AuthenticatedUser,
   ) {
-
+    await this.access.assertCanRead(actor, projectId);
     const source = await this.prisma.documentVersion.findFirst({
-      where: { documentId, versionNo, document: { projectId, deletedAt: null } },
+      where: {
+        documentId,
+        versionNo,
+        document: { projectId, deletedAt: null },
+      },
     });
     if (!source) {
       throw new NotFoundException('Nie znaleziono wersji');
     }
 
     const latest = await this.prisma.documentVersion.findFirst({
-      where: {documentId},
-      orderBy: { versionNo: 'desc'},
+      where: { documentId },
+      orderBy: { versionNo: 'desc' },
     });
 
-if (!latest || latest.storageKey === source.storageKey) {
-  throw new BadRequestException('Aktualna wersja ma już tę treść');
-}
-
+    if (!latest || latest.storageKey === source.storageKey) {
+      throw new BadRequestException('Aktualna wersja ma już tę treść');
+    }
 
     return await this.prisma.documentVersion.create({
       data: {
@@ -232,7 +262,12 @@ if (!latest || latest.storageKey === source.storageKey) {
     });
   }
 
-  async deleteDocument(projectId: string, documentId: string) {
+  async deleteDocument(
+    projectId: string,
+    documentId: string,
+    actor: AuthenticatedUser,
+  ) {
+    await this.access.assertCanRead(actor, projectId);
     const document = await this.prisma.document.findFirst({
       where: { id: documentId, projectId: projectId, deletedAt: null },
     });
@@ -251,7 +286,9 @@ if (!latest || latest.storageKey === source.storageKey) {
     projectId: string,
     documentId: string,
     dto: UpdateDocumentDto,
+    actor: AuthenticatedUser,
   ) {
+    await this.access.assertCanRead(actor, projectId);
     const document = await this.prisma.document.findFirst({
       where: { id: documentId, projectId: projectId, deletedAt: null },
     });
@@ -264,7 +301,8 @@ if (!latest || latest.storageKey === source.storageKey) {
     });
   }
 
-  async getTrash(projectId: string) {
+  async getTrash(projectId: string, actor: AuthenticatedUser) {
+    await this.access.assertCanRead(actor, projectId);
     const documents = await this.prisma.document.findMany({
       where: { projectId: projectId, deletedAt: { not: null } },
       orderBy: { deletedAt: 'desc' },
@@ -282,7 +320,12 @@ if (!latest || latest.storageKey === source.storageKey) {
     return documents;
   }
 
-  async deleteDocumentPermanently(projectId: string, documentId: string) {
+  async deleteDocumentPermanently(
+    projectId: string,
+    documentId: string,
+    actor: AuthenticatedUser,
+  ) {
+    await this.access.assertCanRead(actor, projectId);
     const document = await this.prisma.document.findFirst({
       where: { id: documentId, projectId: projectId, deletedAt: { not: null } },
       include: { versions: true },

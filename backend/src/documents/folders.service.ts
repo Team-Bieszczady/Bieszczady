@@ -6,21 +6,33 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateFolderDto } from './dto/create-folder.dto';
 import { UpdateFolderDto } from './dto/update-folder.dto';
+import { ProjectAccessService } from '../projects/project-access.service';
+import { AuthenticatedUser } from '../auth/types/auth.types';
 
 const MAX_FOLDER_DEPTH = 50;
 
 @Injectable()
 export class FoldersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly access: ProjectAccessService,
+  ) {}
 
-  async findAllForProject(id: string) {
+  async findAllForProject(id: string, actor: AuthenticatedUser) {
+    await this.access.assertCanRead(actor, id);
     return await this.prisma.folder.findMany({
       where: { projectId: id, deletedAt: null },
       orderBy: { name: 'asc' },
     });
   }
 
-  async createFolder(id: string, ownerId: string, dto: CreateFolderDto) {
+  async createFolder(
+    id: string,
+    ownerId: string,
+    dto: CreateFolderDto,
+    actor: AuthenticatedUser,
+  ) {
+    await this.access.assertCanRead(actor, id);
     const name = dto.name;
     const parentId = dto.parentId;
     return await this.prisma.folder.create({
@@ -28,7 +40,13 @@ export class FoldersService {
     });
   }
 
-  async updateFolder(id: string, projectId: string, dto: UpdateFolderDto) {
+  async updateFolder(
+    id: string,
+    projectId: string,
+    dto: UpdateFolderDto,
+    actor: AuthenticatedUser,
+  ) {
+    await this.access.assertCanRead(actor, projectId);
     const name = dto.name;
     const parentId = dto.parentId;
 
@@ -60,7 +78,8 @@ export class FoldersService {
       data: { name, parentId },
     });
   }
-  async deleteFolder(id: string, projectId: string) {
+  async deleteFolder(id: string, projectId: string, actor: AuthenticatedUser) {
+    await this.access.assertCanRead(actor, projectId);
     const folder = await this.prisma.folder.findFirst({
       where: { id: id, projectId: projectId },
     });
