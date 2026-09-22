@@ -30,8 +30,11 @@ import {
 } from '../features/documents/components/UploadDocumentModal';
 import { useSelectedProject } from '../context/useSelectedProject';
 import { PageMessage } from '../components/ui/PageMessage';
+import { useProject } from '../features/projects/hooks/useProjectsApi';
 
 function DocumentsView({ projectId }: { projectId: string }) {
+  const { data: project } = useProject(projectId);
+
   const [folderId, setFolderId] = useState<string | null>(null);
   const { requireToken } = useAuthToken();
   const { data: folders, isPending: foldersPending } = useFolders(projectId);
@@ -264,9 +267,6 @@ const preview = async (documentId: string, versionNo: number) => {
   if (!folders) {
     return null;
   }
-  if(!trash){
-    return null
-  }
 
   const nameFolder = folders.find((el) => el.id === folderId)?.name;
 const permanentDeleteName = trash?.find(
@@ -281,7 +281,7 @@ const permanentDeleteName = trash?.find(
   const bytes =
     documents?.reduce(
       (accumulator, currentValue) =>
-        accumulator + currentValue.versions[0].sizeBytes,
+        accumulator + (currentValue.versions[0]?.sizeBytes ?? 0),
       0,
     ) ?? 0;
 const parentFolderName = folders.find((el) => el.id === newFolderParentId)?.name
@@ -290,12 +290,13 @@ const del = (id: string) => {
     setFolderId(null);
   }
 };
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-start justify-between">
         <div>
           <p className="text-xs uppercase tracking-wide text-gray-400">
-            Szlak rowerowy Solina–Polańczyk
+           {project?.name}
           </p>
           <h1 className="mt-1 text-2xl font-bold text-dark">Dokumenty</h1>
         </div>
@@ -303,7 +304,7 @@ const del = (id: string) => {
         <Button
           variant="primary"
           size="small"
-          onClick={() => setShowUpload(true)}
+          onClick={openUpload}
           disabled={!folderId || showTrash}
         >
           <IoCloudUploadOutline className="h-4 w-4" />
@@ -319,7 +320,7 @@ const del = (id: string) => {
             </p>
             <button
               type="button"
-              onClick={openUpload}
+              onClick={() => openNewFolder(null)}
 
               className="cursor-pointer text-xs font-medium text-darkGreen hover:text-darkGreenHover"
             >
