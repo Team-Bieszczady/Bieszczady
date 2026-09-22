@@ -28,15 +28,15 @@ import {
   UploadDocumentModal,
   type UploadMode,
 } from '../features/documents/components/UploadDocumentModal';
+import { useSelectedProject } from '../context/useSelectedProject';
+import { PageMessage } from '../components/ui/PageMessage';
 
-
-const PROJECT_ID = '11111111-1111-1111-1111-111111111111';
-export default function ProjectDocumentsPage() {
+function DocumentsView({ projectId }: { projectId: string }) {
   const [folderId, setFolderId] = useState<string | null>(null);
   const { requireToken } = useAuthToken();
-  const { data: folders, isPending: foldersPending } = useFolders(PROJECT_ID);
+  const { data: folders, isPending: foldersPending } = useFolders(projectId);
   const { data: documents, isPending: documentsPending } = useDocuments(
-    PROJECT_ID,
+    projectId,
     folderId,
   );
 
@@ -63,14 +63,14 @@ const [permanentDeleteId, setPermanentDeleteId] = useState<string | null>(null);
 
 const [renameDocumentId, setRenameDocumentId] = useState<string | null>(null);
 
-const {data: trash} = useTrash(PROJECT_ID)
+const {data: trash} = useTrash(projectId)
 
 
-const restoreDocument = useRestoreDocument(PROJECT_ID)
+const restoreDocument = useRestoreDocument(projectId)
 
-const deletePermanentlyDocument = useDeleteDocumentPermanently(PROJECT_ID);
+const deletePermanentlyDocument = useDeleteDocumentPermanently(projectId);
 
-const restoreVersionMutation = useRestoreVersion(PROJECT_ID);
+const restoreVersionMutation = useRestoreVersion(projectId);
 
 
 const clearPermanentDelete = () => {
@@ -198,7 +198,7 @@ setExpandedIds(newExpandsIds)
     try{
    const blob = await api.downloadVersion(
       requireToken(),
-      PROJECT_ID,
+      projectId,
       documentId,
       versionNo,
     );
@@ -238,7 +238,7 @@ const preview = async (documentId: string, versionNo: number) => {
   try {
     const blob = await api.downloadVersion(
       requireToken(),
-      PROJECT_ID,
+      projectId,
       documentId,
       versionNo,
     );
@@ -361,7 +361,7 @@ const del = (id: string) => {
           {showTrash && trash && (
             <DocumentsTable
               documents={trash}
-              projectId={PROJECT_ID}
+              projectId={projectId}
               onDownload={down}
               expandedIds={expandedIds}
               onToggle={toggleExpanded}
@@ -397,7 +397,7 @@ const del = (id: string) => {
           {documents && !showTrash && (
             <DocumentsTable
               documents={documents}
-              projectId={PROJECT_ID}
+              projectId={projectId}
               onDownload={down}
               expandedIds={expandedIds}
               onToggle={toggleExpanded}
@@ -415,7 +415,7 @@ const del = (id: string) => {
       </div>
 
       <RenameFolderModal
-        projectId={PROJECT_ID}
+        projectId={projectId}
         folderId={renameFolderId}
         currentName={renameFolderName}
         onClose={() => setRenameFolderId(null)}
@@ -468,7 +468,7 @@ const del = (id: string) => {
       </Modal>
       <UploadDocumentModal
         isOpen={showUpload}
-        projectId={PROJECT_ID}
+        projectId={projectId}
         folderId={folderId ?? ''}
         folderName={nameFolder}
         documents={documents ?? []}
@@ -478,7 +478,7 @@ const del = (id: string) => {
       />
 
       <RenameDocumentModal
-        projectId={PROJECT_ID}
+        projectId={projectId}
         folderId={folderId ?? ''}
         documentId={renameDocumentId}
         currentName={renameDocumentName}
@@ -486,7 +486,7 @@ const del = (id: string) => {
       />
 
       <CreateFolderModal
-        projectId={PROJECT_ID}
+        projectId={projectId}
         isOpen={showNewFolder}
         parentId={newFolderParentId}
         parentName={parentFolderName}
@@ -497,7 +497,7 @@ const del = (id: string) => {
       />
 
       <DeleteFolderDialog
-        projectId={PROJECT_ID}
+        projectId={projectId}
         folderId={deleteFolderId}
         folderName={deleteFolderName}
         onClose={() => setDeleteFolderId(null)}
@@ -505,7 +505,7 @@ const del = (id: string) => {
       />
 
       <DeleteDocumentDialog
-        projectId={PROJECT_ID}
+        projectId={projectId}
         folderId={folderId ?? ''}
         documentId={deleteDocumentId}
         documentName={deleteDocumentName}
@@ -524,4 +524,16 @@ const del = (id: string) => {
       />
     </div>
   );
+}
+
+export default function ProjectDocumentsPage() {
+  const { projectId } = useSelectedProject();
+
+  if (!projectId) {
+    return (
+      <PageMessage message="Nie wybrano projektu. Wybierz go na liście projektów." />
+    );
+  }
+
+  return <DocumentsView projectId={projectId} />;
 }
