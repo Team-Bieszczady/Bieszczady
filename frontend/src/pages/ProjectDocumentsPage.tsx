@@ -22,16 +22,16 @@ import {
   INPUT_CLASSES,
 } from '../components/ui/formStyles';
 import { FolderTree } from '../features/documents/components/FolderTree';
-import { useCreateFolder } from '../features/documents/hooks/useCreateFolder';
-import { useDeleteFolder } from '../features/documents/hooks/useDeleteFolder';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
-import { useUpdateFolder } from '../features/documents/hooks/useUpdateFolder';
 import { useTrash } from '../features/documents/hooks/useTrash';
 import { useRestoreDocument } from '../features/documents/hooks/useRestoreDocument';
 import { useDeleteDocumentPermanently } from '../features/documents/hooks/useDeleteDocumentPermanently';
-import { useUpdateDocument } from '../features/documents/hooks/useUpdateDocument';
 import { useRestoreVersion } from '../features/documents/hooks/useRestoreVersion';
 import { DeleteDocumentDialog } from '../features/documents/components/DeleteDocumentDialog';
+import { DeleteFolderDialog } from '../features/documents/components/DeleteFolderDialog';
+import { CreateFolderModal } from '../features/documents/components/CreateFolderModal';
+import { RenameFolderModal } from '../features/documents/components/RenameFolderModal';
+import { RenameDocumentModal } from '../features/documents/components/RenameDocumentModal';
 
 
 
@@ -53,7 +53,6 @@ const [versionForId, setVersionForId] = useState<string | null>(null);
 const [changeNote, setChangeNote] = useState('');
 const [mode, setMode] = useState<'document' | 'version'>('document');
 const [showNewFolder, setShowNewFolder] = useState(false);
-const [newFolderName, setNewFolderName] = useState('');
 const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null);
 
 const [deleteFolderId, setDeleteFolderId] = useState<string | null>(null)
@@ -61,7 +60,6 @@ const [deleteDocumentId, setDeleteDocumentId] = useState<string | null>(null);
 
 
 const [renameFolderId, setRenameFolderId] = useState<string | null>(null);
-const [renameFolderName, setRenameFolderName] = useState('');
 const [restoreDocumentId, setRestoreDocumentId] = useState<string | null>(null);
 const [restoreFolderId, setRestoreFolderId] = useState('');
 
@@ -70,48 +68,15 @@ const [showTrash, setShowTrash] = useState(false)
 const [permanentDeleteId, setPermanentDeleteId] = useState<string | null>(null);
 
 const [renameDocumentId, setRenameDocumentId] = useState<string | null>(null);
-const [renameDocumentName, setRenameDocumentName] = useState('');
-
 
 const {data: trash} = useTrash(PROJECT_ID)
-const updateFolder = useUpdateFolder(PROJECT_ID);
 
 
 const restoreDocument = useRestoreDocument(PROJECT_ID)
 
-const updateDocument = useUpdateDocument(PROJECT_ID, folderId ?? '');
 const deletePermanentlyDocument = useDeleteDocumentPermanently(PROJECT_ID);
 
 const restoreVersionMutation = useRestoreVersion(PROJECT_ID);
-
-const openRenameDocument = (documentId: string) => {
-  setRenameDocumentId(documentId);
-  const currentName = documents?.find((el) => el.id === documentId)?.name ?? '';
-  setRenameDocumentName(currentName);
-};
-
-const clearRenameDocument = () => {
-  setRenameDocumentId(null);
-  setRenameDocumentName('');
-};
-
-const submitRenameDocument = () => {
-  if (renameDocumentId === null || renameDocumentName.trim() === '') {
-    return;
-  }
-  updateDocument.mutate(
-    { documentId: renameDocumentId, name: renameDocumentName.trim() },
-    {
-      onSuccess: () => clearRenameDocument(),
-      onError: (error) => {
-        const message = isApiError(error)
-          ? error.message
-          : 'Coś poszło nie tak';
-        toast.error(message);
-      },
-    },
-  );
-};
 
 
 const clearPermanentDelete = () => {
@@ -205,41 +170,6 @@ const selectFolder = (folderId: string) => {
 };
 
 
-const openRename = (folderId: string) => {
-
-  setRenameFolderId(folderId)
-  const currentName = folders?.find((el) => el.id === folderId)?.name ?? '';
-  setRenameFolderName(currentName);
-
-
-};
-const clearRename = () => {
-  setRenameFolderId(null);
-  setRenameFolderName('');
-};
-const submitRename = () => {
-  if (renameFolderId === null || renameFolderName.trim() === '') {
-    return;
-  }
-updateFolder.mutate({
-  folderId: renameFolderId,
-  name: renameFolderName.trim()
-},
-{
-  onSuccess: () => {
-    clearRename()
-  },
-  onError: (error) => {
-const message = isApiError(error) ? error.message : 'Coś poszło nie tak';
-toast.error(message);
-  }
-}
-)
-
-};
-const createFolder = useCreateFolder(
-  PROJECT_ID
-)
 const uploadVersion = useUploadVersion                (
   PROJECT_ID,
   folderId ?? '',
@@ -263,66 +193,20 @@ const uploadNewVersion = () => {
   );
 };
 
-const clearDelete = () => {
-  setDeleteFolderId(null)
-};
-
-const deleteFolder = useDeleteFolder(PROJECT_ID)
-
-
-const delFolder = () => {
-  if (deleteFolderId === null) {
-    return;
-  }
-  deleteFolder.mutate(
- deleteFolderId,
-    {
-      onSuccess: () => {
-        if(folderId === deleteFolderId){
-          setFolderId(null)
-        }
-        clearDelete();
-      },
-      onError: (error) => {
-      const message = isApiError(error) ? error.message : 'Coś poszło nie tak';
-      toast.error(message);
-
-      },
-    },
-  );
-}
-
 const deleteFolderName = folders?.find((el) => el.id === deleteFolderId)?.name;
+const renameDocumentName =
+  documents?.find((el) => el.id === renameDocumentId)?.name ?? '';
+
+
+const renameFolderName =
+  folders?.find((el) => el.id === renameFolderId)?.name ?? '';
+
+
 
 const openNewFolder = (parentId: string | null) => {
 
 setNewFolderParentId(parentId)
 setShowNewFolder(true)
-};
-
-const clearNewFolder = () => {
-setShowNewFolder(false)
-setNewFolderParentId(null)
-setNewFolderName("")
-};
-
-const submitNewFolder = () => {
-  if (newFolderName.trim() === '') {
-    return;
-  }
-  const payload: { name: string; parentId?: string } = {
-    name: newFolderName.trim(),
-  };
-  if (newFolderParentId) {
-    payload.parentId = newFolderParentId;
-  }
-  createFolder.mutate(payload, {
-    onSuccess: () => clearNewFolder(),
-    onError: (error) => {
-      const message = isApiError(error) ? error.message : 'Coś poszło nie tak';
-      toast.error(message);
-    },
-  });
 };
 
 const deleteDocumentName  = documents?.find(el => el.id === deleteDocumentId)?.name
@@ -472,7 +356,11 @@ const permanentDeleteName = trash?.find(
       0,
     ) ?? 0;
 const parentFolderName = folders.find((el) => el.id === newFolderParentId)?.name
-
+const del = (id: string) => {
+  if (id === folderId) {
+    setFolderId(null);
+  }
+};
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-start justify-between">
@@ -517,7 +405,7 @@ const parentFolderName = folders.find((el) => el.id === newFolderParentId)?.name
               onSelect={selectFolder}
               onAddSubfolder={openNewFolder}
               onDeleteFolder={setDeleteFolderId}
-              onRename={openRename}
+              onRename={setRenameFolderId}
             />
           </div>
           <div className="my-2 border-t border-gray-200" />
@@ -552,9 +440,9 @@ const parentFolderName = folders.find((el) => el.id === newFolderParentId)?.name
               onRestoreDocument={restore}
               variant="trash"
               onDeletePermanently={setPermanentDeleteId}
-              onRenameDocument={openRenameDocument}
               onPreview={preview}
               onRestoreVersion={restoreVersion}
+              onRenameDocument={setRenameDocumentId}
             />
           )}
           {!showTrash && !folderId && (
@@ -588,7 +476,7 @@ const parentFolderName = folders.find((el) => el.id === newFolderParentId)?.name
               onRestoreDocument={restore}
               variant="folder"
               onDeletePermanently={setPermanentDeleteId}
-              onRenameDocument={openRenameDocument}
+              onRenameDocument={setRenameDocumentId}
               onPreview={preview}
               onRestoreVersion={restoreVersion}
             />
@@ -728,99 +616,13 @@ const parentFolderName = folders.find((el) => el.id === newFolderParentId)?.name
           </div>
         </div>
       </Modal>
-      <Modal
-        isOpen={showNewFolder}
-        onClose={clearNewFolder}
-        title="Nowy folder"
-      >
-        <div className="space-y-5">
-          <p className="text-xs text-gray-400">
-            Folder powstanie{' '}
-            <span className="font-semibold text-dark">
-              {!newFolderParentId
-                ? 'na głównym poziomie'
-                : `w folderze ${parentFolderName}`}
-            </span>
-          </p>
 
-          <div>
-            <label className={FIELD_LABEL_CLASSES}>
-              Nazwa folderu <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              placeholder="Podaj nazwę..."
-              maxLength={40}
-              value={newFolderName}
-              onChange={(e) => setNewFolderName(e.target.value)}
-              className={INPUT_CLASSES}
-            />
-          </div>
-
-          <div className="border-t border-gray-200 flex gap-3 justify-end pt-4">
-            <Button
-              variant="outline"
-              size="small"
-              type="button"
-              onClick={clearNewFolder}
-            >
-              Anuluj
-            </Button>
-            <Button
-              variant="primary"
-              size="small"
-              onClick={submitNewFolder}
-              disabled={newFolderName.trim() === '' || createFolder.isPending}
-              isPending={createFolder.isPending}
-              className="font-medium!"
-            >
-              Zapisz
-            </Button>
-          </div>
-        </div>
-      </Modal>
-      <Modal
-        isOpen={renameFolderId !== null}
-        onClose={clearRename}
-        title="Zmień nazwę"
-      >
-        <div className="space-y-5">
-          <div>
-            <label className={FIELD_LABEL_CLASSES}>
-              Nazwa folderu <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              placeholder="Podaj nazwę..."
-              maxLength={40}
-              value={renameFolderName}
-              onChange={(e) => setRenameFolderName(e.target.value)}
-              className={INPUT_CLASSES}
-            />
-          </div>
-
-          <div className="border-t border-gray-200 flex gap-3 justify-end pt-4">
-            <Button
-              variant="outline"
-              size="small"
-              type="button"
-              onClick={clearRename}
-            >
-              Anuluj
-            </Button>
-            <Button
-              variant="primary"
-              size="small"
-              onClick={submitRename}
-              disabled={renameFolderName.trim() === ''}
-              isPending={updateFolder.isPending}
-              className="font-medium!"
-            >
-              Zapisz
-            </Button>
-          </div>
-        </div>
-      </Modal>
+      <RenameFolderModal
+        projectId={PROJECT_ID}
+        folderId={renameFolderId}
+        currentName={renameFolderName}
+        onClose={() => setRenameFolderId(null)}
+      />
 
       <Modal
         isOpen={restoreDocumentId !== null}
@@ -867,59 +669,33 @@ const parentFolderName = folders.find((el) => el.id === newFolderParentId)?.name
           </div>
         </div>
       </Modal>
-      <Modal
-        isOpen={renameDocumentId !== null}
-        onClose={clearRenameDocument}
-        title="Zmień nazwę dokumentu"
-      >
-        <div className="space-y-5">
-          <div>
-            <label className={FIELD_LABEL_CLASSES}>
-              Nazwa dokumentu <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              placeholder="Podaj nazwę..."
-              maxLength={200}
-              value={renameDocumentName}
-              onChange={(e) => setRenameDocumentName(e.target.value)}
-              className={INPUT_CLASSES}
-            />
-          </div>
-
-          <div className="border-t border-gray-200 flex gap-3 justify-end pt-4">
-            <Button
-              variant="outline"
-              size="small"
-              type="button"
-              onClick={clearRenameDocument}
-            >
-              Anuluj
-            </Button>
-            <Button
-              variant="primary"
-              size="small"
-              onClick={submitRenameDocument}
-              disabled={renameDocumentName.trim() === ''}
-              isPending={updateDocument.isPending}
-              className="font-medium!"
-            >
-              Zapisz
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      <ConfirmDialog
-        tone="danger"
-        isPending={deleteFolder.isPending}
-        isOpen={deleteFolderId !== null}
-        onClose={clearDelete}
-        onConfirm={delFolder}
-        title="Usuń folder"
-        description={`Czy na pewno chcesz usunąć folder „${deleteFolderName}"?`}
-        confirmLabel="Usuń"
+      <RenameDocumentModal
+        projectId={PROJECT_ID}
+        folderId={folderId ?? ''}
+        documentId={renameDocumentId}
+        currentName={renameDocumentName}
+        onClose={() => setRenameDocumentId(null)}
       />
+
+      <CreateFolderModal
+        projectId={PROJECT_ID}
+        isOpen={showNewFolder}
+        parentId={newFolderParentId}
+        parentName={parentFolderName}
+        onClose={() => {
+          setShowNewFolder(false);
+          setNewFolderParentId(null);
+        }}
+      />
+
+      <DeleteFolderDialog
+        projectId={PROJECT_ID}
+        folderId={deleteFolderId}
+        folderName={deleteFolderName}
+        onClose={() => setDeleteFolderId(null)}
+        onDeleted={del}
+      />
+
       <DeleteDocumentDialog
         projectId={PROJECT_ID}
         folderId={folderId ?? ''}
