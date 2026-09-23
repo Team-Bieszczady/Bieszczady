@@ -59,6 +59,10 @@ export const DocumentRow = ({
     isPending,
   } = useVersions(projectId, isExpanded ? document.id : null);
 
+  const waitsForApproval =
+    document.status === 'PENDING_APPROVAL' && variant === 'folder';
+
+
   return (
     <>
       <tr
@@ -102,7 +106,7 @@ export const DocumentRow = ({
 
         <td className="px-4 py-3">
           <span
-            className={`rounded-full px-2 py-0.5 text-xs ${DOCUMENT_STATUS_CLASSES[document.status]}`}
+            className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs ${DOCUMENT_STATUS_CLASSES[document.status]}`}
           >
             {DOCUMENT_STATUS_LABELS[document.status]}
           </span>
@@ -149,16 +153,16 @@ export const DocumentRow = ({
                     onSelect: () => onRenameDocument(document.id),
                   },
 
-                  ...(document.status === 'PENDING_APPROVAL' ? [
-                    {
-
-                      id: 'approve-document',
+                  ...(document.status === 'PENDING_APPROVAL'
+                    ? [
+                        {
+                          id: 'approve-document',
                           label: 'Akceptuj',
                           icon: <IoCheckmarkOutline className="h-4 w-4" />,
-                          onSelect: () => onApprove(document.id), 
-                    }
-                  ] : [])
-                  
+                          onSelect: () => onApprove(document.id),
+                        },
+                      ]
+                    : []),
                 ]}
               />
             )}
