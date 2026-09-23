@@ -1,21 +1,13 @@
 import { useState } from 'react';
 import { useFolders } from '../features/documents/hooks/useFolders';
 import { useDocuments } from '../features/documents/hooks/useDocuments';
-import { useAuthToken } from '../context/useAuthToken';
-import { api } from '../lib/api';
 import { DocumentsTable } from '../features/documents/components/DocumentsTable';
-import { Modal } from '../components/ui/Modal';
 import { Button } from '../components/ui/Button';
 import { formatFileSize } from '../features/documents/utils/formatters';
 import { IoCloudUploadOutline, IoTrashOutline } from 'react-icons/io5';
-import { Select } from '../components/ui/Select';
-import { FIELD_LABEL_CLASSES } from '../components/ui/formStyles';
 import { FolderTree } from '../features/documents/components/FolderTree';
-import { ConfirmDialog } from '../components/ui/ConfirmDialog';
-import { showError, showSuccess } from '../features/documents/utils/toasts';
 import { useTrash } from '../features/documents/hooks/useTrash';
 import { useRestoreDocument } from '../features/documents/hooks/useRestoreDocument';
-import { useDeleteDocumentPermanently } from '../features/documents/hooks/useDeleteDocumentPermanently';
 import { useRestoreVersion } from '../features/documents/hooks/useRestoreVersion';
 import { DeleteDocumentDialog } from '../features/documents/components/DeleteDocumentDialog';
 import { DeleteFolderDialog } from '../features/documents/components/DeleteFolderDialog';
@@ -30,12 +22,15 @@ import { useSelectedProject } from '../context/useSelectedProject';
 import { PageMessage } from '../components/ui/PageMessage';
 import { useProject } from '../features/projects/hooks/useProjectsApi';
 import { useApproveDocument } from '../features/documents/hooks/useApproveDocument';
+import { RestoreDocumentModal } from '../features/documents/components/RestoreDocumentModal';
+import { DeletePermanentlyDialog } from '../features/documents/components/DeletePermanentlyDialog';
+import { useDocumentFile } from '../features/documents/hooks/useDocumentFile';
+import { showError, showSuccess } from '../features/documents/utils/toasts';
 
 function DocumentsView({ projectId }: { projectId: string }) {
   const { data: project } = useProject(projectId);
 
   const [folderId, setFolderId] = useState<string | null>(null);
-  const { requireToken } = useAuthToken();
   const { data: folders, isPending: foldersPending } = useFolders(projectId);
   const { data: documents, isPending: documentsPending } = useDocuments(
     projectId,
@@ -60,8 +55,7 @@ function DocumentsView({ projectId }: { projectId: string }) {
   const [restoreDocumentId, setRestoreDocumentId] = useState<string | null>(
     null,
   );
-  const [restoreFolderId, setRestoreFolderId] = useState('');
-
+  
   const [showTrash, setShowTrash] = useState(false);
 
   const [permanentDeleteId, setPermanentDeleteId] = useState<string | null>(
@@ -72,52 +66,11 @@ function DocumentsView({ projectId }: { projectId: string }) {
 
   const { data: trash } = useTrash(projectId);
 
-  const restoreDocument = useRestoreDocument(projectId);
-
-  const deletePermanentlyDocument = useDeleteDocumentPermanently(projectId);
 
   const restoreVersionMutation = useRestoreVersion(projectId);
-
+const restoreDocument = useRestoreDocument(projectId);
 const apprveDocument = useApproveDocument(projectId, folderId ?? "")
-
-  const clearPermanentDelete = () => {
-    setPermanentDeleteId(null);
-  };
-  const delPermanentlyDoc = () => {
-    if (permanentDeleteId === null) {
-      return;
-    }
-    deletePermanentlyDocument.mutate(permanentDeleteId, {
-      onSuccess: () => {
-        showSuccess('Dokument usunięty na zawsze');
-        clearPermanentDelete();
-      },
-      onError: showError,
-    });
-  };
-
-  const clearRestore = () => {
-    setRestoreDocumentId(null);
-    setRestoreFolderId('');
-  };
-
-  const restore = (documentId: string) => {
-    if (restoreDocument.isPending) {
-      return;
-    }
-    const doc = trash?.find((el) => el.id === documentId);
-    if (doc?.folder?.deletedAt) {
-      setRestoreDocumentId(documentId);
-      return;
-    }
-    restoreDocument.mutate(
-      { documentId },
-      {
-        onSuccess: () => showSuccess('Dokument przywrócony'),
-        onError: showError,
-      },
-    );
-  };
+const { download, preview } = useDocumentFile(projectId);
 
   const restoreVersion = (documentId: string, versionNo: number) => {
     if (restoreVersionMutation.isPending) {
@@ -132,6 +85,7 @@ const apprveDocument = useApproveDocument(projectId, folderId ?? "")
     );
   };
 
+
   const approve = (documentId: string) => {
         if (apprveDocument.isPending) {
           return;
@@ -145,22 +99,31 @@ apprveDocument.mutate(documentId,
         
   }
 
-  const submitRestore = () => {
-    if (restoreDocumentId === null || restoreFolderId === '') {
+const restore = (documentId: string, folderId?: string) => {
+  if (restoreDocument.isPending) {
+    return;
+  }
+
+  if (!folderId) {
+    const doc = trash?.find((el) => el.id === documentId);
+    if (doc?.folder?.deletedAt) {
+      setRestoreDocumentId(documentId); // brak folderu → zapytaj i wyjdź
       return;
     }
-    restoreDocument.mutate(
-      { documentId: restoreDocumentId, folderId: restoreFolderId },
-      {
-        onSuccess: () => {
-          showSuccess('Dokument przywrócony');
-          clearRestore();
-        },
+  }
 
-        onError: showError,
+  restoreDocument.mutate(
+    { documentId, folderId },
+    {
+      onSuccess: () => {
+        showSuccess('Dokument przywrócony');
+        setRestoreDocumentId(null);
       },
-    );
-  };
+      onError: showError,
+    },
+  );
+};
+
 
   const selectFolder = (folderId: string) => {
     setFolderId(folderId);
@@ -194,30 +157,6 @@ apprveDocument.mutate(documentId,
     }
   };
 
-  const down = async (
-    documentId: string,
-    versionNo: number,
-    fileName: string,
-  ) => {
-    try {
-      const blob = await api.downloadVersion(
-        requireToken(),
-        projectId,
-        documentId,
-        versionNo,
-      );
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName;
-      a.click();
-
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      showError(error as Error);
-    }
-  };
-
   const openUpload = () => {
     setUploadMode('document');
     setUploadDocumentId(null);
@@ -228,28 +167,6 @@ apprveDocument.mutate(documentId,
     setUploadMode('version');
     setUploadDocumentId(documentId);
     setShowUpload(true);
-  };
-
-  const preview = async (documentId: string, versionNo: number) => {
-    const tab = window.open('', '_blank');
-
-    try {
-      const blob = await api.downloadVersion(
-        requireToken(),
-        projectId,
-        documentId,
-        versionNo,
-      );
-
-      const url = URL.createObjectURL(blob);
-
-      if (tab) {
-        tab.location.href = url;
-      }
-    } catch (error) {
-      tab?.close();
-      showError(error as Error);
-    }
   };
 
   if (foldersPending) {
@@ -267,11 +184,6 @@ apprveDocument.mutate(documentId,
   const permanentDeleteName = trash?.find(
     (el) => el.id === permanentDeleteId,
   )?.name;
-
-  const folderOptions = folders?.map((folder) => ({
-    value: folder.id,
-    label: folder.name,
-  }));
 
   const bytes =
     documents?.reduce(
@@ -360,7 +272,7 @@ apprveDocument.mutate(documentId,
             <DocumentsTable
               documents={trash}
               projectId={projectId}
-              onDownload={down}
+              onDownload={download}
               expandedIds={expandedIds}
               onToggle={toggleExpanded}
               onNewVersion={openNewVersion}
@@ -397,7 +309,7 @@ apprveDocument.mutate(documentId,
             <DocumentsTable
               documents={documents}
               projectId={projectId}
-              onDownload={down}
+              onDownload={download}
               expandedIds={expandedIds}
               onToggle={toggleExpanded}
               onNewVersion={openNewVersion}
@@ -413,6 +325,14 @@ apprveDocument.mutate(documentId,
           )}
         </section>
       </div>
+      <RestoreDocumentModal
+        key={restoreDocumentId ?? 'closed'}
+        documentId={restoreDocumentId}
+        folders={folders}
+        isPending={restoreDocument.isPending}
+        onSubmit={(folderId) => restore(restoreDocumentId!, folderId)}
+        onClose={() => setRestoreDocumentId(null)}
+      />
 
       <RenameFolderModal
         projectId={projectId}
@@ -421,51 +341,6 @@ apprveDocument.mutate(documentId,
         onClose={() => setRenameFolderId(null)}
       />
 
-      <Modal
-        isOpen={restoreDocumentId !== null}
-        onClose={clearRestore}
-        title="Przywróć dokument"
-      >
-        <div className="space-y-5">
-          <p className="text-sm text-dark/75">
-            Folder tego dokumentu został usunięty. Wybierz, gdzie go przywrócić.
-          </p>
-
-          <div>
-            <label className={FIELD_LABEL_CLASSES}>
-              Folder <span className="text-red-500">*</span>
-            </label>
-            <Select
-              size="md"
-              options={folderOptions}
-              value={restoreFolderId}
-              onChange={(v) => setRestoreFolderId(v)}
-              placeholder="Wybierz"
-            />
-          </div>
-
-          <div className="border-t border-gray-200 flex gap-3 justify-end pt-4">
-            <Button
-              variant="outline"
-              size="small"
-              type="button"
-              onClick={clearRestore}
-            >
-              Anuluj
-            </Button>
-            <Button
-              variant="primary"
-              size="small"
-              onClick={submitRestore}
-              disabled={restoreFolderId === ''}
-              isPending={restoreDocument.isPending}
-              className="font-medium!"
-            >
-              Przywróć
-            </Button>
-          </div>
-        </div>
-      </Modal>
       <UploadDocumentModal
         key={
           showUpload ? `${uploadMode}-${uploadDocumentId ?? 'new'}` : 'closed'
@@ -515,15 +390,11 @@ apprveDocument.mutate(documentId,
         onClose={() => setDeleteDocumentId(null)}
       />
 
-      <ConfirmDialog
-        tone="danger"
-        isPending={deletePermanentlyDocument.isPending}
-        isOpen={permanentDeleteId !== null}
-        onClose={clearPermanentDelete}
-        onConfirm={delPermanentlyDoc}
-        title="Usuń trwale"
-        description={`Dokument „${permanentDeleteName}" i wszystkie jego wersje zostaną usunięte na zawsze. Tej operacji nie da się cofnąć.`}
-        confirmLabel="Usuń trwale"
+      <DeletePermanentlyDialog
+        projectId={projectId}
+        documentId={permanentDeleteId}
+        documentName={permanentDeleteName}
+        onClose={() => setPermanentDeleteId(null)}
       />
     </div>
   );
