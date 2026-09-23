@@ -50,7 +50,7 @@ export const DocumentRow = ({
   onRenameDocument,
   onPreview,
   onRestoreVersion,
-  onApprove
+  onApprove,
 }: Props) => {
   const version = document.versions[0];
   const {
@@ -58,10 +58,6 @@ export const DocumentRow = ({
     error,
     isPending,
   } = useVersions(projectId, isExpanded ? document.id : null);
-
-  const waitsForApproval =
-    document.status === 'PENDING_APPROVAL' && variant === 'folder';
-
 
   return (
     <>

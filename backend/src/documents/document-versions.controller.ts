@@ -145,8 +145,10 @@ export class DocumentVersionsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return await this.documentService.approveDocument(
-      projectId,documentId,user
-    )
+      projectId,
+      documentId,
+      user,
+    );
   }
 
   @Patch('/:documentId')
@@ -177,5 +179,18 @@ export class DocumentVersionsController {
       user.id,
       user,
     );
+  }
+
+  @Get('/pending-count')
+  async countPendingApproval(
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+
+ return await this.documentService.countPendingApproval(
+   projectId,
+   user
+ );
+
   }
 }

@@ -16,6 +16,7 @@ interface UploadedFile {
   size: number;
 }
 
+
 @Injectable()
 export class DocumentsService {
   constructor(
@@ -315,34 +316,32 @@ export class DocumentsService {
     documentId: string,
     actor: AuthenticatedUser,
   ) {
-        await this.access.assertCanRead(actor, projectId);
-        await this.access.assertNotArchived(projectId);
+    await this.access.assertCanRead(actor, projectId);
+    await this.access.assertNotArchived(projectId);
 
-   const canApprove = await this.access.canManageTasks(actor, projectId);
+    const canApprove = await this.access.canManageTasks(actor, projectId);
 
-  if(!canApprove){
-    throw new ForbiddenException(
-      'Tylko dyrektor lub koordynator projektu może akceptować dokumenty',
-    );
-  }
+    if (!canApprove) {
+      throw new ForbiddenException(
+        'Tylko dyrektor lub koordynator projektu może akceptować dokumenty',
+      );
+    }
 
-      const document = await this.prisma.document.findFirst({
-        where: { id: documentId, projectId: projectId, deletedAt: null },
-      });
-   if (!document) {
-     throw new NotFoundException('Nie znaleziono dokumentu');
-   }
+    const document = await this.prisma.document.findFirst({
+      where: { id: documentId, projectId: projectId, deletedAt: null },
+    });
+    if (!document) {
+      throw new NotFoundException('Nie znaleziono dokumentu');
+    }
 
-if (document.status !== 'PENDING_APPROVAL') {
-  throw new BadRequestException('Ten dokument nie czeka na akceptację');
-}
+    if (document.status !== 'PENDING_APPROVAL') {
+      throw new BadRequestException('Ten dokument nie czeka na akceptację');
+    }
 
-  return await this.prisma.document.update({
-    where: { id: documentId },
-    data: { status: "APPROVED" },
-  });
-
-
+    return await this.prisma.document.update({
+      where: { id: documentId },
+      data: { status: 'APPROVED' },
+    });
   }
 
   async getTrash(projectId: string, actor: AuthenticatedUser) {
@@ -385,6 +384,20 @@ if (document.status !== 'PENDING_APPROVAL') {
     }
     await this.prisma.documentVersion.deleteMany({ where: { documentId } });
     await this.prisma.document.delete({ where: { id: documentId } });
+  }
+
+  async countPendingApproval(projectId: string, actor: AuthenticatedUser) {
+    await this.access.assertCanRead(actor, projectId);
+
+    const canApprove = await this.access.canManageTasks(actor, projectId);
+    if (!canApprove) {
+      return { count: 0 };
+    }
+
+    const count = await this.prisma.document.count({
+      where: { projectId, status: 'PENDING_APPROVAL', deletedAt: null },
+    });
+    return { count };
   }
 }
   

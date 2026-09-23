@@ -8,8 +8,7 @@ export function useUpdateDocument(projectId: string, folderId: string) {
   return useMutation({
     mutationFn: async ({
       documentId,
-   name
-      
+      name,
     }: {
       documentId: string;
       name: string;

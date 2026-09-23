@@ -611,15 +611,28 @@ export const api = {
     projectId: string,
     documentId: string,
   ): Promise<BackendDocument> {
+    return request<BackendDocument>(
+      `/api/v1/projects/${projectId}/documents/${documentId}/approve`,
+      {
+        method: 'POST',
+        accessToken,
+        fallbackMessage: 'Nie udało się potwierdzić dokumentu',
+      },
+    );
+  },
 
-        return request<BackendDocument>(
-          `/api/v1/projects/${projectId}/documents/${documentId}/approve`,
-          {
-            method: 'POST',
-            accessToken,
-            fallbackMessage: 'Nie udało się potwierdzić dokumentu',
-          },
-        );
+  async getPendingCount(
+    accessToken: string,
+    projectId: string,
+  ): Promise<{ count: number }> {
+    return request<{ count: number }>(
+      `/api/v1/projects/${projectId}/documents/pending-count`,
+      {
+        method: 'GET',
+        accessToken,
+        fallbackMessage: 'Nie udało się sprawdzić dokumentów do akceptacji',
+      },
+    );
   },
 };
 

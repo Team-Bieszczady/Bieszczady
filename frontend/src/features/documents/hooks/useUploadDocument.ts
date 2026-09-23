@@ -23,7 +23,9 @@ export function useUploadDocument(projectId: string, folderId: string) {
     onSuccess: async () => {
       queryClient.invalidateQueries({
         queryKey: ['documents', projectId, folderId],
-        
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['pending-count', projectId],
       });
     },
   });

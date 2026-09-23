@@ -35,7 +35,7 @@ export function DocumentsTable({
   onRenameDocument,
   onPreview,
   onRestoreVersion,
-  onApprove
+  onApprove,
 }: Props) {
   if (documents.length === 0) {
     return (

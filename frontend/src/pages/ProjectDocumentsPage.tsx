@@ -55,7 +55,7 @@ function DocumentsView({ projectId }: { projectId: string }) {
   const [restoreDocumentId, setRestoreDocumentId] = useState<string | null>(
     null,
   );
-  
+
   const [showTrash, setShowTrash] = useState(false);
 
   const [permanentDeleteId, setPermanentDeleteId] = useState<string | null>(
@@ -66,11 +66,10 @@ function DocumentsView({ projectId }: { projectId: string }) {
 
   const { data: trash } = useTrash(projectId);
 
-
   const restoreVersionMutation = useRestoreVersion(projectId);
-const restoreDocument = useRestoreDocument(projectId);
-const apprveDocument = useApproveDocument(projectId, folderId ?? "")
-const { download, preview } = useDocumentFile(projectId);
+  const restoreDocument = useRestoreDocument(projectId);
+  const apprveDocument = useApproveDocument(projectId, folderId ?? '');
+  const { download, preview } = useDocumentFile(projectId);
 
   const restoreVersion = (documentId: string, versionNo: number) => {
     if (restoreVersionMutation.isPending) {
@@ -85,45 +84,40 @@ const { download, preview } = useDocumentFile(projectId);
     );
   };
 
-
   const approve = (documentId: string) => {
-        if (apprveDocument.isPending) {
-          return;
-        }
-apprveDocument.mutate(documentId,
-  {
-    onSuccess: () => showSuccess('Dokument zatwierdzony'),
-     onError: showError,
-  }
-);
-        
-  }
-
-const restore = (documentId: string, folderId?: string) => {
-  if (restoreDocument.isPending) {
-    return;
-  }
-
-  if (!folderId) {
-    const doc = trash?.find((el) => el.id === documentId);
-    if (doc?.folder?.deletedAt) {
-      setRestoreDocumentId(documentId); // brak folderu → zapytaj i wyjdź
+    if (apprveDocument.isPending) {
       return;
     }
-  }
-
-  restoreDocument.mutate(
-    { documentId, folderId },
-    {
-      onSuccess: () => {
-        showSuccess('Dokument przywrócony');
-        setRestoreDocumentId(null);
-      },
+    apprveDocument.mutate(documentId, {
+      onSuccess: () => showSuccess('Dokument zatwierdzony'),
       onError: showError,
-    },
-  );
-};
+    });
+  };
 
+  const restore = (documentId: string, folderId?: string) => {
+    if (restoreDocument.isPending) {
+      return;
+    }
+
+    if (!folderId) {
+      const doc = trash?.find((el) => el.id === documentId);
+      if (doc?.folder?.deletedAt) {
+        setRestoreDocumentId(documentId); // brak folderu → zapytaj i wyjdź
+        return;
+      }
+    }
+
+    restoreDocument.mutate(
+      { documentId, folderId },
+      {
+        onSuccess: () => {
+          showSuccess('Dokument przywrócony');
+          setRestoreDocumentId(null);
+        },
+        onError: showError,
+      },
+    );
+  };
 
   const selectFolder = (folderId: string) => {
     setFolderId(folderId);
