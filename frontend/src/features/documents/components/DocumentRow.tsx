@@ -8,6 +8,7 @@ import {
 import { fileExtension, formatDate, formatFileSize } from '../utils/formatters';
 import {
   IoArrowUndoOutline,
+  IoCheckmarkOutline,
   IoChevronDown,
   IoChevronForward,
   IoCreateOutline,
@@ -28,6 +29,7 @@ interface Props {
   onRenameDocument: (documentId: string) => void;
   onPreview: (documentId: string, versionNo: number) => void;
   onRestoreVersion: (documentId: string, versionNo: number) => void;
+  onApprove: (documentId: string) => void;
 }
 
 const canPreview = (mimeType: string) => {
@@ -48,6 +50,7 @@ export const DocumentRow = ({
   onRenameDocument,
   onPreview,
   onRestoreVersion,
+  onApprove
 }: Props) => {
   const version = document.versions[0];
   const {
@@ -145,6 +148,17 @@ export const DocumentRow = ({
                     icon: <IoCreateOutline className="h-4 w-4" />,
                     onSelect: () => onRenameDocument(document.id),
                   },
+
+                  ...(document.status === 'PENDING_APPROVAL' ? [
+                    {
+
+                      id: 'approve-document',
+                          label: 'Akceptuj',
+                          icon: <IoCheckmarkOutline className="h-4 w-4" />,
+                          onSelect: () => onApprove(document.id), 
+                    }
+                  ] : [])
+                  
                 ]}
               />
             )}

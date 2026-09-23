@@ -137,6 +137,18 @@ export class DocumentVersionsController {
       user,
     );
   }
+
+  @Post('/:documentId/approve')
+  async approveDocument(
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('documentId', ParseUUIDPipe) documentId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return await this.documentService.approveDocument(
+      projectId,documentId,user
+    )
+  }
+
   @Patch('/:documentId')
   async updateDocument(
     @Param('projectId', ParseUUIDPipe) projectId: string,

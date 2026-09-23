@@ -15,6 +15,7 @@ interface Props {
   onRenameDocument: (documentId: string) => void;
   onPreview: (documentId: string, versionNo: number) => void;
   onRestoreVersion: (documentId: string, versionNo: number) => void;
+  onApprove: (documentId: string) => void;
 }
 
 const HEAD_CLASS =
@@ -34,6 +35,7 @@ export function DocumentsTable({
   onRenameDocument,
   onPreview,
   onRestoreVersion,
+  onApprove
 }: Props) {
   if (documents.length === 0) {
     return (
@@ -75,6 +77,7 @@ export function DocumentsTable({
               onRenameDocument={onRenameDocument}
               onPreview={onPreview}
               onRestoreVersion={onRestoreVersion}
+              onApprove={onApprove}
             />
           ))}
         </tbody>

@@ -500,15 +500,14 @@ export const api = {
     documentId: string,
     versionNo: number,
   ): Promise<BackendDocumentVersion> {
-      return request<BackendDocumentVersion>(
-        `/api/v1/projects/${projectId}/documents/${documentId}/versions/${versionNo}/restore`,
-        {
-          method: 'POST',
-          accessToken,
-          fallbackMessage: 'Nie udało się przywrócić wersji',
-        },
-      );
-
+    return request<BackendDocumentVersion>(
+      `/api/v1/projects/${projectId}/documents/${documentId}/versions/${versionNo}/restore`,
+      {
+        method: 'POST',
+        accessToken,
+        fallbackMessage: 'Nie udało się przywrócić wersji',
+      },
+    );
   },
 
   async uploadVersion(
@@ -606,7 +605,25 @@ export const api = {
       },
     );
   },
+
+  async approveDocument(
+    accessToken: string,
+    projectId: string,
+    documentId: string,
+  ): Promise<BackendDocument> {
+
+        return request<BackendDocument>(
+          `/api/v1/projects/${projectId}/documents/${documentId}/approve`,
+          {
+            method: 'POST',
+            accessToken,
+            fallbackMessage: 'Nie udało się potwierdzić dokumentu',
+          },
+        );
+  },
 };
+
+
 
 
 

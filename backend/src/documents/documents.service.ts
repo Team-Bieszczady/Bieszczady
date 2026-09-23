@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from './storage.service';
 import { randomUUID } from 'crypto';
@@ -49,7 +49,10 @@ export class DocumentsService {
   ) {
     await this.access.assertCanRead(actor, projectId);
     await this.access.assertNotArchived(projectId);
-    await this.assertFolderExists(folderId, projectId,actor);
+    await this.assertFolderExists(folderId, projectId, actor);
+
+    const canApprove = await this.access.canManageTasks(actor, projectId);
+
     const documentId = randomUUID();
     const key = `${projectId}/${documentId}/v1`;
 
@@ -63,7 +66,7 @@ export class DocumentsService {
           folderId,
           name: dto.name,
           kind: dto.kind,
-          status: dto.status ?? 'DRAFT',
+          status: canApprove ? 'APPROVED' : 'PENDING_APPROVAL',
           ownerId,
         },
       }),
@@ -126,7 +129,7 @@ export class DocumentsService {
     actor: AuthenticatedUser,
   ) {
     await this.access.assertCanRead(actor, projectId);
-    await this.assertFolderExists(folderId, projectId,actor);
+    await this.assertFolderExists(folderId, projectId, actor);
     const documents = await this.prisma.document.findMany({
       where: { projectId, folderId, deletedAt: null },
       include: {
@@ -180,7 +183,7 @@ export class DocumentsService {
     }
 
     if (dto.folderId) {
-      await this.assertFolderExists(dto.folderId, projectId,actor);
+      await this.assertFolderExists(dto.folderId, projectId, actor);
       return await this.prisma.document.update({
         where: { id: documentId },
         data: { folderId: dto.folderId, deletedAt: null },
@@ -305,6 +308,41 @@ export class DocumentsService {
       where: { id: documentId },
       data: { name: dto.name },
     });
+  }
+
+  async approveDocument(
+    projectId: string,
+    documentId: string,
+    actor: AuthenticatedUser,
+  ) {
+        await this.access.assertCanRead(actor, projectId);
+        await this.access.assertNotArchived(projectId);
+
+   const canApprove = await this.access.canManageTasks(actor, projectId);
+
+  if(!canApprove){
+    throw new ForbiddenException(
+      'Tylko dyrektor lub koordynator projektu może akceptować dokumenty',
+    );
+  }
+
+      const document = await this.prisma.document.findFirst({
+        where: { id: documentId, projectId: projectId, deletedAt: null },
+      });
+   if (!document) {
+     throw new NotFoundException('Nie znaleziono dokumentu');
+   }
+
+if (document.status !== 'PENDING_APPROVAL') {
+  throw new BadRequestException('Ten dokument nie czeka na akceptację');
+}
+
+  return await this.prisma.document.update({
+    where: { id: documentId },
+    data: { status: "APPROVED" },
+  });
+
+
   }
 
   async getTrash(projectId: string, actor: AuthenticatedUser) {

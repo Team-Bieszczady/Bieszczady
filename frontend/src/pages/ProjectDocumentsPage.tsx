@@ -29,6 +29,7 @@ import {
 import { useSelectedProject } from '../context/useSelectedProject';
 import { PageMessage } from '../components/ui/PageMessage';
 import { useProject } from '../features/projects/hooks/useProjectsApi';
+import { useApproveDocument } from '../features/documents/hooks/useApproveDocument';
 
 function DocumentsView({ projectId }: { projectId: string }) {
   const { data: project } = useProject(projectId);
@@ -76,6 +77,8 @@ function DocumentsView({ projectId }: { projectId: string }) {
   const deletePermanentlyDocument = useDeleteDocumentPermanently(projectId);
 
   const restoreVersionMutation = useRestoreVersion(projectId);
+
+const apprveDocument = useApproveDocument(projectId, folderId ?? "")
 
   const clearPermanentDelete = () => {
     setPermanentDeleteId(null);
@@ -128,6 +131,19 @@ function DocumentsView({ projectId }: { projectId: string }) {
       },
     );
   };
+
+  const approve = (documentId: string) => {
+        if (apprveDocument.isPending) {
+          return;
+        }
+apprveDocument.mutate(documentId,
+  {
+    onSuccess: () => showSuccess('Dokument zatwierdzony'),
+     onError: showError,
+  }
+);
+        
+  }
 
   const submitRestore = () => {
     if (restoreDocumentId === null || restoreFolderId === '') {
@@ -355,6 +371,7 @@ function DocumentsView({ projectId }: { projectId: string }) {
               onPreview={preview}
               onRestoreVersion={restoreVersion}
               onRenameDocument={setRenameDocumentId}
+              onApprove={approve}
             />
           )}
           {!showTrash && !folderId && (
@@ -391,6 +408,7 @@ function DocumentsView({ projectId }: { projectId: string }) {
               onRenameDocument={setRenameDocumentId}
               onPreview={preview}
               onRestoreVersion={restoreVersion}
+              onApprove={approve}
             />
           )}
         </section>
