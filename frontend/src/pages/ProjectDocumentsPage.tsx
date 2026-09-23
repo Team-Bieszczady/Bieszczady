@@ -2,19 +2,17 @@ import { useState } from 'react';
 import { useFolders } from '../features/documents/hooks/useFolders';
 import { useDocuments } from '../features/documents/hooks/useDocuments';
 import { useAuthToken } from '../context/useAuthToken';
-import { api, isApiError } from '../lib/api';
+import { api } from '../lib/api';
 import { DocumentsTable } from '../features/documents/components/DocumentsTable';
 import { Modal } from '../components/ui/Modal';
 import { Button } from '../components/ui/Button';
 import { formatFileSize } from '../features/documents/utils/formatters';
 import { IoCloudUploadOutline, IoTrashOutline } from 'react-icons/io5';
 import { Select } from '../components/ui/Select';
-import toast from 'react-hot-toast';
-import {
-  FIELD_LABEL_CLASSES,
-} from '../components/ui/formStyles';
+import { FIELD_LABEL_CLASSES } from '../components/ui/formStyles';
 import { FolderTree } from '../features/documents/components/FolderTree';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { showError, showSuccess } from '../features/documents/utils/toasts';
 import { useTrash } from '../features/documents/hooks/useTrash';
 import { useRestoreDocument } from '../features/documents/hooks/useRestoreDocument';
 import { useDeleteDocumentPermanently } from '../features/documents/hooks/useDeleteDocumentPermanently';
@@ -47,236 +45,217 @@ function DocumentsView({ projectId }: { projectId: string }) {
   const [uploadMode, setUploadMode] = useState<UploadMode>('document');
   const [uploadDocumentId, setUploadDocumentId] = useState<string | null>(null);
 
-const [expandedIds, setExpandedIds] = useState<string[]>([]);
+  const [expandedIds, setExpandedIds] = useState<string[]>([]);
 
-const [showNewFolder, setShowNewFolder] = useState(false);
-const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null);
-
-const [deleteFolderId, setDeleteFolderId] = useState<string | null>(null)
-const [deleteDocumentId, setDeleteDocumentId] = useState<string | null>(null);
-
-
-const [renameFolderId, setRenameFolderId] = useState<string | null>(null);
-const [restoreDocumentId, setRestoreDocumentId] = useState<string | null>(null);
-const [restoreFolderId, setRestoreFolderId] = useState('');
-
-const [showTrash, setShowTrash] = useState(false)
-
-const [permanentDeleteId, setPermanentDeleteId] = useState<string | null>(null);
-
-const [renameDocumentId, setRenameDocumentId] = useState<string | null>(null);
-
-const {data: trash} = useTrash(projectId)
-
-
-const restoreDocument = useRestoreDocument(projectId)
-
-const deletePermanentlyDocument = useDeleteDocumentPermanently(projectId);
-
-const restoreVersionMutation = useRestoreVersion(projectId);
-
-
-const clearPermanentDelete = () => {
-  setPermanentDeleteId(null)
-}
-const delPermanentlyDoc = () => {
-  if (permanentDeleteId === null) {
-    return;
-  }
-  deletePermanentlyDocument.mutate(permanentDeleteId, {
-    onSuccess: () => {
-      clearPermanentDelete();
-    },
-    onError: (error) => {
-      const message = isApiError(error) ? error.message : 'Coś poszło nie tak';
-      toast.error(message);
-    },
-  });
-};
-
-
-const clearRestore = () => {
-
-setRestoreDocumentId(null)
-setRestoreFolderId("")
-}
-
-const restore = (documentId: string) => {
-  const doc = trash?.find((el) => el.id === documentId);
-  if (doc?.folder?.deletedAt) {
-    setRestoreDocumentId(documentId);
-    return;
-  }
-  restoreDocument.mutate(
-    { documentId },
-    {
-      onError: (error) => {
-        const message = isApiError(error)
-          ? error.message
-          : 'Coś poszło nie tak';
-        toast.error(message);
-      },
-    },
+  const [showNewFolder, setShowNewFolder] = useState(false);
+  const [newFolderParentId, setNewFolderParentId] = useState<string | null>(
+    null,
   );
-};
 
-const restoreVersion = (documentId: string, versionNo: number) => {
-  restoreVersionMutation.mutate(
-    { documentId, versionNo },
-    {
-      onError: (error) => {
-        const message = isApiError(error)
-          ? error.message
-          : 'Coś poszło nie tak';
-        toast.error(message);
-      },
-    },
+  const [deleteFolderId, setDeleteFolderId] = useState<string | null>(null);
+  const [deleteDocumentId, setDeleteDocumentId] = useState<string | null>(null);
+
+  const [renameFolderId, setRenameFolderId] = useState<string | null>(null);
+  const [restoreDocumentId, setRestoreDocumentId] = useState<string | null>(
+    null,
   );
-};
+  const [restoreFolderId, setRestoreFolderId] = useState('');
 
+  const [showTrash, setShowTrash] = useState(false);
 
-const submitRestore = () => {
-if (restoreDocumentId === null || restoreFolderId === '') {
-  return
-}
-restoreDocument.mutate(
-  { documentId: restoreDocumentId, folderId: restoreFolderId },
-  {
-    onSuccess: () => {
-      clearRestore()
-    },
+  const [permanentDeleteId, setPermanentDeleteId] = useState<string | null>(
+    null,
+  );
 
-        onError: (error) => {
-        const message = isApiError(error)
-          ? error.message
-          : 'Coś poszło nie tak';
-        toast.error(message);
+  const [renameDocumentId, setRenameDocumentId] = useState<string | null>(null);
+
+  const { data: trash } = useTrash(projectId);
+
+  const restoreDocument = useRestoreDocument(projectId);
+
+  const deletePermanentlyDocument = useDeleteDocumentPermanently(projectId);
+
+  const restoreVersionMutation = useRestoreVersion(projectId);
+
+  const clearPermanentDelete = () => {
+    setPermanentDeleteId(null);
+  };
+  const delPermanentlyDoc = () => {
+    if (permanentDeleteId === null) {
+      return;
+    }
+    deletePermanentlyDocument.mutate(permanentDeleteId, {
+      onSuccess: () => {
+        showSuccess('Dokument usunięty na zawsze');
+        clearPermanentDelete();
       },
-  }
+      onError: showError,
+    });
+  };
 
-);
+  const clearRestore = () => {
+    setRestoreDocumentId(null);
+    setRestoreFolderId('');
+  };
 
-};
+  const restore = (documentId: string) => {
+    if (restoreDocument.isPending) {
+      return;
+    }
+    const doc = trash?.find((el) => el.id === documentId);
+    if (doc?.folder?.deletedAt) {
+      setRestoreDocumentId(documentId);
+      return;
+    }
+    restoreDocument.mutate(
+      { documentId },
+      {
+        onSuccess: () => showSuccess('Dokument przywrócony'),
+        onError: showError,
+      },
+    );
+  };
 
+  const restoreVersion = (documentId: string, versionNo: number) => {
+    if (restoreVersionMutation.isPending) {
+      return;
+    }
+    restoreVersionMutation.mutate(
+      { documentId, versionNo },
+      {
+        onSuccess: () => showSuccess('Wersja przywrócona'),
+        onError: showError,
+      },
+    );
+  };
 
+  const submitRestore = () => {
+    if (restoreDocumentId === null || restoreFolderId === '') {
+      return;
+    }
+    restoreDocument.mutate(
+      { documentId: restoreDocumentId, folderId: restoreFolderId },
+      {
+        onSuccess: () => {
+          showSuccess('Dokument przywrócony');
+          clearRestore();
+        },
 
+        onError: showError,
+      },
+    );
+  };
 
-const selectFolder = (folderId: string) => {
-  setFolderId(folderId)
-  setShowTrash(false)
-};
+  const selectFolder = (folderId: string) => {
+    setFolderId(folderId);
+    setShowTrash(false);
+  };
 
-const deleteFolderName = folders?.find((el) => el.id === deleteFolderId)?.name;
-const renameDocumentName =
-  documents?.find((el) => el.id === renameDocumentId)?.name ?? '';
+  const deleteFolderName = folders?.find(
+    (el) => el.id === deleteFolderId,
+  )?.name;
+  const renameDocumentName =
+    documents?.find((el) => el.id === renameDocumentId)?.name ?? '';
 
+  const renameFolderName =
+    folders?.find((el) => el.id === renameFolderId)?.name ?? '';
 
-const renameFolderName =
-  folders?.find((el) => el.id === renameFolderId)?.name ?? '';
+  const openNewFolder = (parentId: string | null) => {
+    setNewFolderParentId(parentId);
+    setShowNewFolder(true);
+  };
 
+  const deleteDocumentName = documents?.find(
+    (el) => el.id === deleteDocumentId,
+  )?.name;
 
-
-const openNewFolder = (parentId: string | null) => {
-
-setNewFolderParentId(parentId)
-setShowNewFolder(true)
-};
-
-const deleteDocumentName  = documents?.find(el => el.id === deleteDocumentId)?.name
-
-const toggleExpanded = (documentId: string) => {
-  if(expandedIds.includes(documentId)){
-const newExpandsIds = expandedIds.filter((el) => el !== documentId);
-setExpandedIds(newExpandsIds)
-  }else{
-  setExpandedIds([...expandedIds, documentId])
-  }
-};
+  const toggleExpanded = (documentId: string) => {
+    if (expandedIds.includes(documentId)) {
+      const newExpandsIds = expandedIds.filter((el) => el !== documentId);
+      setExpandedIds(newExpandsIds);
+    } else {
+      setExpandedIds([...expandedIds, documentId]);
+    }
+  };
 
   const down = async (
     documentId: string,
     versionNo: number,
     fileName: string,
   ) => {
-    try{
-   const blob = await api.downloadVersion(
-      requireToken(),
-      projectId,
-      documentId,
-      versionNo,
-    );
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = fileName;
-    a.click();
+    try {
+      const blob = await api.downloadVersion(
+        requireToken(),
+        projectId,
+        documentId,
+        versionNo,
+      );
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      a.click();
 
-    
-    URL.revokeObjectURL(url);
-
-    }catch(error) {
-        const message =error instanceof Error && isApiError(error)
-          ? error.message
-          : 'Coś poszło nie tak';
-        toast.error(message);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      showError(error as Error);
     }
   };
 
-const openUpload = () => {
-  setUploadMode('document');
-  setUploadDocumentId(null);
-  setShowUpload(true);
-};
+  const openUpload = () => {
+    setUploadMode('document');
+    setUploadDocumentId(null);
+    setShowUpload(true);
+  };
 
-const openNewVersion = (documentId: string) => {
-  setUploadMode('version');
-  setUploadDocumentId(documentId);
-  setShowUpload(true);
-};
+  const openNewVersion = (documentId: string) => {
+    setUploadMode('version');
+    setUploadDocumentId(documentId);
+    setShowUpload(true);
+  };
 
-const preview = async (documentId: string, versionNo: number) => {
+  const preview = async (documentId: string, versionNo: number) => {
+    const tab = window.open('', '_blank');
 
-  const tab = window.open('', '_blank');
+    try {
+      const blob = await api.downloadVersion(
+        requireToken(),
+        projectId,
+        documentId,
+        versionNo,
+      );
 
-  try {
-    const blob = await api.downloadVersion(
-      requireToken(),
-      projectId,
-      documentId,
-      versionNo,
-    );
+      const url = URL.createObjectURL(blob);
 
-    const url = URL.createObjectURL(blob);
-
-    if (tab) {
-      tab.location.href = url;
+      if (tab) {
+        tab.location.href = url;
+      }
+    } catch (error) {
+      tab?.close();
+      showError(error as Error);
     }
-  } catch (error) {
-    tab?.close();
-    const message =
-      error instanceof Error && isApiError(error)
-        ? error.message
-        : 'Coś poszło nie tak';
-    toast.error(message);
-  }
-};
+  };
 
   if (foldersPending) {
-    return <p>Loading...</p>;
+    return (
+      <p className="px-4 py-10 text-center text-xs text-gray-400">
+        Ładowanie...
+      </p>
+    );
   }
   if (!folders) {
     return null;
   }
 
   const nameFolder = folders.find((el) => el.id === folderId)?.name;
-const permanentDeleteName = trash?.find(
-  (el) => el.id === permanentDeleteId,
-)?.name;
+  const permanentDeleteName = trash?.find(
+    (el) => el.id === permanentDeleteId,
+  )?.name;
 
-   const folderOptions = folders?.map((folder) => ({
-     value: folder.id,
-     label: folder.name,
-   }));
+  const folderOptions = folders?.map((folder) => ({
+    value: folder.id,
+    label: folder.name,
+  }));
 
   const bytes =
     documents?.reduce(
@@ -284,19 +263,21 @@ const permanentDeleteName = trash?.find(
         accumulator + (currentValue.versions[0]?.sizeBytes ?? 0),
       0,
     ) ?? 0;
-const parentFolderName = folders.find((el) => el.id === newFolderParentId)?.name
-const del = (id: string) => {
-  if (id === folderId) {
-    setFolderId(null);
-  }
-};
+  const parentFolderName = folders.find(
+    (el) => el.id === newFolderParentId,
+  )?.name;
+  const del = (id: string) => {
+    if (id === folderId) {
+      setFolderId(null);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-start justify-between">
         <div>
           <p className="text-xs uppercase tracking-wide text-gray-400">
-           {project?.name}
+            {project?.name}
           </p>
           <h1 className="mt-1 text-2xl font-bold text-dark">Dokumenty</h1>
         </div>
@@ -468,6 +449,9 @@ const del = (id: string) => {
         </div>
       </Modal>
       <UploadDocumentModal
+        key={
+          showUpload ? `${uploadMode}-${uploadDocumentId ?? 'new'}` : 'closed'
+        }
         isOpen={showUpload}
         projectId={projectId}
         folderId={folderId ?? ''}

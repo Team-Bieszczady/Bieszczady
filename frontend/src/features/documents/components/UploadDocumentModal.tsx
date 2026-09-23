@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react';
-import toast from 'react-hot-toast';
+import { useState } from 'react';
 import { IoInformationCircleOutline } from 'react-icons/io5';
 import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
@@ -9,11 +8,12 @@ import {
   FIELD_LABEL_CLASSES,
   INPUT_CLASSES,
 } from '../../../components/ui/formStyles';
-import { isApiError, type BackendDocument } from '../../../lib/api';
+import { type BackendDocument } from '../../../lib/api';
 import {
   DOCUMENT_KINDS_OPTIONS,
   type DocumentKind,
 } from '../../../lib/documents';
+import { showError, showSuccess } from '../utils/toasts';
 import { useUploadDocument } from '../hooks/useUploadDocument';
 import { useUploadVersion } from '../hooks/useUploadVersion';
 
@@ -49,13 +49,6 @@ export function UploadDocumentModal({
   );
   const [changeNote, setChangeNote] = useState('');
 
-  useEffect(() => {
-    if (isOpen) {
-      setMode(initialMode);
-      setVersionForId(initialDocumentId);
-    }
-  }, [isOpen, initialMode, initialDocumentId]);
-
   const upload = useUploadDocument(projectId, folderId);
   const uploadVersion = useUploadVersion(
     projectId,
@@ -71,18 +64,19 @@ export function UploadDocumentModal({
     onClose();
   };
 
-const showError = (error: Error) => {
-  const message = isApiError(error) ? error.message : 'Coś poszło nie tak';
-  toast.error(message);
-};
-
   const uploadDoc = () => {
     if (!file) {
       return;
     }
     upload.mutate(
       { name, kind, file },
-      { onSuccess: clear, onError: showError },
+      {
+        onSuccess: () => {
+          showSuccess('Dokument wgrany');
+          clear();
+        },
+        onError: showError,
+      },
     );
   };
 
@@ -92,7 +86,13 @@ const showError = (error: Error) => {
     }
     uploadVersion.mutate(
       { file, changeNote },
-      { onSuccess: clear, onError: showError },
+      {
+        onSuccess: () => {
+          showSuccess('Nowa wersja wgrana');
+          clear();
+        },
+        onError: showError,
+      },
     );
   };
 

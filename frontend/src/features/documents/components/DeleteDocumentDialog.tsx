@@ -1,6 +1,5 @@
-import toast from 'react-hot-toast';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
-import { isApiError } from '../../../lib/api';
+import { showError, showSuccess } from '../utils/toasts';
 import { useDeleteDocument } from '../hooks/useDeleteDocument';
 
 interface Props {
@@ -25,13 +24,11 @@ export function DeleteDocumentDialog({
       return;
     }
     deleteDocument.mutate(documentId, {
-      onSuccess: () => onClose(),
-      onError: (error) => {
-        const message = isApiError(error)
-          ? error.message
-          : 'Coś poszło nie tak';
-        toast.error(message);
+      onSuccess: () => {
+        showSuccess('Dokument przeniesiony do kosza');
+        onClose();
       },
+      onError: showError,
     });
   };
 

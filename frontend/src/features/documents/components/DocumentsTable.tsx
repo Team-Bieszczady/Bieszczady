@@ -1,7 +1,6 @@
 import type { BackendDocument } from '../../../lib/api';
 import { DocumentRow } from './DocumentRow';
 
-
 interface Props {
   projectId: string;
   documents: BackendDocument[];
@@ -15,7 +14,7 @@ interface Props {
   onDeletePermanently: (documentId: string) => void;
   onRenameDocument: (documentId: string) => void;
   onPreview: (documentId: string, versionNo: number) => void;
-  onRestoreVersion: (documentId: string, versionNo: number) => void
+  onRestoreVersion: (documentId: string, versionNo: number) => void;
 }
 
 const HEAD_CLASS =
@@ -34,7 +33,7 @@ export function DocumentsTable({
   onDeletePermanently,
   onRenameDocument,
   onPreview,
-  onRestoreVersion
+  onRestoreVersion,
 }: Props) {
   if (documents.length === 0) {
     return (

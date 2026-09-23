@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
 import {
@@ -30,12 +30,6 @@ export function NameFormModal({
   onClose,
 }: Props) {
   const [name, setName] = useState(initialName);
-
-  useEffect(() => {
-    if (isOpen) {
-      setName(initialName);
-    }
-  }, [isOpen, initialName]);
 
   const submit = () => {
     const trimmed = name.trim();

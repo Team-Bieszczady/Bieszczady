@@ -1,4 +1,4 @@
-import { useVersions } from "../hooks/useVersions";
+import { useVersions } from '../hooks/useVersions';
 import type { BackendDocument } from '../../../lib/api';
 import {
   DOCUMENT_KIND_LABELS,
@@ -6,8 +6,14 @@ import {
   DOCUMENT_STATUS_LABELS,
 } from '../../../lib/documents';
 import { fileExtension, formatDate, formatFileSize } from '../utils/formatters';
-import { IoArrowUndoOutline, IoChevronDown, IoChevronForward, IoCreateOutline, IoTrashOutline } from "react-icons/io5";
-import { ActionMenu } from "../../../components/ui/ActionMenu";
+import {
+  IoArrowUndoOutline,
+  IoChevronDown,
+  IoChevronForward,
+  IoCreateOutline,
+  IoTrashOutline,
+} from 'react-icons/io5';
+import { ActionMenu } from '../../../components/ui/ActionMenu';
 interface Props {
   document: BackendDocument;
   projectId: string;
@@ -28,7 +34,6 @@ const canPreview = (mimeType: string) => {
   return mimeType === 'application/pdf' || mimeType.startsWith('image/');
 };
 
-
 export const DocumentRow = ({
   document,
   projectId,
@@ -42,7 +47,7 @@ export const DocumentRow = ({
   onDeletePermanently,
   onRenameDocument,
   onPreview,
-  onRestoreVersion
+  onRestoreVersion,
 }: Props) => {
   const version = document.versions[0];
   const {
@@ -51,9 +56,6 @@ export const DocumentRow = ({
     isPending,
   } = useVersions(projectId, isExpanded ? document.id : null);
 
-
-
-  
   return (
     <>
       <tr
@@ -185,8 +187,14 @@ export const DocumentRow = ({
               </button>
             )}
 
-            {error && <p>Error</p>}
-            {isPending && <p>Pending...</p>}
+            {error && (
+              <p className="text-xs text-red-600">
+                Nie udało się wczytać historii wersji
+              </p>
+            )}
+            {isPending && (
+              <p className="text-xs text-gray-400">Ładowanie historii...</p>
+            )}
             <div className="flex flex-col gap-4">
               {versions &&
                 versions.map((wersja, index) => (
@@ -236,7 +244,7 @@ export const DocumentRow = ({
                         </button>
                       )}
                       {variant === 'folder' &&
-                        wersja.storageKey !== versions[0].storageKey && (
+                        wersja.storageKey !== versions[0]?.storageKey && (
                           <button
                             type="button"
                             onClick={() =>
@@ -244,7 +252,7 @@ export const DocumentRow = ({
                             }
                             className="cursor-pointer text-xs font-medium text-darkGreen hover:text-darkGreenHover"
                           >
-                            Przywróć jako v{versions[0].versionNo + 1}
+                            Przywróć jako v{(versions[0]?.versionNo ?? 0) + 1}
                           </button>
                         )}
                     </div>

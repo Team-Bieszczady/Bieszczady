@@ -1,6 +1,10 @@
-import { IoCreateOutline, IoFolderOutline, IoTrashOutline } from "react-icons/io5";
-import type { BackendFolder } from "../../../lib/api";
-import { ActionMenu } from "../../../components/ui/ActionMenu";
+import {
+  IoCreateOutline,
+  IoFolderOutline,
+  IoTrashOutline,
+} from 'react-icons/io5';
+import type { BackendFolder } from '../../../lib/api';
+import { ActionMenu } from '../../../components/ui/ActionMenu';
 
 interface Props {
   folders: BackendFolder[];
@@ -9,8 +13,8 @@ interface Props {
   selectedId: string | null;
   onSelect: (folderId: string) => void;
   onAddSubfolder: (parentId: string) => void;
-onDeleteFolder: (folderId: string) => void;
-onRename: (folderId: string) => void
+  onDeleteFolder: (folderId: string) => void;
+  onRename: (folderId: string) => void;
 }
 export const FolderTree = ({
   folders,
@@ -20,7 +24,7 @@ export const FolderTree = ({
   onSelect,
   onAddSubfolder,
   onDeleteFolder,
-  onRename
+  onRename,
 }: Props) => {
   const children = folders.filter((f) => f.parentId === parentId);
   return (

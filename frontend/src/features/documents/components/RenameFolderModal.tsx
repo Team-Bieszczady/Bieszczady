@@ -1,5 +1,4 @@
-import toast from 'react-hot-toast';
-import { isApiError } from '../../../lib/api';
+import { showError, showSuccess } from '../utils/toasts';
 import { useUpdateFolder } from '../hooks/useUpdateFolder';
 import { NameFormModal } from './NameFormModal';
 
@@ -25,19 +24,18 @@ export function RenameFolderModal({
     updateFolder.mutate(
       { folderId, name },
       {
-        onSuccess: onClose,
-        onError: (error) => {
-          const message = isApiError(error)
-            ? error.message
-            : 'Coś poszło nie tak';
-          toast.error(message);
+        onSuccess: () => {
+          showSuccess('Nazwa folderu zmieniona');
+          onClose();
         },
+        onError: showError,
       },
     );
   };
 
   return (
     <NameFormModal
+      key={folderId ?? 'closed'}
       isOpen={folderId !== null}
       title="Zmień nazwę"
       label="Nazwa folderu"

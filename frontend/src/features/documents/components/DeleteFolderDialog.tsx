@@ -1,6 +1,5 @@
-import toast from 'react-hot-toast';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
-import { isApiError } from '../../../lib/api';
+import { showError, showSuccess } from '../utils/toasts';
 import { useDeleteFolder } from '../hooks/useDeleteFolder';
 
 interface Props {
@@ -26,15 +25,11 @@ export function DeleteFolderDialog({
     }
     deleteFolder.mutate(folderId, {
       onSuccess: () => {
+        showSuccess('Folder usunięty');
         onDeleted(folderId);
         onClose();
       },
-      onError: (error) => {
-        const message = isApiError(error)
-          ? error.message
-          : 'Coś poszło nie tak';
-        toast.error(message);
-      },
+      onError: showError,
     });
   };
 

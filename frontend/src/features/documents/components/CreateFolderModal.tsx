@@ -1,12 +1,11 @@
 import { useState } from 'react';
-import toast from 'react-hot-toast';
 import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
 import {
   FIELD_LABEL_CLASSES,
   INPUT_CLASSES,
 } from '../../../components/ui/formStyles';
-import { isApiError } from '../../../lib/api';
+import { showError, showSuccess } from '../utils/toasts';
 import { useCreateFolder } from '../hooks/useCreateFolder';
 
 interface Props {
@@ -44,13 +43,11 @@ export function CreateFolderModal({
       payload.parentId = parentId;
     }
     createFolder.mutate(payload, {
-      onSuccess: close,
-      onError: (error) => {
-        const message = isApiError(error)
-          ? error.message
-          : 'Coś poszło nie tak';
-        toast.error(message);
+      onSuccess: () => {
+        showSuccess('Folder utworzony');
+        close();
       },
+      onError: showError,
     });
   };
 

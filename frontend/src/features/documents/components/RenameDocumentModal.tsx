@@ -1,5 +1,4 @@
-import toast from 'react-hot-toast';
-import { isApiError } from '../../../lib/api';
+import { showError, showSuccess } from '../utils/toasts';
 import { useUpdateDocument } from '../hooks/useUpdateDocument';
 import { NameFormModal } from './NameFormModal';
 
@@ -27,19 +26,18 @@ export function RenameDocumentModal({
     updateDocument.mutate(
       { documentId, name },
       {
-        onSuccess: onClose,
-        onError: (error) => {
-          const message = isApiError(error)
-            ? error.message
-            : 'Coś poszło nie tak';
-          toast.error(message);
+        onSuccess: () => {
+          showSuccess('Nazwa dokumentu zmieniona');
+          onClose();
         },
+        onError: showError,
       },
     );
   };
 
   return (
     <NameFormModal
+      key={documentId ?? 'closed'}
       isOpen={documentId !== null}
       title="Zmień nazwę dokumentu"
       label="Nazwa dokumentu"
