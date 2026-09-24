@@ -57,6 +57,18 @@ export interface BackendDocumentVersion {
   uploadedBy: { firstName: string; lastName: string };
 }
 
+export interface BackendDocumentAccess {
+  id: string;
+  projectId: string;
+  folderId: string | null;
+  documentId: string | null;
+  userId: string;
+  level: 'VIEW' | 'EDIT';
+  grantedById: string;
+  createdAt: string;
+  user: { firstName: string; lastName: string; email: string };
+}
+
 export interface BackendDocument {
   id: string;
   projectId: string;
@@ -634,7 +646,65 @@ export const api = {
       },
     );
   },
-};
+
+  async getDocumentAccess(
+    accessToken: string,
+    projectId: string,
+    body: { folderId?: string; documentId?: string },
+  ): Promise<BackendDocumentAccess[]> {
+    const url = `/api/v1/projects/${projectId}/document-access`;
+    const params = new URLSearchParams();
+
+    if (body.folderId) {
+      params.set('folderId', body.folderId);
+    }
+    if (body.documentId) {
+      params.set('documentId', body.documentId);
+    }
+
+    return request<BackendDocumentAccess[]>(`${url}?${params}`, {
+      method: 'GET',
+      accessToken,
+      fallbackMessage: 'Nie udało się pobrać listy dostępów',
+    });
+  },
+
+  async grantDocumentAccess(
+    accessToken: string,
+    projectId: string,
+    body: {
+      userId: string;
+      level: 'VIEW' | 'EDIT';
+      folderId?: string;
+      documentId?: string;
+    },
+  ): Promise<BackendDocumentAccess> {
+    return request<BackendDocumentAccess>(
+      `/api/v1/projects/${projectId}/document-access`,
+      {
+        method: 'POST',
+        accessToken,
+        body,
+        fallbackMessage: 'Nie udało się udostępnić',
+      },
+    );
+  },
+
+  async revokeDocumentAccess(
+    accessToken: string,
+    projectId: string,
+accessId: string
+  ): Promise<void> {
+    await request<void>(
+      `/api/v1/projects/${projectId}/document-access/${accessId}`,
+      {
+        method: 'DELETE',
+        accessToken,
+        fallbackMessage: 'Nie udało się odebrać dostępu',
+      },
+    );
+  },
+}; 
 
 
 
