@@ -8,12 +8,14 @@ import { DocumentVersionsController } from './document-versions.controller';
 import { UsersModule } from '../users/users.module';
 import { ProjectsModule } from '../projects/projects.module';
 import { DocumentAccessService } from './document-access.service';
+import { DocumentAccessController } from './document-access.controller';
 
 @Module({
   controllers: [
     FoldersController,
     DocumentsController,
     DocumentVersionsController,
+    DocumentAccessController
   ],
   providers: [FoldersService, StorageService, DocumentsService, DocumentAccessService],
   imports: [UsersModule, ProjectsModule],
