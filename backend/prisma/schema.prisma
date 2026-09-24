@@ -31,6 +31,10 @@ model User {
   ownedDocuments      Document[]         @relation("DocumentOwner")
   ownedFolders        Folder[]           @relation("FolderOwner")
   uploadedVersions    DocumentVersion[]  @relation("VersionUploader")
+  documentAccesses        DocumentAccess[] @relation("DocumentAccessUser")
+  documentAccessesGranted DocumentAccess[] @relation("DocumentAccessGrantedBy")
+
+
 
   projectMemberships ProjectMember[] @relation("ProjectMemberUser")
   ownedTasks         Task[]          @relation("TaskOwner")
@@ -298,6 +302,8 @@ model Folder {
   parent    Folder?    @relation("FolderTree", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   children  Folder[]   @relation("FolderTree")
   documents Document[]
+  accesses  DocumentAccess[]
+
 
   @@index([projectId])
   @@index([parentId])
@@ -319,6 +325,8 @@ model Document {
   folder   Folder            @relation(fields: [folderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   owner    User              @relation("DocumentOwner", fields: [ownerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   versions DocumentVersion[]
+  accesses DocumentAccess[]
+
 
   @@index([projectId])
   @@index([folderId])
@@ -344,3 +352,25 @@ model DocumentVersion {
   @@index([documentId])
   @@map("document_versions")
 }
+
+model DocumentAccess {
+  id          String   @id @default(uuid())
+  projectId   String   @map("project_id")
+  folderId    String?  @map("folder_id")
+  documentId  String?  @map("document_id")
+  userId      String   @map("user_id")
+  level       String
+  grantedById String   @map("granted_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  folder    Folder?   @relation(fields: [folderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  document  Document? @relation(fields: [documentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user      User      @relation("DocumentAccessUser", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  grantedBy User      @relation("DocumentAccessGrantedBy", fields: [grantedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([folderId, userId])
+  @@unique([documentId, userId])
+  @@index([userId])
+  @@map("document_access")
+}
+
