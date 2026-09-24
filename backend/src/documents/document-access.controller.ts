@@ -43,8 +43,8 @@ export class DocumentAccessController {
     @Param('accessId', ParseUUIDPipe) accessId: string,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-
-return await this.accessService.revoke(user, projectId,accessId)
-
+    return await this.accessService.revoke(user, projectId, accessId);
   }
+
+
 }
