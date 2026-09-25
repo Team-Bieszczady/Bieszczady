@@ -26,6 +26,7 @@ import { RestoreDocumentModal } from '../features/documents/components/RestoreDo
 import { DeletePermanentlyDialog } from '../features/documents/components/DeletePermanentlyDialog';
 import { useDocumentFile } from '../features/documents/hooks/useDocumentFile';
 import { showError, showSuccess } from '../features/documents/utils/toasts';
+import { ShareModal } from '../features/documents/components/ShareModal';
 
 function DocumentsView({ projectId }: { projectId: string }) {
   const { data: project } = useProject(projectId);
@@ -69,6 +70,15 @@ function DocumentsView({ projectId }: { projectId: string }) {
   const restoreVersionMutation = useRestoreVersion(projectId);
   const restoreDocument = useRestoreDocument(projectId);
   const apprveDocument = useApproveDocument(projectId, folderId ?? '');
+
+const [shareTarget, setShareTarget] = useState<{
+  folderId?: string;
+  documentId?: string;
+}>({});
+
+const shareFolder = (folderId: string) => setShareTarget({ folderId });
+const shareDocument = (documentId: string) => setShareTarget({ documentId });
+
   const { download, preview } = useDocumentFile(projectId);
 
   const restoreVersion = (documentId: string, versionNo: number) => {
@@ -127,6 +137,17 @@ function DocumentsView({ projectId }: { projectId: string }) {
   const deleteFolderName = folders?.find(
     (el) => el.id === deleteFolderId,
   )?.name;
+
+const shareFolderName = folders?.find(
+  (el) => el.id === shareTarget.folderId,
+)?.name;
+
+const shareDocumentName = documents?.find(
+  (el) => el.id === shareTarget.documentId,
+)?.name;
+
+const shareTargetName = shareFolderName ?? shareDocumentName;
+
   const renameDocumentName =
     documents?.find((el) => el.id === renameDocumentId)?.name ?? '';
 
@@ -240,6 +261,7 @@ function DocumentsView({ projectId }: { projectId: string }) {
               onAddSubfolder={openNewFolder}
               onDeleteFolder={setDeleteFolderId}
               onRename={setRenameFolderId}
+              onShare={shareFolder}
             />
           </div>
           <div className="my-2 border-t border-gray-200" />
@@ -278,6 +300,7 @@ function DocumentsView({ projectId }: { projectId: string }) {
               onRestoreVersion={restoreVersion}
               onRenameDocument={setRenameDocumentId}
               onApprove={approve}
+              onShare={shareDocument}
             />
           )}
           {!showTrash && !folderId && (
@@ -315,6 +338,7 @@ function DocumentsView({ projectId }: { projectId: string }) {
               onPreview={preview}
               onRestoreVersion={restoreVersion}
               onApprove={approve}
+              onShare={shareDocument}
             />
           )}
         </section>
@@ -389,6 +413,12 @@ function DocumentsView({ projectId }: { projectId: string }) {
         documentId={permanentDeleteId}
         documentName={permanentDeleteName}
         onClose={() => setPermanentDeleteId(null)}
+      />
+      <ShareModal
+        projectId={projectId}
+        target={shareTarget}
+        targetName={shareTargetName}
+        onClose={() => setShareTarget({})}
       />
     </div>
   );

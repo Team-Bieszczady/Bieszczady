@@ -1,6 +1,7 @@
 import {
   IoCreateOutline,
   IoFolderOutline,
+  IoPersonAddOutline,
   IoTrashOutline,
 } from 'react-icons/io5';
 import type { BackendFolder } from '../../../lib/api';
@@ -15,6 +16,7 @@ interface Props {
   onAddSubfolder: (parentId: string) => void;
   onDeleteFolder: (folderId: string) => void;
   onRename: (folderId: string) => void;
+  onShare: (folderId: string) => void;
 }
 export const FolderTree = ({
   folders,
@@ -25,6 +27,7 @@ export const FolderTree = ({
   onAddSubfolder,
   onDeleteFolder,
   onRename,
+  onShare
 }: Props) => {
   const children = folders.filter((f) => f.parentId === parentId);
   return (
@@ -68,6 +71,12 @@ export const FolderTree = ({
                   icon: <IoTrashOutline className="h-4 w-4" />,
                   onSelect: () => onDeleteFolder(folder.id),
                 },
+                {
+                  id: 'share-folder',
+                  label: 'Udostępnij',
+                  icon: <IoPersonAddOutline className="h-4 w-4" />,
+                  onSelect: () => onShare(folder.id),
+                },
               ]}
             />
           </div>
@@ -80,6 +89,7 @@ export const FolderTree = ({
             onAddSubfolder={onAddSubfolder}
             onDeleteFolder={onDeleteFolder}
             onRename={onRename}
+            onShare={onShare}
           />
         </div>
       ))}

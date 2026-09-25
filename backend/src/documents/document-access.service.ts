@@ -143,37 +143,32 @@ export class DocumentAccessService {
     if (!member) {
       throw new BadRequestException('Ta osoba nie należy do projektu');
     }
-    if (dto.folderId) {
-      return await this.prisma.documentAccess.upsert({
-        where: {
-          folderId_userId: { folderId: dto.folderId, userId: dto.userId },
-        },
-        update: { level: dto.level, grantedById: actor.id },
-        create: {
-          projectId,
-          folderId: dto.folderId,
-          userId: dto.userId,
-          level: dto.level,
-          grantedById: actor.id,
-        },
+       const existing = await this.prisma.documentAccess.findFirst({
+      where: {
+        projectId,
+        userId: dto.userId,
+        folderId: dto.folderId ?? null,
+        documentId: dto.documentId ?? null,
+      },
+    });
+
+    if (existing) {
+      return await this.prisma.documentAccess.update({
+        where: { id: existing.id },
+        data: { level: dto.level, grantedById: actor.id },
       });
     }
 
-    if (dto.documentId) {
-      return await this.prisma.documentAccess.upsert({
-        where: {
-          documentId_userId: { documentId: dto.documentId, userId: dto.userId },
-        },
-        update: { level: dto.level, grantedById: actor.id },
-        create: {
-          projectId,
-          documentId: dto.documentId,
-          userId: dto.userId,
-          level: dto.level,
-          grantedById: actor.id,
-        },
-      });
-    }
+    return await this.prisma.documentAccess.create({
+      data: {
+        projectId,
+        folderId: dto.folderId ?? null,
+        documentId: dto.documentId ?? null,
+        userId: dto.userId,
+        level: dto.level,
+        grantedById: actor.id,
+      },
+    });
   }
 
   async revoke(actor: AuthenticatedUser, projectId: string, accessId: string) {

@@ -12,6 +12,7 @@ import {
   IoChevronDown,
   IoChevronForward,
   IoCreateOutline,
+  IoPersonAddOutline,
   IoTrashOutline,
 } from 'react-icons/io5';
 import { ActionMenu } from '../../../components/ui/ActionMenu';
@@ -30,6 +31,7 @@ interface Props {
   onPreview: (documentId: string, versionNo: number) => void;
   onRestoreVersion: (documentId: string, versionNo: number) => void;
   onApprove: (documentId: string) => void;
+  onShare: (documentId: string) => void;
 }
 
 const canPreview = (mimeType: string) => {
@@ -51,6 +53,7 @@ export const DocumentRow = ({
   onPreview,
   onRestoreVersion,
   onApprove,
+  onShare
 }: Props) => {
   const version = document.versions[0];
   const {
@@ -148,6 +151,13 @@ export const DocumentRow = ({
                     icon: <IoCreateOutline className="h-4 w-4" />,
                     onSelect: () => onRenameDocument(document.id),
                   },
+                  {
+  id: 'share-document',
+  label: 'Udostępnij',
+  icon: <IoPersonAddOutline className="h-4 w-4" />,
+  onSelect: () => onShare(document.id),
+},
+
 
                   ...(document.status === 'PENDING_APPROVAL'
                     ? [

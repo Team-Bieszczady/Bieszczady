@@ -10,7 +10,7 @@ type Level = 'NONE' | 'VIEW' | 'EDIT';
 
 
 const LEVEL_OPTIONS = [
-  { value: 'NONE', label: 'Brak' },
+  { value: 'NONE', label: 'Bez ustawienia' },
   { value: 'VIEW', label: 'Podgląd' },
   { value: 'EDIT', label: 'Edycja' },
 ];
@@ -34,6 +34,9 @@ export function ShareModal({ projectId, target, targetName, onClose }: Props) {
     row: { userId: string; accessId?: string },
     newLevel: Level,
   ) => {
+     if (!newLevel) {
+       return;
+     }
     if (newLevel === 'NONE') {
       if (!row.accessId) {
         return;
@@ -89,8 +92,9 @@ export function ShareModal({ projectId, target, targetName, onClose }: Props) {
               <div className="w-40 shrink-0">
                 <Select
                   size="md"
+                  allowEmpty={false}
                   options={LEVEL_OPTIONS}
-                  placeholder='Brak'
+                  placeholder="Wybierz"
                   value={row.level}
                   onChange={(v) => changeLevel(row, v as Level)}
                 />
@@ -99,9 +103,10 @@ export function ShareModal({ projectId, target, targetName, onClose }: Props) {
           </div>
         ))}
 
-        <p className="border-t border-gray-200 pt-4 text-xs text-gray-400">
-          Dyrektor i koordynatorzy projektu mają dostęp zawsze.
-        </p>
+        <div className="border-t border-gray-200 pt-4 text-xs text-gray-400">
+          <p>Dyrektor i koordynatorzy projektu mają dostęp zawsze.</p>
+          <p>Bez ustawienia = dostęp może wynikać z folderu nadrzędnego.</p>
+        </div>
       </div>
     </Modal>
   );

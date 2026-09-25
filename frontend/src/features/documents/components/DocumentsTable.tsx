@@ -16,6 +16,7 @@ interface Props {
   onPreview: (documentId: string, versionNo: number) => void;
   onRestoreVersion: (documentId: string, versionNo: number) => void;
   onApprove: (documentId: string) => void;
+  onShare: (documentId: string) => void;
 }
 
 const HEAD_CLASS =
@@ -36,6 +37,7 @@ export function DocumentsTable({
   onPreview,
   onRestoreVersion,
   onApprove,
+  onShare
 }: Props) {
   if (documents.length === 0) {
     return (
@@ -78,6 +80,7 @@ export function DocumentsTable({
               onPreview={onPreview}
               onRestoreVersion={onRestoreVersion}
               onApprove={onApprove}
+              onShare={onShare}
             />
           ))}
         </tbody>

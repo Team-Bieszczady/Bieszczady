@@ -368,9 +368,9 @@ model DocumentAccess {
   user      User      @relation("DocumentAccessUser", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   grantedBy User      @relation("DocumentAccessGrantedBy", fields: [grantedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
-  @@unique([folderId, userId])
-  @@unique([documentId, userId])
-  @@index([userId])
-  @@map("document_access")
+@@index([folderId])
+@@index([documentId])
+@@index([userId])
+@@map("document_access")
 }
 
