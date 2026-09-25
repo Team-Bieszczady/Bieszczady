@@ -20,10 +20,44 @@ export class FoldersService {
 
   async findAllForProject(id: string, actor: AuthenticatedUser) {
     await this.access.assertCanRead(actor, id);
-    return await this.prisma.folder.findMany({
+
+    const folders = await this.prisma.folder.findMany({
       where: { projectId: id, deletedAt: null },
       orderBy: { name: 'asc' },
     });
+
+    const canManage = await this.access.canManageTasks(actor, id);
+    if (canManage) {
+      return folders;
+    }
+
+       const granted = await this.prisma.documentAccess.findMany({
+         where: { projectId: id, userId: actor.id, folderId: { not: null } },
+         select: { folderId: true },
+       });
+       const grantedIds = new Set(granted.map((g) => g.folderId));
+    const byId = new Map(folders.map((f) => [f.id, f]));
+
+    const visible = folders.filter((folder) => {
+      let current: typeof folder | undefined = folder;
+      while (current) {
+        if (grantedIds.has(current.id)) {
+          return true;
+        }
+        current = current.parentId ? byId.get(current.parentId) : undefined;
+      }
+      return false;
+    });
+
+    const visibleIds = new Set(visible.map((f) => f.id));
+    return visible.map((folder) => ({
+      ...folder,
+      parentId:
+        folder.parentId && visibleIds.has(folder.parentId)
+          ? folder.parentId
+          : null,
+    }));
+
   }
 
   async createFolder(
@@ -32,12 +66,12 @@ export class FoldersService {
     dto: CreateFolderDto,
     actor: AuthenticatedUser,
   ) {
-     await this.access.assertCanRead(actor, id);
-     await this.access.assertNotArchived(id);
-    
+    await this.access.assertCanRead(actor, id);
+    await this.access.assertNotArchived(id);
+
     if (dto.parentId) {
       const parentFolder = await this.prisma.folder.findFirst({
-        where: { id: dto.parentId, projectId: id, deletedAt: null},
+        where: { id: dto.parentId, projectId: id, deletedAt: null },
       });
       if (!parentFolder) {
         throw new BadRequestException(
@@ -52,15 +86,14 @@ export class FoldersService {
     });
   }
 
-
   async updateFolder(
     id: string,
     projectId: string,
     dto: UpdateFolderDto,
     actor: AuthenticatedUser,
   ) {
-     await this.access.assertCanRead(actor, projectId);
-     await this.access.assertNotArchived(projectId);
+    await this.access.assertCanRead(actor, projectId);
+    await this.access.assertNotArchived(projectId);
 
     const name = dto.name;
     const parentId = dto.parentId;

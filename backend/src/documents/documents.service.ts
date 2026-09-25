@@ -8,6 +8,7 @@ import { RestoreDocumentDto } from './dto/restore-document.dto';
 import { UpdateDocumentDto } from './dto/update-document.dto';
 import { AuthenticatedUser } from '../auth/types/auth.types';
 import { ProjectAccessService } from '../projects/project-access.service';
+import { DocumentAccessService } from './document-access.service';
 
 interface UploadedFile {
   buffer: Buffer;
@@ -23,6 +24,7 @@ export class DocumentsService {
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
     private readonly access: ProjectAccessService,
+    private readonly documentAccess: DocumentAccessService,
   ) {}
 
   private async assertFolderExists(
@@ -31,6 +33,7 @@ export class DocumentsService {
     actor: AuthenticatedUser,
   ) {
     await this.access.assertCanRead(actor, projectId);
+    await this.assertFolderLevel(actor, projectId, folderId, false);
     const folder = await this.prisma.folder.findFirst({
       where: { id: folderId, projectId: projectId, deletedAt: null },
     });
@@ -40,6 +43,45 @@ export class DocumentsService {
       );
     }
   }
+
+  private async assertDocumentLevel(
+    actor: AuthenticatedUser,
+    projectId: string,
+    documentId: string,
+    needEdit: boolean,
+  ) {
+    const level = await this.documentAccess.levelFor(actor, projectId, {
+      documentId,
+    });
+
+    if (!level) {
+      throw new NotFoundException('Nie znaleziono dokumentu');
+    }
+
+    if (needEdit && level !== 'EDIT') {
+      throw new ForbiddenException('Masz tylko podgląd tego dokumentu');
+    }
+  }
+
+  private async assertFolderLevel(
+    actor: AuthenticatedUser,
+    projectId: string,
+    folderId: string,
+    needEdit: boolean,
+  ) {
+    const level = await this.documentAccess.levelFor(actor, projectId, {
+      folderId,
+    });
+
+    if (!level) {
+      throw new NotFoundException('Nie znaleziono folderu');
+    }
+
+    if (needEdit && level !== 'EDIT') {
+      throw new ForbiddenException('Masz tylko podgląd tego folderu');
+    }
+  }
+
   async createDocument(
     projectId: string,
     folderId: string,
@@ -49,7 +91,7 @@ export class DocumentsService {
     actor: AuthenticatedUser,
   ) {
     await this.access.assertCanRead(actor, projectId);
-    await this.access.assertNotArchived(projectId);
+    await this.assertFolderLevel(actor, projectId, folderId, true);
     await this.assertFolderExists(folderId, projectId, actor);
 
     const canApprove = await this.access.canManageTasks(actor, projectId);
@@ -95,6 +137,7 @@ export class DocumentsService {
     actor: AuthenticatedUser,
   ) {
     await this.access.assertCanRead(actor, projectId);
+    await this.assertDocumentLevel(actor, projectId, documentId, true);
     await this.access.assertNotArchived(projectId);
     const versionLast = await this.prisma.documentVersion.findFirst({
       where: {
@@ -155,6 +198,7 @@ export class DocumentsService {
     actor: AuthenticatedUser,
   ) {
     await this.access.assertCanRead(actor, projectId);
+    await this.assertDocumentLevel(actor, projectId, documentId, false);
     const version = await this.prisma.documentVersion.findFirst({
       where: {
         document: { projectId, id: documentId },
@@ -209,6 +253,7 @@ export class DocumentsService {
     actor: AuthenticatedUser,
   ) {
     await this.access.assertCanRead(actor, projectId);
+    await this.assertDocumentLevel(actor, projectId, documentId, false);
     const versions = await this.prisma.documentVersion.findMany({
       where: {
         document: { projectId, id: documentId },
@@ -235,6 +280,7 @@ export class DocumentsService {
     actor: AuthenticatedUser,
   ) {
     await this.access.assertCanRead(actor, projectId);
+    await this.assertDocumentLevel(actor, projectId, documentId, true);
     await this.access.assertNotArchived(projectId);
     const source = await this.prisma.documentVersion.findFirst({
       where: {
@@ -276,6 +322,7 @@ export class DocumentsService {
     actor: AuthenticatedUser,
   ) {
     await this.access.assertCanRead(actor, projectId);
+    await this.assertDocumentLevel(actor, projectId, documentId, true);
     await this.access.assertNotArchived(projectId);
     const document = await this.prisma.document.findFirst({
       where: { id: documentId, projectId: projectId, deletedAt: null },
@@ -298,6 +345,7 @@ export class DocumentsService {
     actor: AuthenticatedUser,
   ) {
     await this.access.assertCanRead(actor, projectId);
+    await this.assertDocumentLevel(actor, projectId, documentId, true);
     await this.access.assertNotArchived(projectId);
     const document = await this.prisma.document.findFirst({
       where: { id: documentId, projectId: projectId, deletedAt: null },
