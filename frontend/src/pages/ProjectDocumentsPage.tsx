@@ -4,7 +4,8 @@ import { useDocuments } from '../features/documents/hooks/useDocuments';
 import { DocumentsTable } from '../features/documents/components/DocumentsTable';
 import { Button } from '../components/ui/Button';
 import { formatFileSize } from '../features/documents/utils/formatters';
-import { IoCloudUploadOutline, IoTrashOutline } from 'react-icons/io5';
+import { IoTrashOutline } from 'react-icons/io5';
+import { HiOutlinePlus } from 'react-icons/hi';
 import { FolderTree } from '../features/documents/components/FolderTree';
 import { useTrash } from '../features/documents/hooks/useTrash';
 import { useRestoreDocument } from '../features/documents/hooks/useRestoreDocument';
@@ -47,6 +48,7 @@ function DocumentsView({ projectId }: { projectId: string }) {
   const [uploadDocumentId, setUploadDocumentId] = useState<string | null>(null);
 
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
+  const [collapsedIds, setCollapsedIds] = useState<string[]>([]);
 
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [newFolderParentId, setNewFolderParentId] = useState<string | null>(
@@ -178,6 +180,14 @@ function DocumentsView({ projectId }: { projectId: string }) {
     (el) => el.id === deleteDocumentId,
   )?.name;
 
+  const toggleCollapsed = (folderId: string) => {
+    if (collapsedIds.includes(folderId)) {
+      setCollapsedIds(collapsedIds.filter((el) => el !== folderId));
+    } else {
+      setCollapsedIds([...collapsedIds, folderId]);
+    }
+  };
+
   const toggleExpanded = (documentId: string) => {
     if (expandedIds.includes(documentId)) {
       const newExpandsIds = expandedIds.filter((el) => el !== documentId);
@@ -248,7 +258,7 @@ function DocumentsView({ projectId }: { projectId: string }) {
           disabled={!folderId || showTrash}
           className="shrink-0 max-lg:h-7 max-lg:gap-1.5 max-lg:px-4 max-lg:py-1 max-lg:text-xs"
         >
-          <IoCloudUploadOutline className="h-4 w-4" />
+          <HiOutlinePlus className="h-4 w-4" aria-hidden="true" />
           Wgraj plik
         </Button>
       </div>
@@ -272,6 +282,8 @@ function DocumentsView({ projectId }: { projectId: string }) {
           <div className="flex flex-col gap-1">
             <FolderTree
               folders={folders}
+              collapsedIds={collapsedIds}
+              onToggleCollapsed={toggleCollapsed}
               parentId={null}
               level={0}
               selectedId={showTrash ? null : folderId}
