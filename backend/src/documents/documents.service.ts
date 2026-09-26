@@ -394,6 +394,7 @@ export class DocumentsService {
 
   async getTrash(projectId: string, actor: AuthenticatedUser) {
     await this.access.assertCanRead(actor, projectId);
+
     const documents = await this.prisma.document.findMany({
       where: { projectId: projectId, deletedAt: { not: null } },
       orderBy: { deletedAt: 'desc' },
@@ -408,7 +409,23 @@ export class DocumentsService {
         folder: { select: { name: true, deletedAt: true } },
       },
     });
-    return documents;
+
+    const canManage = await this.access.canManageTasks(actor, projectId);
+    if (canManage) {
+      return documents;
+    }
+
+    const visible = [];
+    for (const document of documents) {
+      const level = await this.documentAccess.levelFor(actor, projectId, {
+        documentId: document.id,
+      });
+      if (level) {
+        visible.push(document);
+      }
+    }
+
+    return visible;
   }
 
   async deleteDocumentPermanently(
