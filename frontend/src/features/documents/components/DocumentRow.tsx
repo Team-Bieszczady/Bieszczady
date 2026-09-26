@@ -16,6 +16,7 @@ import {
   IoTrashOutline,
 } from 'react-icons/io5';
 import { ActionMenu } from '../../../components/ui/ActionMenu';
+import { useAuth } from '../../../context/useAuth';
 interface Props {
   document: BackendDocument;
   projectId: string;
@@ -61,6 +62,10 @@ export const DocumentRow = ({
     error,
     isPending,
   } = useVersions(projectId, isExpanded ? document.id : null);
+
+  const { user } = useAuth();
+  const canDelete = document.status !== 'APPROVED' || Boolean(user?.isDirector);
+
 
   return (
     <>
@@ -138,13 +143,18 @@ export const DocumentRow = ({
               <ActionMenu
                 ariaLabel={`Akcje dokumentu ${document.name}`}
                 items={[
-                  {
-                    id: 'delete-document',
-                    label: 'Usuń',
-                    icon: <IoTrashOutline className="h-4 w-4" />,
-                    tone: 'danger',
-                    onSelect: () => onDeleteDocument(document.id),
-                  },
+                  ...(canDelete
+                    ? [
+                        {
+                          id: 'delete-document',
+                          label: 'Usuń',
+                          icon: <IoTrashOutline className="h-4 w-4" />,
+                          tone: 'danger' as const,
+                          onSelect: () => onDeleteDocument(document.id),
+                        },
+                      ]
+                    : []),
+
                   {
                     id: 'rename-document',
                     label: 'Zmień nazwę',
@@ -152,12 +162,11 @@ export const DocumentRow = ({
                     onSelect: () => onRenameDocument(document.id),
                   },
                   {
-  id: 'share-document',
-  label: 'Udostępnij',
-  icon: <IoPersonAddOutline className="h-4 w-4" />,
-  onSelect: () => onShare(document.id),
-},
-
+                    id: 'share-document',
+                    label: 'Udostępnij',
+                    icon: <IoPersonAddOutline className="h-4 w-4" />,
+                    onSelect: () => onShare(document.id),
+                  },
 
                   ...(document.status === 'PENDING_APPROVAL'
                     ? [

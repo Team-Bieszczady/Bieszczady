@@ -332,6 +332,12 @@ export class DocumentsService {
         'Wskazany dokument nie należy do tego projektu',
       );
     }
+        if (document.status === 'APPROVED' && !actor.isDirector) {
+          throw new ForbiddenException(
+            'Zatwierdzony dokument może usunąć tylko dyrektor',
+          );
+        }
+
     return await this.prisma.document.update({
       where: { id: documentId },
       data: { deletedAt: new Date() },
