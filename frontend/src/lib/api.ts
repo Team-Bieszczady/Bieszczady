@@ -66,7 +66,16 @@ export interface BackendDocumentAccess {
   level: 'VIEW' | 'EDIT';
   grantedById: string;
   createdAt: string;
-  user: { firstName: string; lastName: string; email: string };
+}
+
+export interface BackendDocumentAccessRow {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  isManager: boolean;
+  accessId: string | null;
+  level: 'VIEW' | 'EDIT' | null;
+  effectiveLevel: 'VIEW' | 'EDIT' | null;
 }
 
 export interface BackendDocument {
@@ -669,7 +678,7 @@ export const api = {
     accessToken: string,
     projectId: string,
     body: { folderId?: string; documentId?: string },
-  ): Promise<BackendDocumentAccess[]> {
+  ): Promise<BackendDocumentAccessRow[]> {
     const url = `/api/v1/projects/${projectId}/document-access`;
     const params = new URLSearchParams();
 
@@ -680,7 +689,7 @@ export const api = {
       params.set('documentId', body.documentId);
     }
 
-    return request<BackendDocumentAccess[]>(`${url}?${params}`, {
+    return request<BackendDocumentAccessRow[]>(`${url}?${params}`, {
       method: 'GET',
       accessToken,
       fallbackMessage: 'Nie udało się pobrać listy dostępów',

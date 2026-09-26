@@ -205,16 +205,41 @@ export class DocumentAccessService {
       );
     }
 
-    const list = await this.prisma.documentAccess.findMany({
+    const members = await this.prisma.projectMember.findMany({
+      where: { projectId },
+      include: {
+        user: { select: { firstName: true, lastName: true, email: true } },
+      },
+    });
+
+    const accesses = await this.prisma.documentAccess.findMany({
       where: {
         projectId,
         folderId: target.folderId ?? null,
         documentId: target.documentId ?? null,
       },
-      include: {
-        user: { select: { firstName: true, lastName: true, email: true } },
-      },
     });
-    return list;
+
+    const rows = [];
+    for (const member of members) {
+      const explicit =
+        accesses.find((access) => access.userId === member.userId) ?? null;
+
+      const effectiveLevel = target.documentId
+        ? await this.documentLevelFor(target.documentId, member.userId)
+        : await this.folderLevelFor(target.folderId ?? '', member.userId);
+
+      rows.push({
+        userId: member.userId,
+        firstName: member.user.firstName,
+        lastName: member.user.lastName,
+        isManager: member.projectRole === 'COORDINATOR',
+        accessId: explicit?.id ?? null,
+        level: explicit?.level ?? null,
+        effectiveLevel,
+      });
+    }
+
+    return rows;
   }
 }

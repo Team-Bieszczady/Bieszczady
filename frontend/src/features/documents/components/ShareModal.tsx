@@ -1,6 +1,5 @@
 import { Modal } from '../../../components/ui/Modal';
 import { Select } from '../../../components/ui/Select';
-import { useMembers } from '../../projects/hooks/useProjectsApi';
 import { useDocumentAccess } from '../hooks/useDocumentAccess';
 import { useGrantAccess } from '../hooks/useGrantAccess';
 import { useRevokeAccess } from '../hooks/useRevokeAccess';
@@ -14,6 +13,11 @@ const LEVEL_OPTIONS = [
   { value: 'EDIT', label: 'Edycja' },
 ];
 
+const LEVEL_LABELS: Record<'VIEW' | 'EDIT', string> = {
+  VIEW: 'Podgląd',
+  EDIT: 'Edycja',
+};
+
 interface Props {
   projectId: string;
   target: { folderId?: string; documentId?: string };
@@ -22,20 +26,20 @@ interface Props {
 }
 
 export function ShareModal({ projectId, target, targetName, onClose }: Props) {
-  const { data: accesses } = useDocumentAccess(projectId, target);
-  const { data: members } = useMembers(projectId);
+  const { data: rows } = useDocumentAccess(projectId, target);
   const grant = useGrantAccess(projectId);
   const revoke = useRevokeAccess(projectId);
 
   const isOpen = Boolean(target.folderId || target.documentId);
 
   const changeLevel = (
-    row: { userId: string; accessId?: string },
+    row: { userId: string; accessId: string | null },
     newLevel: Level,
   ) => {
     if (!newLevel) {
       return;
     }
+
     if (newLevel === 'NONE') {
       if (!row.accessId) {
         return;
@@ -56,18 +60,6 @@ export function ShareModal({ projectId, target, targetName, onClose }: Props) {
     );
   };
 
-  const rows = members?.map((member) => {
-    const access = accesses?.find((el) => el.userId === member.userId);
-
-    return {
-      userId: member.userId,
-      name: `${member.user.firstName} ${member.user.lastName}`,
-      isManager: member.projectRole === 'COORDINATOR',
-      level: access?.level ?? 'NONE',
-      accessId: access?.id,
-    };
-  });
-
   return (
     <Modal
       isOpen={isOpen}
@@ -80,7 +72,17 @@ export function ShareModal({ projectId, target, targetName, onClose }: Props) {
             key={row.userId}
             className="flex items-center justify-between gap-4"
           >
-            <p className="truncate text-sm text-dark">{row.name}</p>
+            <div className="min-w-0">
+              <p className="truncate text-sm text-dark">
+                {row.firstName} {row.lastName}
+              </p>
+              {!row.isManager && !row.level && row.effectiveLevel && (
+                <p className="truncate text-xs text-gray-400">
+                  obowiązuje: {LEVEL_LABELS[row.effectiveLevel]} z folderu
+                  nadrzędnego
+                </p>
+              )}
+            </div>
 
             {row.isManager ? (
               <span className="shrink-0 text-xs text-gray-400">
@@ -93,7 +95,7 @@ export function ShareModal({ projectId, target, targetName, onClose }: Props) {
                   allowEmpty={false}
                   options={LEVEL_OPTIONS}
                   placeholder="Wybierz"
-                  value={row.level}
+                  value={row.level ?? 'NONE'}
                   onChange={(v) => changeLevel(row, v as Level)}
                 />
               </div>
