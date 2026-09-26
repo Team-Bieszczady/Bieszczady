@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -31,11 +32,11 @@ export class FoldersService {
       return folders;
     }
 
-       const granted = await this.prisma.documentAccess.findMany({
-         where: { projectId: id, userId: actor.id, folderId: { not: null } },
-         select: { folderId: true },
-       });
-       const grantedIds = new Set(granted.map((g) => g.folderId));
+    const granted = await this.prisma.documentAccess.findMany({
+      where: { projectId: id, userId: actor.id, folderId: { not: null } },
+      select: { folderId: true },
+    });
+    const grantedIds = new Set(granted.map((g) => g.folderId));
     const byId = new Map(folders.map((f) => [f.id, f]));
 
     const visible = folders.filter((folder) => {
@@ -57,7 +58,6 @@ export class FoldersService {
           ? folder.parentId
           : null,
     }));
-
   }
 
   async createFolder(
@@ -68,6 +68,14 @@ export class FoldersService {
   ) {
     await this.access.assertCanRead(actor, id);
     await this.access.assertNotArchived(id);
+
+    const canManage = await this.access.canManageTasks(actor, id);
+    if (!canManage) {
+      throw new ForbiddenException(
+        'Tylko dyrektor lub koordynator projektu może zarządzać folderami',
+      );
+    }
+
 
     if (dto.parentId) {
       const parentFolder = await this.prisma.folder.findFirst({
@@ -94,6 +102,13 @@ export class FoldersService {
   ) {
     await this.access.assertCanRead(actor, projectId);
     await this.access.assertNotArchived(projectId);
+
+    const canManage = await this.access.canManageTasks(actor, projectId);
+    if (!canManage) {
+      throw new ForbiddenException(
+        'Tylko dyrektor lub koordynator projektu może zarządzać folderami',
+      );
+    }
 
     const name = dto.name;
     const parentId = dto.parentId;
@@ -129,6 +144,13 @@ export class FoldersService {
   async deleteFolder(id: string, projectId: string, actor: AuthenticatedUser) {
     await this.access.assertCanRead(actor, projectId);
     await this.access.assertNotArchived(projectId);
+
+    const canManage = await this.access.canManageTasks(actor, projectId);
+    if (!canManage) {
+      throw new ForbiddenException(
+        'Tylko dyrektor lub koordynator projektu może zarządzać folderami',
+      );
+    }
 
     const folder = await this.prisma.folder.findFirst({
       where: { id: id, projectId: projectId, deletedAt: null },
