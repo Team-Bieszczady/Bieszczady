@@ -12,22 +12,25 @@ interface Props {
   parentId: string | null;
   level: number;
   selectedId: string | null;
+  canManage: boolean;
   onSelect: (folderId: string) => void;
   onAddSubfolder: (parentId: string) => void;
   onDeleteFolder: (folderId: string) => void;
   onRename: (folderId: string) => void;
   onShare: (folderId: string) => void;
 }
+
 export const FolderTree = ({
   folders,
   parentId,
   level,
   selectedId,
+  canManage,
   onSelect,
   onAddSubfolder,
   onDeleteFolder,
   onRename,
-  onShare
+  onShare,
 }: Props) => {
   const children = folders.filter((f) => f.parentId === parentId);
   return (
@@ -49,42 +52,47 @@ export const FolderTree = ({
               <IoFolderOutline className="h-4 w-4 shrink-0" />
               <span className="truncate">{folder.name}</span>
             </button>
-            <ActionMenu
-              ariaLabel={`Akcje folderu ${folder.name}`}
-              className="opacity-0 group-hover:opacity-100"
-              items={[
-                {
-                  id: 'add-subfolder',
-                  label: 'Dodaj podfolder',
-                  icon: <IoFolderOutline className="h-4 w-4" />,
-                  onSelect: () => onAddSubfolder(folder.id),
-                },
-                {
-                  id: 'rename-folder',
-                  label: 'Zmień nazwę',
-                  icon: <IoCreateOutline className="h-4 w-4" />,
-                  onSelect: () => onRename(folder.id),
-                },
-                {
-                  id: 'delete-folder',
-                  label: 'Usun folder',
-                  icon: <IoTrashOutline className="h-4 w-4" />,
-                  onSelect: () => onDeleteFolder(folder.id),
-                },
-                {
-                  id: 'share-folder',
-                  label: 'Udostępnij',
-                  icon: <IoPersonAddOutline className="h-4 w-4" />,
-                  onSelect: () => onShare(folder.id),
-                },
-              ]}
-            />
+
+            {canManage && (
+              <ActionMenu
+                ariaLabel={`Akcje folderu ${folder.name}`}
+                className="opacity-0 group-hover:opacity-100"
+                items={[
+                  {
+                    id: 'add-subfolder',
+                    label: 'Dodaj podfolder',
+                    icon: <IoFolderOutline className="h-4 w-4" />,
+                    onSelect: () => onAddSubfolder(folder.id),
+                  },
+                  {
+                    id: 'rename-folder',
+                    label: 'Zmień nazwę',
+                    icon: <IoCreateOutline className="h-4 w-4" />,
+                    onSelect: () => onRename(folder.id),
+                  },
+                  {
+                    id: 'delete-folder',
+                    label: 'Usuń folder',
+                    icon: <IoTrashOutline className="h-4 w-4" />,
+                    onSelect: () => onDeleteFolder(folder.id),
+                  },
+                  {
+                    id: 'share-folder',
+                    label: 'Udostępnij',
+                    icon: <IoPersonAddOutline className="h-4 w-4" />,
+                    onSelect: () => onShare(folder.id),
+                  },
+                ]}
+              />
+            )}
           </div>
+
           <FolderTree
             folders={folders}
             parentId={folder.id}
             level={level + 1}
             selectedId={selectedId}
+            canManage={canManage}
             onSelect={onSelect}
             onAddSubfolder={onAddSubfolder}
             onDeleteFolder={onDeleteFolder}

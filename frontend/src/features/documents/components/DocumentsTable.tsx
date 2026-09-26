@@ -1,6 +1,6 @@
 import type { BackendDocument } from '../../../lib/api';
+import { DocumentCard } from './DocumentCard';
 import { DocumentRow } from './DocumentRow';
-
 interface Props {
   projectId: string;
   documents: BackendDocument[];
@@ -47,44 +47,70 @@ export function DocumentsTable({
     );
   }
 
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-left">
-        <thead>
-          <tr className="border-b border-gray-200 bg-gray-50">
-            <th className={HEAD_CLASS}></th>
+    return (
+    <>
+      <div className="hidden overflow-x-auto sm:block">
+        <table className="w-full border-collapse text-left">
+          <thead>
+            <tr className="border-b border-gray-200 bg-gray-50">
+              <th className={HEAD_CLASS}></th>
+              <th className={HEAD_CLASS}>Nazwa dokumentu</th>
+              <th className={HEAD_CLASS}>Rodzaj</th>
+              <th className={HEAD_CLASS}>Zmieniono</th>
+              <th className={HEAD_CLASS}>Wersja</th>
+              <th className={HEAD_CLASS}>Status</th>
+              <th className={HEAD_CLASS}></th>
+            </tr>
+          </thead>
+          <tbody>
+            {documents.map((doc) => (
+              <DocumentRow
+                key={doc.id}
+                document={doc}
+                projectId={projectId}
+                isExpanded={expandedIds.includes(doc.id)}
+                onToggle={onToggle}
+                onDownload={onDownload}
+                onNewVersion={onNewVersion}
+                onDeleteDocument={onDeleteDocument}
+                variant={variant}
+                onRestoreDocument={onRestoreDocument}
+                onDeletePermanently={onDeletePermanently}
+                onRenameDocument={onRenameDocument}
+                onPreview={onPreview}
+                onRestoreVersion={onRestoreVersion}
+                onApprove={onApprove}
+                onShare={onShare}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-            <th className={HEAD_CLASS}>Nazwa dokumentu</th>
-            <th className={HEAD_CLASS}>Rodzaj</th>
-            <th className={HEAD_CLASS}>Zmieniono</th>
-            <th className={HEAD_CLASS}>Wersja</th>
-            <th className={HEAD_CLASS}>Status</th>
-            <th className={HEAD_CLASS}></th>
-          </tr>
-        </thead>
-        <tbody>
-          {documents.map((doc) => (
-            <DocumentRow
-              key={doc.id}
-              document={doc}
-              projectId={projectId}
-              isExpanded={expandedIds.includes(doc.id)}
-              onToggle={onToggle}
-              onDownload={onDownload}
-              onNewVersion={onNewVersion}
-              onDeleteDocument={onDeleteDocument}
-              variant={variant}
-              onRestoreDocument={onRestoreDocument}
-              onDeletePermanently={onDeletePermanently}
-              onRenameDocument={onRenameDocument}
-              onPreview={onPreview}
-              onRestoreVersion={onRestoreVersion}
-              onApprove={onApprove}
-              onShare={onShare}
-            />
-          ))}
-        </tbody>
-      </table>
-    </div>
+      <div className="space-y-3 sm:hidden">
+        {documents.map((doc) => (
+          <DocumentCard
+            key={doc.id}
+            document={doc}
+            projectId={projectId}
+            isExpanded={expandedIds.includes(doc.id)}
+            onToggle={onToggle}
+            onDownload={onDownload}
+            onNewVersion={onNewVersion}
+            onDeleteDocument={onDeleteDocument}
+            variant={variant}
+            onRestoreDocument={onRestoreDocument}
+            onDeletePermanently={onDeletePermanently}
+            onRenameDocument={onRenameDocument}
+            onPreview={onPreview}
+            onRestoreVersion={onRestoreVersion}
+            onApprove={onApprove}
+            onShare={onShare}
+          />
+        ))}
+      </div>
+    </>
   );
 }
+
+

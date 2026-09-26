@@ -20,7 +20,7 @@ import {
 } from '../features/documents/components/UploadDocumentModal';
 import { useSelectedProject } from '../context/useSelectedProject';
 import { PageMessage } from '../components/ui/PageMessage';
-import { useProject } from '../features/projects/hooks/useProjectsApi';
+import { useProject, useProjects } from '../features/projects/hooks/useProjectsApi';
 import { useApproveDocument } from '../features/documents/hooks/useApproveDocument';
 import { RestoreDocumentModal } from '../features/documents/components/RestoreDocumentModal';
 import { DeletePermanentlyDialog } from '../features/documents/components/DeletePermanentlyDialog';
@@ -70,6 +70,9 @@ function DocumentsView({ projectId }: { projectId: string }) {
   const restoreVersionMutation = useRestoreVersion(projectId);
   const restoreDocument = useRestoreDocument(projectId);
   const apprveDocument = useApproveDocument(projectId, folderId ?? '');
+  const { data: projects } = useProjects();
+  const canManage =
+    projects?.find((p) => p.id === projectId)?.viewerManages ?? false;
 
 const [shareTarget, setShareTarget] = useState<{
   folderId?: string;
@@ -216,40 +219,43 @@ const shareTargetName = shareFolderName ?? shareDocumentName;
   };
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 pt-16 pb-4 min-[400px]:px-6 sm:px-8 lg:pt-4">
       <div className="flex items-start justify-between">
         <div>
           <p className="text-xs uppercase tracking-wide text-gray-400">
             {project?.name}
           </p>
-          <h1 className="mt-1 text-2xl font-bold text-dark">Dokumenty</h1>
+          <h1 className="mt-1 text-base font-bold text-dark min-[500px]:text-xl lg:text-2xl">
+            Dokumenty
+          </h1>
         </div>
-
         <Button
           variant="primary"
           size="small"
           onClick={openUpload}
           disabled={!folderId || showTrash}
+          className="shrink-0 max-lg:h-7 max-lg:gap-1.5 max-lg:px-4 max-lg:py-1 max-lg:text-xs"
         >
           <IoCloudUploadOutline className="h-4 w-4" />
           Wgraj plik
         </Button>
       </div>
 
-      <div className="flex gap-6">
-        <aside className="w-72 shrink-0 rounded-lg border border-gray-200 bg-white p-4">
+      <div className="flex flex-col gap-6 lg:flex-row">
+        <aside className="rounded-lg border border-gray-200 bg-white p-4 lg:w-72 lg:shrink-0">
           <div className="mb-3 flex items-center justify-between">
             <p className="text-xs uppercase tracking-wide text-gray-400">
               Foldery
             </p>
-            <button
-              type="button"
-              onClick={() => openNewFolder(null)}
-
-              className="cursor-pointer text-xs font-medium text-darkGreen hover:text-darkGreenHover"
-            >
-              + Nowy folder
-            </button>
+            {canManage && (
+              <button
+                type="button"
+                onClick={() => openNewFolder(null)}
+                className="cursor-pointer text-xs font-medium text-darkGreen hover:text-darkGreenHover"
+              >
+                + Nowy folder
+              </button>
+            )}
           </div>
           <div className="flex flex-col gap-1">
             <FolderTree
@@ -262,6 +268,7 @@ const shareTargetName = shareFolderName ?? shareDocumentName;
               onDeleteFolder={setDeleteFolderId}
               onRename={setRenameFolderId}
               onShare={shareFolder}
+              canManage={canManage}
             />
           </div>
           <div className="my-2 border-t border-gray-200" />
@@ -274,9 +281,9 @@ const shareTargetName = shareFolderName ?? shareDocumentName;
             Kosz
           </button>
         </aside>
-        <section className="flex-1 rounded-lg border border-gray-200 bg-white">
+        <section className="flex-1 rounded-lg border border-gray-200 bg-white max-sm:border-0 max-sm:bg-transparent">
           {showTrash && (
-            <div className="border-b border-gray-200 px-4 py-4">
+            <div className="border-b border-gray-200 px-4 py-4 max-sm:border-0 max-sm:px-0">
               <p className="text-base font-semibold text-dark">Kosz</p>
 
               <p className="mt-0.5 text-xs text-gray-400">
@@ -310,7 +317,7 @@ const shareTargetName = shareFolderName ?? shareDocumentName;
           )}
 
           {!showTrash && folderId && (
-            <div className="border-b border-gray-200 px-4 py-4">
+            <div className="border-b border-gray-200 px-4 py-4 max-sm:border-0 max-sm:px-0">
               <p className="text-base font-semibold text-dark">{nameFolder}</p>
               <p className="mt-0.5 text-xs text-gray-400">
                 {documents?.length ?? 0} dokumentów · {formatFileSize(bytes)}

@@ -7,16 +7,12 @@ import {
 } from '../../../lib/documents';
 import { fileExtension, formatDate, formatFileSize } from '../utils/formatters';
 import {
-  IoArrowUndoOutline,
-  IoCheckmarkOutline,
   IoChevronDown,
   IoChevronForward,
-  IoCreateOutline,
-  IoPersonAddOutline,
-  IoTrashOutline,
 } from 'react-icons/io5';
 import { ActionMenu } from '../../../components/ui/ActionMenu';
 import { useAuth } from '../../../context/useAuth';
+import { documentMenuItems } from '../utils/documentMenuItems';
 interface Props {
   document: BackendDocument;
   projectId: string;
@@ -119,6 +115,15 @@ export const DocumentRow = ({
         <td className="px-4 py-3">
           <div className="flex items-center justify-end gap-2">
             <div className="flex gap-4">
+              {version && canPreview(version.mimeType) && (
+                <button
+                  type="button"
+                  className="cursor-pointer text-xs font-medium text-darkGreen hover:text-darkGreenHover"
+                  onClick={() => onPreview(document.id, version.versionNo)}
+                >
+                  Podgląd
+                </button>
+              )}
               {version && (
                 <button
                   type="button"
@@ -130,75 +135,19 @@ export const DocumentRow = ({
                   Pobierz
                 </button>
               )}
-              {version && canPreview(version.mimeType) && (
-                <button
-                  className="cursor-pointer text-xs font-medium text-darkGreen hover:text-darkGreenHover"
-                  onClick={() => onPreview(document.id, version.versionNo)}
-                >
-                  Podgląd
-                </button>
-              )}
             </div>
             {variant === 'folder' && (
               <ActionMenu
                 ariaLabel={`Akcje dokumentu ${document.name}`}
-                items={[
-                  ...(canDelete
-                    ? [
-                        {
-                          id: 'delete-document',
-                          label: 'Usuń',
-                          icon: <IoTrashOutline className="h-4 w-4" />,
-                          tone: 'danger' as const,
-                          onSelect: () => onDeleteDocument(document.id),
-                        },
-                      ]
-                    : []),
-
-                  {
-                    id: 'rename-document',
-                    label: 'Zmień nazwę',
-                    icon: <IoCreateOutline className="h-4 w-4" />,
-                    onSelect: () => onRenameDocument(document.id),
-                  },
-                  {
-                    id: 'share-document',
-                    label: 'Udostępnij',
-                    icon: <IoPersonAddOutline className="h-4 w-4" />,
-                    onSelect: () => onShare(document.id),
-                  },
-
-                  ...(document.status === 'PENDING_APPROVAL'
-                    ? [
-                        {
-                          id: 'approve-document',
-                          label: 'Akceptuj',
-                          icon: <IoCheckmarkOutline className="h-4 w-4" />,
-                          onSelect: () => onApprove(document.id),
-                        },
-                      ]
-                    : []),
-                ]}
-              />
-            )}
-            {variant === 'trash' && (
-              <ActionMenu
-                ariaLabel={`Akcje dokumentu ${document.name}`}
-                items={[
-                  {
-                    id: 'restore-document',
-                    label: 'Przywróć',
-                    icon: <IoArrowUndoOutline className="h-4 w-4" />,
-                    onSelect: () => onRestoreDocument(document.id),
-                  },
-                  {
-                    id: 'delete-permanently',
-                    label: 'Usuń trwale',
-                    icon: <IoTrashOutline className="h-4 w-4" />,
-                    tone: 'danger',
-                    onSelect: () => onDeletePermanently(document.id),
-                  },
-                ]}
+                items={documentMenuItems(document, variant, canDelete, {
+                  onNewVersion,
+                  onRenameDocument,
+                  onShare,
+                  onApprove,
+                  onDeleteDocument,
+                  onRestoreDocument,
+                  onDeletePermanently,
+                })}
               />
             )}
           </div>
