@@ -186,11 +186,6 @@ export class DocumentVersionsController {
     @Param('projectId', ParseUUIDPipe) projectId: string,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-
- return await this.documentService.countPendingApproval(
-   projectId,
-   user
- );
-
+    return await this.documentService.countPendingApproval(projectId, user);
   }
 }

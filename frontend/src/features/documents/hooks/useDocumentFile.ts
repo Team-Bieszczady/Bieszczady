@@ -23,7 +23,7 @@ export function useDocumentFile(projectId: string) {
       a.download = fileName;
       a.click();
 
-      URL.revokeObjectURL(url);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (error) {
       showError(error as Error);
     }

@@ -19,7 +19,6 @@ import { UpdateFolderDto } from './dto/update-folder.dto';
 import { ModuleAccessGuard } from '../auth/guards/module-access.guard';
 import { RequireModule } from '../auth/decorators/require-module.decorator';
 
-
 @Controller('/projects/:projectId/folders')
 @UseGuards(JwtAuthGuard, PasswordChangeGuard, ModuleAccessGuard)
 @RequireModule('DOCUMENTS')
@@ -40,7 +39,19 @@ export class FoldersController {
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: CreateFolderDto,
   ) {
-    return await this.foldersService.createFolder(projectId, user.id, dto, user);
+    return await this.foldersService.createFolder(
+      projectId,
+      user.id,
+      dto,
+      user,
+    );
+  }
+  @Post('/template')
+  async createTemplate(
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return await this.foldersService.createTemplate(projectId, user.id, user);
   }
 
   @Patch('/:folderId')
@@ -55,7 +66,7 @@ export class FoldersController {
       projectId,
 
       dto,
-      user
+      user,
     );
   }
 
@@ -63,9 +74,9 @@ export class FoldersController {
   async deleteFolder(
     @Param('projectId', ParseUUIDPipe) projectId: string,
     @Param('folderId', ParseUUIDPipe) folderId: string,
-    
+
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return await this.foldersService.deleteFolder(folderId, projectId,user);
+    return await this.foldersService.deleteFolder(folderId, projectId, user);
   }
 }

@@ -1,9 +1,4 @@
-import {
-  IsString,
-  MaxLength,
-  IsNotEmpty,
-  IsIn,
-} from 'class-validator';
+import { IsString, MaxLength, IsNotEmpty, IsIn } from 'class-validator';
 import {
   DOCUMENT_KINDS,
   type DocumentKind,

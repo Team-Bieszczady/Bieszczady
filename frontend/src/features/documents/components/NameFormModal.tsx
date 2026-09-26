@@ -1,10 +1,16 @@
-import { useState, type ReactNode } from 'react';
+import { useForm, type SubmitHandler } from 'react-hook-form';
+import type { ReactNode } from 'react';
 import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
+import { FieldError } from '../../../components/ui/FieldError';
 import {
   FIELD_LABEL_CLASSES,
   INPUT_CLASSES,
 } from '../../../components/ui/formStyles';
+
+interface Inputs {
+  name: string;
+}
 
 interface Props {
   isOpen: boolean;
@@ -29,19 +35,19 @@ export function NameFormModal({
   onSubmit,
   onClose,
 }: Props) {
-  const [name, setName] = useState(initialName);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<Inputs>({ defaultValues: { name: initialName } });
 
-  const submit = () => {
-    const trimmed = name.trim();
-    if (trimmed === '') {
-      return;
-    }
-    onSubmit(trimmed);
+  const submit: SubmitHandler<Inputs> = (data) => {
+    onSubmit(data.name.trim());
   };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}>
-      <div className="space-y-5">
+      <form onSubmit={handleSubmit(submit)} className="space-y-5">
         {hint && <p className="text-xs text-gray-400">{hint}</p>}
 
         <div>
@@ -51,11 +57,18 @@ export function NameFormModal({
           <input
             type="text"
             placeholder="Podaj nazwę..."
-            maxLength={maxLength}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
             className={INPUT_CLASSES}
+            {...register('name', {
+              required: 'To pole jest wymagane',
+              maxLength: {
+                value: maxLength,
+                message: `Najwyżej ${maxLength} znaków`,
+              },
+              validate: (value) =>
+                value.trim().length > 0 || 'To pole jest wymagane',
+            })}
           />
+          <FieldError message={errors.name?.message} />
         </div>
 
         <div className="border-t border-gray-200 flex gap-3 justify-end pt-4">
@@ -70,15 +83,14 @@ export function NameFormModal({
           <Button
             variant="primary"
             size="small"
-            onClick={submit}
-            disabled={name.trim() === ''}
+            type="submit"
             isPending={isPending}
             className="font-medium!"
           >
             Zapisz
           </Button>
         </div>
-      </div>
+      </form>
     </Modal>
   );
 }

@@ -104,6 +104,7 @@ describe('FoldersService', () => {
   const fakeAccess = {
     assertCanRead: () => Promise.resolve(),
     assertNotArchived: () => Promise.resolve(),
+    canManageTasks: () => Promise.resolve(true),
   };
 
   let prisma: ReturnType<typeof createFakePrisma>;

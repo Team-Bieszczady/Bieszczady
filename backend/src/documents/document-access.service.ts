@@ -1,4 +1,9 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthenticatedUser } from '../auth/types/auth.types';
 import { ProjectAccessService } from '../projects/project-access.service';
@@ -143,7 +148,7 @@ export class DocumentAccessService {
     if (!member) {
       throw new BadRequestException('Ta osoba nie należy do projektu');
     }
-       const existing = await this.prisma.documentAccess.findFirst({
+    const existing = await this.prisma.documentAccess.findFirst({
       where: {
         projectId,
         userId: dto.userId,
@@ -193,23 +198,23 @@ export class DocumentAccessService {
     projectId: string,
     target: { folderId?: string; documentId?: string },
   ) {
- const canManage = await this.access.canManageTasks(actor, projectId);
- if (!canManage) {
-   throw new ForbiddenException(
-     'Tylko dyrektor lub koordynator projektu może przeglądać udostępnienia',
-   );
- }
+    const canManage = await this.access.canManageTasks(actor, projectId);
+    if (!canManage) {
+      throw new ForbiddenException(
+        'Tylko dyrektor lub koordynator projektu może przeglądać udostępnienia',
+      );
+    }
 
-const list = await this.prisma.documentAccess.findMany({
-    where: {
+    const list = await this.prisma.documentAccess.findMany({
+      where: {
         projectId,
         folderId: target.folderId ?? null,
-        documentId: target.documentId ?? null
-    },
-    include: {
-        user: {select: {firstName: true, lastName: true, email: true}}
-    }
-})
-return list
+        documentId: target.documentId ?? null,
+      },
+      include: {
+        user: { select: { firstName: true, lastName: true, email: true } },
+      },
+    });
+    return list;
   }
 }

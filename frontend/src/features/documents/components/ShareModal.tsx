@@ -8,7 +8,6 @@ import { showError, showSuccess } from '../utils/toasts';
 
 type Level = 'NONE' | 'VIEW' | 'EDIT';
 
-
 const LEVEL_OPTIONS = [
   { value: 'NONE', label: 'Bez ustawienia' },
   { value: 'VIEW', label: 'Podgląd' },
@@ -34,9 +33,9 @@ export function ShareModal({ projectId, target, targetName, onClose }: Props) {
     row: { userId: string; accessId?: string },
     newLevel: Level,
   ) => {
-     if (!newLevel) {
-       return;
-     }
+    if (!newLevel) {
+      return;
+    }
     if (newLevel === 'NONE') {
       if (!row.accessId) {
         return;
@@ -56,7 +55,6 @@ export function ShareModal({ projectId, target, targetName, onClose }: Props) {
       },
     );
   };
-
 
   const rows = members?.map((member) => {
     const access = accesses?.find((el) => el.userId === member.userId);

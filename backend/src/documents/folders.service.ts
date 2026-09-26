@@ -11,6 +11,14 @@ import { ProjectAccessService } from '../projects/project-access.service';
 import { AuthenticatedUser } from '../auth/types/auth.types';
 
 const MAX_FOLDER_DEPTH = 50;
+const TEMPLATE_FOLDERS = [
+  'Organizacyjne',
+  'Robocze',
+  'Dokumenty z instytucjami',
+  'Promocyjne',
+  'Zatwierdzone',
+  'Sprawozdawczość',
+];
 
 @Injectable()
 export class FoldersService {
@@ -75,7 +83,6 @@ export class FoldersService {
         'Tylko dyrektor lub koordynator projektu może zarządzać folderami',
       );
     }
-
 
     if (dto.parentId) {
       const parentFolder = await this.prisma.folder.findFirst({
@@ -208,5 +215,33 @@ export class FoldersService {
 
       currentId = current?.parentId ?? null;
     }
+  }
+  async createTemplate(
+    projectId: string,
+    ownerId: string,
+    actor: AuthenticatedUser,
+  ) {
+    await this.access.assertCanRead(actor, projectId);
+    await this.access.assertNotArchived(projectId);
+
+    const canManage = await this.access.canManageTasks(actor, projectId);
+    if (!canManage) {
+      throw new ForbiddenException(
+        'Tylko dyrektor lub koordynator projektu może zarządzać folderami',
+      );
+    }
+
+    const existing = await this.prisma.folder.count({
+      where: { projectId, deletedAt: null },
+    });
+    if (existing > 0) {
+      throw new BadRequestException('Projekt ma już foldery');
+    }
+
+    await this.prisma.folder.createMany({
+      data: TEMPLATE_FOLDERS.map((name) => ({ projectId, name, ownerId })),
+    });
+
+    return await this.findAllForProject(projectId, actor);
   }
 }

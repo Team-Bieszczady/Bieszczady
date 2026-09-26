@@ -37,7 +37,7 @@ export function DocumentsTable({
   onPreview,
   onRestoreVersion,
   onApprove,
-  onShare
+  onShare,
 }: Props) {
   if (documents.length === 0) {
     return (
@@ -47,7 +47,7 @@ export function DocumentsTable({
     );
   }
 
-    return (
+  return (
     <>
       <div className="hidden overflow-x-auto sm:block">
         <table className="w-full border-collapse text-left">
@@ -112,5 +112,3 @@ export function DocumentsTable({
     </>
   );
 }
-
-

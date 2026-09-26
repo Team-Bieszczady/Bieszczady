@@ -51,6 +51,6 @@ export class DocumentsController {
     @Param('folderId') folderId: string,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return await this.documentService.getDocuments(projectId, folderId,user);
+    return await this.documentService.getDocuments(projectId, folderId, user);
   }
 }

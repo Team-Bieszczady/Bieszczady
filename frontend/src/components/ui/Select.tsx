@@ -58,9 +58,9 @@ export function Select({
 }: SelectProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const listId = useId();
-    const rows: SelectOption[] = allowEmpty
-      ? [{ value: '', label: placeholder }, ...options]
-      : [...options];
+  const rows: SelectOption[] = allowEmpty
+    ? [{ value: '', label: placeholder }, ...options]
+    : [...options];
 
   const selected = options.find((option) => option.value === value);
 

@@ -1,4 +1,10 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from './storage.service';
 import { randomUUID } from 'crypto';
@@ -16,7 +22,6 @@ interface UploadedFile {
   mimetype: string;
   size: number;
 }
-
 
 @Injectable()
 export class DocumentsService {
@@ -146,25 +151,30 @@ export class DocumentsService {
       orderBy: { versionNo: 'desc' },
     });
     if (!versionLast) {
-      throw new NotFoundException('nie ma');
+      throw new NotFoundException('Nie znaleziono dokumentu');
     }
     const newVersion = versionLast.versionNo + 1;
-    const key = `${projectId}/${documentId}/v${newVersion}`;
+    const key = `${projectId}/${documentId}/v${newVersion}-${randomUUID().slice(0, 8)}`;
     await this.storage.save(key, file.buffer, file.mimetype);
-    const version = await this.prisma.documentVersion.create({
-      data: {
-        documentId: documentId,
-        versionNo: newVersion,
-        storageKey: key,
-        fileName: file.originalname,
-        mimeType: file.mimetype,
-        sizeBytes: file.size,
-        uploadedById: ownerId,
-        changeNote: dto.changeNote,
-      },
-    });
 
-    return version;
+    try {
+      return await this.prisma.documentVersion.create({
+        data: {
+          documentId,
+          versionNo: newVersion,
+          storageKey: key,
+          fileName: file.originalname,
+          mimeType: file.mimetype,
+          sizeBytes: file.size,
+          uploadedById: ownerId,
+          changeNote: dto.changeNote,
+        },
+      });
+    } catch {
+      throw new ConflictException(
+        'Ktoś właśnie dodał nową wersję. Odśwież stronę i spróbuj ponownie.',
+      );
+    }
   }
 
   async getDocuments(
@@ -332,11 +342,11 @@ export class DocumentsService {
         'Wskazany dokument nie należy do tego projektu',
       );
     }
-        if (document.status === 'APPROVED' && !actor.isDirector) {
-          throw new ForbiddenException(
-            'Zatwierdzony dokument może usunąć tylko dyrektor',
-          );
-        }
+    if (document.status === 'APPROVED' && !actor.isDirector) {
+      throw new ForbiddenException(
+        'Zatwierdzony dokument może usunąć tylko dyrektor',
+      );
+    }
 
     return await this.prisma.document.update({
       where: { id: documentId },
@@ -458,7 +468,6 @@ export class DocumentsService {
     for (const version of document.versions) {
       await this.storage.remove(version.storageKey);
     }
-
   }
 
   async countPendingApproval(projectId: string, actor: AuthenticatedUser) {
@@ -475,5 +484,3 @@ export class DocumentsService {
     return { count };
   }
 }
-  
-

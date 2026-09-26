@@ -1,12 +1,23 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Post, Query, UseGuards } from "@nestjs/common";
-import { RequireModule } from "../auth/decorators/require-module.decorator";
-import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
-import { ModuleAccessGuard } from "../auth/guards/module-access.guard";
-import { PasswordChangeGuard } from "../auth/guards/password-change.guard";
-import { DocumentAccessService } from "./document-access.service";
-import { CurrentUser } from "../auth/decorators/current-user.decorator";
-import { type AuthenticatedUser } from "../auth/types/auth.types";
-import { GrantAccessDto } from "./dto/grant-access.dto";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import { RequireModule } from '../auth/decorators/require-module.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { ModuleAccessGuard } from '../auth/guards/module-access.guard';
+import { PasswordChangeGuard } from '../auth/guards/password-change.guard';
+import { DocumentAccessService } from './document-access.service';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { type AuthenticatedUser } from '../auth/types/auth.types';
+import { GrantAccessDto } from './dto/grant-access.dto';
 
 @Controller('/projects/:projectId/document-access')
 @UseGuards(JwtAuthGuard, PasswordChangeGuard, ModuleAccessGuard)
@@ -45,6 +56,4 @@ export class DocumentAccessController {
   ) {
     return await this.accessService.revoke(user, projectId, accessId);
   }
-
-
 }

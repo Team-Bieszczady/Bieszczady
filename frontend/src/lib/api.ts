@@ -136,7 +136,6 @@ async function throwFromResponse(
   throw createApiError(response.status, message);
 }
 
-
 interface RequestInitOptions {
   method: string;
   accessToken?: string | null;
@@ -145,7 +144,6 @@ interface RequestInitOptions {
 }
 
 export async function request<T>(
-
   path: string,
   { method, accessToken, body, fallbackMessage }: RequestInitOptions,
 ): Promise<T> {
@@ -185,20 +183,18 @@ async function sendWithRefresh(
 ): Promise<Response> {
   const send = (token: string) =>
     fetch(`${API_BASE_URL}${path}`, {
-     ...init,
-     headers: {...init.headers, Authorization:`Bearer ${token}` }
-
+      ...init,
+      headers: { ...init.headers, Authorization: `Bearer ${token}` },
     });
   let response = await send(accessToken);
- if (response.status === 401 && accessToken) {
+  if (response.status === 401 && accessToken) {
     const freshToken = await refreshAccessToken();
     if (freshToken) {
       response = await send(freshToken);
     }
   }
-  return response
+  return response;
 }
-
 
 export const api = {
   async login(email: string, password: string): Promise<AuthResponse> {
@@ -415,6 +411,20 @@ export const api = {
       fallbackMessage: 'Nie udało się dodać folderu',
     });
   },
+  async createFolderTemplate(
+    accessToken: string,
+    projectId: string,
+  ): Promise<BackendFolder[]> {
+    return request<BackendFolder[]>(
+      `/api/v1/projects/${projectId}/folders/template`,
+      {
+        method: 'POST',
+        accessToken,
+        fallbackMessage: 'Nie udało się utworzyć folderów',
+      },
+    );
+  },
+
   async updateFolder(
     accessToken: string,
     projectId: string,
@@ -489,7 +499,7 @@ export const api = {
     );
 
     if (!response.ok) {
-         await throwFromResponse(response, 'Nie udało się pobrać pliku');
+      await throwFromResponse(response, 'Nie udało się pobrać pliku');
     }
 
     return response.blob();
@@ -508,7 +518,7 @@ export const api = {
     );
 
     if (!response.ok) {
-           await throwFromResponse(response, 'Nie udało się wgrać pliku');
+      await throwFromResponse(response, 'Nie udało się wgrać pliku');
     }
 
     return response.json();
@@ -701,7 +711,7 @@ export const api = {
   async revokeDocumentAccess(
     accessToken: string,
     projectId: string,
-accessId: string
+    accessId: string,
   ): Promise<void> {
     await request<void>(
       `/api/v1/projects/${projectId}/document-access/${accessId}`,
@@ -712,7 +722,6 @@ accessId: string
       },
     );
   },
-}; 
-
+};
 
 export { isApiError };

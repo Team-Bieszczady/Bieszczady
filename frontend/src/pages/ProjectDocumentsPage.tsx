@@ -20,13 +20,17 @@ import {
 } from '../features/documents/components/UploadDocumentModal';
 import { useSelectedProject } from '../context/useSelectedProject';
 import { PageMessage } from '../components/ui/PageMessage';
-import { useProject, useProjects } from '../features/projects/hooks/useProjectsApi';
+import {
+  useProject,
+  useProjects,
+} from '../features/projects/hooks/useProjectsApi';
 import { useApproveDocument } from '../features/documents/hooks/useApproveDocument';
 import { RestoreDocumentModal } from '../features/documents/components/RestoreDocumentModal';
 import { DeletePermanentlyDialog } from '../features/documents/components/DeletePermanentlyDialog';
 import { useDocumentFile } from '../features/documents/hooks/useDocumentFile';
 import { showError, showSuccess } from '../features/documents/utils/toasts';
 import { ShareModal } from '../features/documents/components/ShareModal';
+import { useCreateFolderTemplate } from '../features/documents/hooks/useCreateFolderTemplate';
 
 function DocumentsView({ projectId }: { projectId: string }) {
   const { data: project } = useProject(projectId);
@@ -69,18 +73,20 @@ function DocumentsView({ projectId }: { projectId: string }) {
 
   const restoreVersionMutation = useRestoreVersion(projectId);
   const restoreDocument = useRestoreDocument(projectId);
-  const apprveDocument = useApproveDocument(projectId, folderId ?? '');
+  const createTemplate = useCreateFolderTemplate(projectId);
+
+  const approveDocument = useApproveDocument(projectId, folderId ?? '');
   const { data: projects } = useProjects();
   const canManage =
     projects?.find((p) => p.id === projectId)?.viewerManages ?? false;
 
-const [shareTarget, setShareTarget] = useState<{
-  folderId?: string;
-  documentId?: string;
-}>({});
+  const [shareTarget, setShareTarget] = useState<{
+    folderId?: string;
+    documentId?: string;
+  }>({});
 
-const shareFolder = (folderId: string) => setShareTarget({ folderId });
-const shareDocument = (documentId: string) => setShareTarget({ documentId });
+  const shareFolder = (folderId: string) => setShareTarget({ folderId });
+  const shareDocument = (documentId: string) => setShareTarget({ documentId });
 
   const { download, preview } = useDocumentFile(projectId);
 
@@ -98,10 +104,10 @@ const shareDocument = (documentId: string) => setShareTarget({ documentId });
   };
 
   const approve = (documentId: string) => {
-    if (apprveDocument.isPending) {
+    if (approveDocument.isPending) {
       return;
     }
-    apprveDocument.mutate(documentId, {
+    approveDocument.mutate(documentId, {
       onSuccess: () => showSuccess('Dokument zatwierdzony'),
       onError: showError,
     });
@@ -141,15 +147,15 @@ const shareDocument = (documentId: string) => setShareTarget({ documentId });
     (el) => el.id === deleteFolderId,
   )?.name;
 
-const shareFolderName = folders?.find(
-  (el) => el.id === shareTarget.folderId,
-)?.name;
+  const shareFolderName = folders?.find(
+    (el) => el.id === shareTarget.folderId,
+  )?.name;
 
-const shareDocumentName = documents?.find(
-  (el) => el.id === shareTarget.documentId,
-)?.name;
+  const shareDocumentName = documents?.find(
+    (el) => el.id === shareTarget.documentId,
+  )?.name;
 
-const shareTargetName = shareFolderName ?? shareDocumentName;
+  const shareTargetName = shareFolderName ?? shareDocumentName;
 
   const renameDocumentName =
     documents?.find((el) => el.id === renameDocumentId)?.name ?? '';
@@ -160,6 +166,12 @@ const shareTargetName = shareFolderName ?? shareDocumentName;
   const openNewFolder = (parentId: string | null) => {
     setNewFolderParentId(parentId);
     setShowNewFolder(true);
+  };
+  const buildTemplate = () => {
+    createTemplate.mutate(undefined, {
+      onSuccess: () => showSuccess('Utworzono standardowe foldery'),
+      onError: showError,
+    });
   };
 
   const deleteDocumentName = documents?.find(
@@ -212,7 +224,7 @@ const shareTargetName = shareFolderName ?? shareDocumentName;
   const parentFolderName = folders.find(
     (el) => el.id === newFolderParentId,
   )?.name;
-  const del = (id: string) => {
+  const closeDeletedFolder = (id: string) => {
     if (id === folderId) {
       setFolderId(null);
     }
@@ -270,6 +282,16 @@ const shareTargetName = shareFolderName ?? shareDocumentName;
               onShare={shareFolder}
               canManage={canManage}
             />
+            {canManage && folders.length === 0 && (
+              <button
+                type="button"
+                onClick={buildTemplate}
+                disabled={createTemplate.isPending}
+                className="cursor-pointer rounded border border-dashed border-gray-300 px-3 py-3 text-xs text-gray-500 hover:border-darkGreen hover:text-darkGreen"
+              >
+                Utwórz standardowe foldery
+              </button>
+            )}
           </div>
           <div className="my-2 border-t border-gray-200" />
           <button
@@ -404,7 +426,7 @@ const shareTargetName = shareFolderName ?? shareDocumentName;
         folderId={deleteFolderId}
         folderName={deleteFolderName}
         onClose={() => setDeleteFolderId(null)}
-        onDeleted={del}
+        onDeleted={closeDeletedFolder}
       />
 
       <DeleteDocumentDialog

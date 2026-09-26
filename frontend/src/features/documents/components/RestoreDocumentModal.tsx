@@ -1,9 +1,14 @@
-import { useState } from 'react';
+import { Controller, useForm, type SubmitHandler } from 'react-hook-form';
 import type { BackendFolder } from '../../../lib/api';
 import { Modal } from '../../../components/ui/Modal';
-import { FIELD_LABEL_CLASSES } from '../../../components/ui/formStyles';
-import { Select, type SelectOption } from '../../../components/ui/Select';
 import { Button } from '../../../components/ui/Button';
+import { Select } from '../../../components/ui/Select';
+import { FieldError } from '../../../components/ui/FieldError';
+import { FIELD_LABEL_CLASSES } from '../../../components/ui/formStyles';
+
+interface Inputs {
+  folderId: string;
+}
 
 interface Props {
   documentId: string | null;
@@ -20,17 +25,19 @@ export function RestoreDocumentModal({
   onSubmit,
   onClose,
 }: Props) {
-  const [restoreFolderId, setRestoreFolderId] = useState('');
-  const folderOptions: SelectOption[] = folders.map((folder) => ({
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<Inputs>({ defaultValues: { folderId: '' } });
+
+  const folderOptions = folders.map((folder) => ({
     value: folder.id,
     label: folder.name,
   }));
 
-  const submit = () => {
-    if (restoreFolderId === '') {
-      return;
-    }
-    onSubmit(restoreFolderId);
+  const submit: SubmitHandler<Inputs> = (data) => {
+    onSubmit(data.folderId);
   };
 
   return (
@@ -39,7 +46,7 @@ export function RestoreDocumentModal({
       onClose={onClose}
       title="Przywróć dokument"
     >
-      <div className="space-y-5">
+      <form onSubmit={handleSubmit(submit)} className="space-y-5">
         <p className="text-sm text-dark/75">
           Folder tego dokumentu został usunięty. Wybierz, gdzie go przywrócić.
         </p>
@@ -48,13 +55,22 @@ export function RestoreDocumentModal({
           <label className={FIELD_LABEL_CLASSES}>
             Folder <span className="text-red-500">*</span>
           </label>
-          <Select
-            size="md"
-            options={folderOptions}
-            value={restoreFolderId}
-            onChange={(v) => setRestoreFolderId(v)}
-            placeholder="Wybierz"
+          <Controller
+            name="folderId"
+            control={control}
+            rules={{ required: 'Wybierz folder' }}
+            render={({ field }) => (
+              <Select
+                size="md"
+                options={folderOptions}
+                placeholder="Wybierz"
+                value={field.value}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+              />
+            )}
           />
+          <FieldError message={errors.folderId?.message} />
         </div>
 
         <div className="border-t border-gray-200 flex gap-3 justify-end pt-4">
@@ -69,15 +85,14 @@ export function RestoreDocumentModal({
           <Button
             variant="primary"
             size="small"
-            onClick={submit}
-            disabled={restoreFolderId === ''}
+            type="submit"
             isPending={isPending}
             className="font-medium!"
           >
             Przywróć
           </Button>
         </div>
-      </div>
+      </form>
     </Modal>
   );
 }

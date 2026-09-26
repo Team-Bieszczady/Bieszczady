@@ -15,9 +15,14 @@ import { DocumentAccessController } from './document-access.controller';
     FoldersController,
     DocumentsController,
     DocumentVersionsController,
-    DocumentAccessController
+    DocumentAccessController,
   ],
-  providers: [FoldersService, StorageService, DocumentsService, DocumentAccessService],
+  providers: [
+    FoldersService,
+    StorageService,
+    DocumentsService,
+    DocumentAccessService,
+  ],
   imports: [UsersModule, ProjectsModule],
 })
 export class DocumentsModule {}

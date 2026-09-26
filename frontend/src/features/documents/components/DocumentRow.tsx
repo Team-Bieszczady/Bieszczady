@@ -6,10 +6,7 @@ import {
   DOCUMENT_STATUS_LABELS,
 } from '../../../lib/documents';
 import { fileExtension, formatDate, formatFileSize } from '../utils/formatters';
-import {
-  IoChevronDown,
-  IoChevronForward,
-} from 'react-icons/io5';
+import { IoChevronDown, IoChevronForward } from 'react-icons/io5';
 import { ActionMenu } from '../../../components/ui/ActionMenu';
 import { useAuth } from '../../../context/useAuth';
 import { documentMenuItems } from '../utils/documentMenuItems';
@@ -50,7 +47,7 @@ export const DocumentRow = ({
   onPreview,
   onRestoreVersion,
   onApprove,
-  onShare
+  onShare,
 }: Props) => {
   const version = document.versions[0];
   const {
@@ -61,7 +58,6 @@ export const DocumentRow = ({
 
   const { user } = useAuth();
   const canDelete = document.status !== 'APPROVED' || Boolean(user?.isDirector);
-
 
   return (
     <>
