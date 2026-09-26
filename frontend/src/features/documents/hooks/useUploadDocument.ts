@@ -27,6 +27,7 @@ export function useUploadDocument(projectId: string, folderId: string) {
       queryClient.invalidateQueries({
         queryKey: ['pending-count', projectId],
       });
+      queryClient.invalidateQueries({ queryKey: ['folders', projectId] });
     },
   });
 }

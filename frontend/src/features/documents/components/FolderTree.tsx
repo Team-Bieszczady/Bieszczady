@@ -79,6 +79,15 @@ export const FolderTree = ({
                 <span className="truncate">{folder.name}</span>
               </button>
 
+              {folder.pendingCount > 0 && (
+                <span
+                  title={`Dokumenty do akceptacji: ${folder.pendingCount}`}
+                  className="mr-1 shrink-0 rounded-full bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-700"
+                >
+                  {folder.pendingCount}
+                </span>
+              )}
+
               {canManage && (
                 <ActionMenu
                   ariaLabel={`Akcje folderu ${folder.name}`}

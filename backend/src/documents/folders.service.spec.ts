@@ -90,6 +90,8 @@ function createFakePrisma() {
     document: {
       findFirst: ({ where }: { where: Where }) =>
         Promise.resolve(documents.find((row) => matches(row, where)) ?? null),
+      groupBy: () =>
+        Promise.resolve([] as { folderId: string; _count: number }[]),
     },
   };
 }

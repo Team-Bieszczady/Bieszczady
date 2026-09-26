@@ -41,6 +41,7 @@ export interface BackendFolder {
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
+  pendingCount: number;
 }
 
 export interface BackendDocumentVersion {

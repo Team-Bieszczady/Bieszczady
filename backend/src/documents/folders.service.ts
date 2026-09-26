@@ -37,7 +37,11 @@ export class FoldersService {
 
     const canManage = await this.access.canManageTasks(actor, id);
     if (canManage) {
-      return folders;
+      const pendingByFolder = await this.countPendingByFolder(id, folders);
+      return folders.map((folder) => ({
+        ...folder,
+        pendingCount: pendingByFolder.get(folder.id) ?? 0,
+      }));
     }
 
     const granted = await this.prisma.documentAccess.findMany({
@@ -61,11 +65,38 @@ export class FoldersService {
     const visibleIds = new Set(visible.map((f) => f.id));
     return visible.map((folder) => ({
       ...folder,
+      pendingCount: 0,
       parentId:
         folder.parentId && visibleIds.has(folder.parentId)
           ? folder.parentId
           : null,
     }));
+  }
+
+  private async countPendingByFolder(
+    projectId: string,
+    folders: { id: string; parentId: string | null }[],
+  ) {
+    const grouped = await this.prisma.document.groupBy({
+      by: ['folderId'],
+      where: { projectId, status: 'PENDING_APPROVAL', deletedAt: null },
+      _count: true,
+    });
+
+    const byId = new Map(folders.map((folder) => [folder.id, folder]));
+    const totals = new Map(folders.map((folder) => [folder.id, 0]));
+
+    for (const row of grouped) {
+      let current = byId.get(row.folderId);
+      let steps = 0;
+
+      while (current && steps++ <= MAX_FOLDER_DEPTH) {
+        totals.set(current.id, (totals.get(current.id) ?? 0) + row._count);
+        current = current.parentId ? byId.get(current.parentId) : undefined;
+      }
+    }
+
+    return totals;
   }
 
   async createFolder(
