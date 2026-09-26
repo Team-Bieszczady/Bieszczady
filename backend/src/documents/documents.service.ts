@@ -450,11 +450,15 @@ export class DocumentsService {
       throw new NotFoundException('Nie znaleziono dokumentu w Koszu');
     }
 
+    await this.prisma.$transaction([
+      this.prisma.documentVersion.deleteMany({ where: { documentId } }),
+      this.prisma.document.delete({ where: { id: documentId } }),
+    ]);
+
     for (const version of document.versions) {
       await this.storage.remove(version.storageKey);
     }
-    await this.prisma.documentVersion.deleteMany({ where: { documentId } });
-    await this.prisma.document.delete({ where: { id: documentId } });
+
   }
 
   async countPendingApproval(projectId: string, actor: AuthenticatedUser) {

@@ -125,6 +125,18 @@ function refreshAccessToken(): Promise<string | null> {
   return refreshInFlight;
 }
 
+async function throwFromResponse(
+  response: Response,
+  fallbackMessage: string,
+): Promise<never> {
+  const body = (await response.json().catch(() => ({}))) as ApiErrorBody;
+  const message = body.message
+    ? [body.message].flat().join(', ')
+    : fallbackMessage;
+  throw createApiError(response.status, message);
+}
+
+
 interface RequestInitOptions {
   method: string;
   accessToken?: string | null;
@@ -158,11 +170,7 @@ export async function request<T>(
   }
 
   if (!response.ok) {
-    const body = (await response.json().catch(() => ({}))) as ApiErrorBody;
-    const message = body.message
-      ? [body.message].flat().join(', ')
-      : fallbackMessage;
-    throw createApiError(response.status, message);
+    await throwFromResponse(response, fallbackMessage);
   }
 
   if (response.status === 204) return undefined as T;
@@ -481,7 +489,7 @@ export const api = {
     );
 
     if (!response.ok) {
-      throw createApiError(response.status, 'Nie udało się pobrać pliku');
+         await throwFromResponse(response, 'Nie udało się pobrać pliku');
     }
 
     return response.blob();
@@ -500,7 +508,7 @@ export const api = {
     );
 
     if (!response.ok) {
-      throw createApiError(response.status, 'Nie udało się wgrać pliku');
+           await throwFromResponse(response, 'Nie udało się wgrać pliku');
     }
 
     return response.json();
@@ -535,7 +543,7 @@ export const api = {
     );
 
     if (!response.ok) {
-      throw createApiError(response.status, 'Nie udało się wgrać wersji');
+      await throwFromResponse(response, 'Nie udało się wgrać wersji');
     }
 
     return response.json();
