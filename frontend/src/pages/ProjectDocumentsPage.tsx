@@ -31,6 +31,7 @@ import { DeletePermanentlyDialog } from '../features/documents/components/Delete
 import { useDocumentFile } from '../features/documents/hooks/useDocumentFile';
 import { showError, showSuccess } from '../features/documents/utils/toasts';
 import { ShareModal } from '../features/documents/components/ShareModal';
+import { MoveFolderModal } from '../features/documents/components/MoveFolderModal';
 import { useCreateFolderTemplate } from '../features/documents/hooks/useCreateFolderTemplate';
 
 function DocumentsView({ projectId }: { projectId: string }) {
@@ -59,6 +60,7 @@ function DocumentsView({ projectId }: { projectId: string }) {
   const [deleteDocumentId, setDeleteDocumentId] = useState<string | null>(null);
 
   const [renameFolderId, setRenameFolderId] = useState<string | null>(null);
+  const [moveFolderId, setMoveFolderId] = useState<string | null>(null);
   const [restoreDocumentId, setRestoreDocumentId] = useState<string | null>(
     null,
   );
@@ -291,6 +293,7 @@ function DocumentsView({ projectId }: { projectId: string }) {
               onAddSubfolder={openNewFolder}
               onDeleteFolder={setDeleteFolderId}
               onRename={setRenameFolderId}
+              onMove={setMoveFolderId}
               onShare={shareFolder}
               canManage={canManage}
             />
@@ -455,6 +458,14 @@ function DocumentsView({ projectId }: { projectId: string }) {
         documentName={permanentDeleteName}
         onClose={() => setPermanentDeleteId(null)}
       />
+      <MoveFolderModal
+        key={moveFolderId ?? 'closed'}
+        projectId={projectId}
+        folderId={moveFolderId}
+        folders={folders}
+        onClose={() => setMoveFolderId(null)}
+      />
+
       <ShareModal
         projectId={projectId}
         target={shareTarget}

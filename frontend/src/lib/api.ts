@@ -439,7 +439,7 @@ export const api = {
     accessToken: string,
     projectId: string,
     folderId: string,
-    body: { name?: string; parentId?: string },
+    body: { name?: string; parentId?: string | null },
   ): Promise<BackendFolder> {
     return request<BackendFolder>(
       `/api/v1/projects/${projectId}/folders/${folderId}`,

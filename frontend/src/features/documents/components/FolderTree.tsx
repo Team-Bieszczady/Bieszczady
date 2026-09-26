@@ -3,6 +3,7 @@ import {
   IoChevronForward,
   IoCreateOutline,
   IoFolderOutline,
+  IoMoveOutline,
   IoPersonAddOutline,
   IoTrashOutline,
 } from 'react-icons/io5';
@@ -21,6 +22,7 @@ interface Props {
   onAddSubfolder: (parentId: string) => void;
   onDeleteFolder: (folderId: string) => void;
   onRename: (folderId: string) => void;
+  onMove: (folderId: string) => void;
   onShare: (folderId: string) => void;
 }
 
@@ -36,6 +38,7 @@ export const FolderTree = ({
   onAddSubfolder,
   onDeleteFolder,
   onRename,
+  onMove,
   onShare,
 }: Props) => {
   const children = folders.filter((f) => f.parentId === parentId);
@@ -112,6 +115,12 @@ export const FolderTree = ({
                       onSelect: () => onDeleteFolder(folder.id),
                     },
                     {
+                      id: 'move-folder',
+                      label: 'Przenieś',
+                      icon: <IoMoveOutline className="h-4 w-4" />,
+                      onSelect: () => onMove(folder.id),
+                    },
+                    {
                       id: 'share-folder',
                       label: 'Udostępnij',
                       icon: <IoPersonAddOutline className="h-4 w-4" />,
@@ -135,6 +144,7 @@ export const FolderTree = ({
                 onAddSubfolder={onAddSubfolder}
                 onDeleteFolder={onDeleteFolder}
                 onRename={onRename}
+                onMove={onMove}
                 onShare={onShare}
               />
             )}
