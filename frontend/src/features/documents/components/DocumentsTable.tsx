@@ -15,6 +15,7 @@ interface Props {
   onRenameDocument: (documentId: string) => void;
   onPreview: (documentId: string, versionNo: number) => void;
   onRestoreVersion: (documentId: string, versionNo: number) => void;
+  onSubmitForApproval: (documentId: string) => void;
   onApprove: (documentId: string) => void;
   onShare: (documentId: string) => void;
 }
@@ -38,6 +39,7 @@ export function DocumentsTable({
   onRestoreVersion,
   onApprove,
   onShare,
+  onSubmitForApproval,
 }: Props) {
   if (documents.length === 0) {
     return (
@@ -81,6 +83,7 @@ export function DocumentsTable({
                 onRestoreVersion={onRestoreVersion}
                 onApprove={onApprove}
                 onShare={onShare}
+                onSubmitForApproval={onSubmitForApproval}
               />
             ))}
           </tbody>
@@ -106,6 +109,7 @@ export function DocumentsTable({
             onRestoreVersion={onRestoreVersion}
             onApprove={onApprove}
             onShare={onShare}
+            onSubmitForApproval={onSubmitForApproval}
           />
         ))}
       </div>

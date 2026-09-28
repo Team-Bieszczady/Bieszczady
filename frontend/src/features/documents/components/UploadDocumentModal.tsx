@@ -1,9 +1,4 @@
-import {
-  Controller,
-  useForm,
-  useWatch,
-  type SubmitHandler,
-} from 'react-hook-form';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import { IoInformationCircleOutline } from 'react-icons/io5';
 import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
@@ -45,6 +40,7 @@ interface Props {
   documents: BackendDocument[];
   initialMode: UploadMode;
   initialDocumentId: string | null;
+  canManage: boolean;
   onClose: () => void;
 }
 
@@ -56,6 +52,7 @@ export function UploadDocumentModal({
   documents,
   initialMode,
   initialDocumentId,
+  canManage,
   onClose,
 }: Props) {
   const {
@@ -92,22 +89,28 @@ export function UploadDocumentModal({
         ?.versionNo ?? 0) + 1
     : null;
 
-  const submit: SubmitHandler<Inputs> = (data) => {
+  let primaryLabel = 'Zapisz';
+  if (mode === 'document') {
+    primaryLabel = canManage ? 'Zapisz i zatwierdź' : 'Wyślij do akceptacji';
+  }
+
+  const submit = (data: Inputs, asDraft: boolean) => {
     if (!data.file) {
       return;
     }
 
     if (data.mode === 'document') {
       upload.mutate(
-        { name: data.name.trim(), kind: data.kind, file: data.file },
+        { name: data.name.trim(), kind: data.kind, file: data.file, asDraft },
         {
           onSuccess: () => {
-            showSuccess('Dokument wgrany');
+            showSuccess(asDraft ? 'Zapisano jako roboczy' : 'Dokument wgrany');
             onClose();
           },
           onError: showError,
         },
       );
+
       return;
     }
 
@@ -125,7 +128,10 @@ export function UploadDocumentModal({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Wgraj plik">
-      <form onSubmit={handleSubmit(submit)} className="space-y-5">
+      <form
+        onSubmit={handleSubmit((data) => submit(data, false))}
+        className="space-y-5"
+      >
         <div>
           <Controller
             name="file"
@@ -278,7 +284,7 @@ export function UploadDocumentModal({
           </>
         )}
 
-        <div className="border-t border-gray-200 flex gap-3 justify-end pt-4">
+        <div className="border-t border-gray-200 flex flex-wrap gap-3 justify-end pt-4">
           <Button
             variant="outline"
             size="small"
@@ -287,6 +293,19 @@ export function UploadDocumentModal({
           >
             Anuluj
           </Button>
+
+          {mode === 'document' && (
+            <Button
+              variant="outline"
+              size="small"
+              type="button"
+              isPending={upload.isPending}
+              onClick={handleSubmit((data) => submit(data, true))}
+            >
+              Zapisz jako roboczy
+            </Button>
+          )}
+
           <Button
             variant="primary"
             size="small"
@@ -296,7 +315,7 @@ export function UploadDocumentModal({
             }
             className="font-medium!"
           >
-            Zapisz
+            {primaryLabel}
           </Button>
         </div>
       </form>

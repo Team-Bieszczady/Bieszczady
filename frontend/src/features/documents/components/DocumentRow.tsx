@@ -10,6 +10,7 @@ import { IoChevronDown, IoChevronForward } from 'react-icons/io5';
 import { ActionMenu } from '../../../components/ui/ActionMenu';
 import { useAuth } from '../../../context/useAuth';
 import { documentMenuItems } from '../utils/documentMenuItems';
+import { useViewerManages } from '../../projects/hooks/useViewerManages';
 interface Props {
   document: BackendDocument;
   projectId: string;
@@ -26,6 +27,7 @@ interface Props {
   onRestoreVersion: (documentId: string, versionNo: number) => void;
   onApprove: (documentId: string) => void;
   onShare: (documentId: string) => void;
+  onSubmitForApproval: (documentId: string) => void;
 }
 
 const canPreview = (mimeType: string) => {
@@ -48,6 +50,7 @@ export const DocumentRow = ({
   onRestoreVersion,
   onApprove,
   onShare,
+  onSubmitForApproval,
 }: Props) => {
   const version = document.versions[0];
   const {
@@ -57,7 +60,11 @@ export const DocumentRow = ({
   } = useVersions(projectId, isExpanded ? document.id : null);
 
   const { user } = useAuth();
-  const canDelete = document.status !== 'APPROVED' || Boolean(user?.isDirector);
+
+  const isLocked =
+    document.status === 'APPROVED' || document.status === 'SIGNED';
+  const canDelete = !isLocked || Boolean(user?.isDirector);
+  const canManage = useViewerManages(projectId);
 
   return (
     <>
@@ -135,15 +142,21 @@ export const DocumentRow = ({
             {variant === 'folder' && (
               <ActionMenu
                 ariaLabel={`Akcje dokumentu ${document.name}`}
-                items={documentMenuItems(document, variant, canDelete, {
-                  onNewVersion,
-                  onRenameDocument,
-                  onShare,
-                  onApprove,
-                  onDeleteDocument,
-                  onRestoreDocument,
-                  onDeletePermanently,
-                })}
+                items={documentMenuItems(
+                  document,
+                  variant,
+                  { canDelete, canManage },
+                  {
+                    onNewVersion,
+                    onRenameDocument,
+                    onShare,
+                    onApprove,
+                    onDeleteDocument,
+                    onRestoreDocument,
+                    onDeletePermanently,
+                    onSubmitForApproval,
+                  },
+                )}
               />
             )}
           </div>

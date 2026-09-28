@@ -21,10 +21,7 @@ import {
 } from '../features/documents/components/UploadDocumentModal';
 import { useSelectedProject } from '../context/useSelectedProject';
 import { PageMessage } from '../components/ui/PageMessage';
-import {
-  useProject,
-  useProjects,
-} from '../features/projects/hooks/useProjectsApi';
+import { useProject } from '../features/projects/hooks/useProjectsApi';
 import { useApproveDocument } from '../features/documents/hooks/useApproveDocument';
 import { RestoreDocumentModal } from '../features/documents/components/RestoreDocumentModal';
 import { DeletePermanentlyDialog } from '../features/documents/components/DeletePermanentlyDialog';
@@ -33,6 +30,8 @@ import { showError, showSuccess } from '../features/documents/utils/toasts';
 import { ShareModal } from '../features/documents/components/ShareModal';
 import { MoveFolderModal } from '../features/documents/components/MoveFolderModal';
 import { useCreateFolderTemplate } from '../features/documents/hooks/useCreateFolderTemplate';
+import { useSubmitForApproval } from '../features/documents/hooks/useSubmitForApproval';
+import { useViewerManages } from '../features/projects/hooks/useViewerManages';
 
 function DocumentsView({ projectId }: { projectId: string }) {
   const { data: project } = useProject(projectId);
@@ -79,10 +78,11 @@ function DocumentsView({ projectId }: { projectId: string }) {
   const restoreDocument = useRestoreDocument(projectId);
   const createTemplate = useCreateFolderTemplate(projectId);
 
+  const submitForApproval = useSubmitForApproval(projectId, folderId ?? '');
+
   const approveDocument = useApproveDocument(projectId, folderId ?? '');
-  const { data: projects } = useProjects();
-  const canManage =
-    projects?.find((p) => p.id === projectId)?.viewerManages ?? false;
+
+  const canManage = useViewerManages(projectId);
 
   const [shareTarget, setShareTarget] = useState<{
     folderId?: string;
@@ -113,6 +113,16 @@ function DocumentsView({ projectId }: { projectId: string }) {
     }
     approveDocument.mutate(documentId, {
       onSuccess: () => showSuccess('Dokument zatwierdzony'),
+      onError: showError,
+    });
+  };
+
+  const sendForApproval = (documentId: string) => {
+    if (submitForApproval.isPending) {
+      return;
+    }
+    submitForApproval.mutate(documentId, {
+      onSuccess: () => showSuccess('Przekazano do akceptacji'),
       onError: showError,
     });
   };
@@ -345,6 +355,7 @@ function DocumentsView({ projectId }: { projectId: string }) {
               onRenameDocument={setRenameDocumentId}
               onApprove={approve}
               onShare={shareDocument}
+              onSubmitForApproval={sendForApproval}
             />
           )}
           {!showTrash && !folderId && (
@@ -383,6 +394,7 @@ function DocumentsView({ projectId }: { projectId: string }) {
               onRestoreVersion={restoreVersion}
               onApprove={approve}
               onShare={shareDocument}
+              onSubmitForApproval={sendForApproval}
             />
           )}
         </section>
@@ -415,6 +427,7 @@ function DocumentsView({ projectId }: { projectId: string }) {
         initialMode={uploadMode}
         initialDocumentId={uploadDocumentId}
         onClose={() => setShowUpload(false)}
+        canManage={canManage}
       />
 
       <RenameDocumentModal

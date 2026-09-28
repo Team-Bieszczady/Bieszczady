@@ -25,6 +25,7 @@ interface Props {
   onRestoreVersion: (documentId: string, versionNo: number) => void;
   onApprove: (documentId: string) => void;
   onShare: (documentId: string) => void;
+  onSubmitForApproval: (documentId: string) => void;
 }
 
 const canPreview = (mimeType: string) =>
@@ -42,10 +43,14 @@ export const DocumentCard = ({
   onPreview,
   onApprove,
   onShare,
+  onSubmitForApproval,
 }: Props) => {
   const version = document.versions[0];
   const { user } = useAuth();
-  const canDelete = document.status !== 'APPROVED' || Boolean(user?.isDirector);
+
+  const isLocked =
+    document.status === 'APPROVED' || document.status === 'SIGNED';
+  const canDelete = !isLocked || Boolean(user?.isDirector);
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4">
@@ -72,6 +77,7 @@ export const DocumentCard = ({
             onDeleteDocument,
             onRestoreDocument,
             onDeletePermanently,
+            onSubmitForApproval,
           })}
         />
       </div>

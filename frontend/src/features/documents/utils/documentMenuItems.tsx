@@ -3,6 +3,7 @@ import {
   IoCheckmarkOutline,
   IoCreateOutline,
   IoPersonAddOutline,
+  IoSendOutline,
   IoTrashOutline,
 } from 'react-icons/io5';
 import type { BackendDocument } from '../../../lib/api';
@@ -15,12 +16,13 @@ interface Handlers {
   onDeleteDocument: (documentId: string) => void;
   onRestoreDocument: (documentId: string) => void;
   onDeletePermanently: (documentId: string) => void;
+  onSubmitForApproval: (documentId: string) => void;
 }
 
 export function documentMenuItems(
   document: BackendDocument,
   variant: 'folder' | 'trash',
-  canDelete: boolean,
+  flags: { canDelete: boolean; canManage: boolean },
   handlers: Handlers,
 ) {
   if (variant === 'trash') {
@@ -60,6 +62,17 @@ export function documentMenuItems(
       icon: <IoPersonAddOutline className="h-4 w-4" />,
       onSelect: () => handlers.onShare(document.id),
     },
+    ...(document.status === 'DRAFT'
+      ? [
+          {
+            id: 'submit-document',
+            label: flags.canManage ? 'Zatwierdź' : 'Przekaż do akceptacji',
+            icon: <IoSendOutline className="h-4 w-4" />,
+            onSelect: () => handlers.onSubmitForApproval(document.id),
+          },
+        ]
+      : []),
+
     ...(document.status === 'PENDING_APPROVAL'
       ? [
           {
@@ -70,7 +83,7 @@ export function documentMenuItems(
           },
         ]
       : []),
-    ...(canDelete
+    ...(flags.canDelete
       ? [
           {
             id: 'delete-document',

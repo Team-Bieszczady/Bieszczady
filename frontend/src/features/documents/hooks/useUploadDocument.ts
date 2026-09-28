@@ -7,7 +7,9 @@ interface UploadDocumentInput {
   name: string;
   kind: DocumentKind;
   file: File;
+  asDraft: boolean;
 }
+
 export function useUploadDocument(projectId: string, folderId: string) {
   const queryClient = useQueryClient();
   const { requireToken } = useAuthToken();
@@ -18,6 +20,10 @@ export function useUploadDocument(projectId: string, folderId: string) {
       formData.append('name', payload.name);
       formData.append('kind', payload.kind);
       formData.append('file', payload.file);
+      if (payload.asDraft) {
+        formData.append('asDraft', 'true');
+      }
+
       return api.uploadDocument(requireToken(), projectId, folderId, formData);
     },
     onSuccess: async () => {

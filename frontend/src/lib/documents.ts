@@ -11,7 +11,6 @@ export const DOCUMENT_STATUSES = [
   'PENDING_APPROVAL',
   'APPROVED',
   'SIGNED',
-  'IN_PROGRESS',
 ] as const;
 
 export type DocumentKind = (typeof DOCUMENT_KINDS)[number];
@@ -30,7 +29,6 @@ export const DOCUMENT_STATUS_LABELS: Record<DocumentStatus, string> = {
   PENDING_APPROVAL: 'Do akceptacji',
   APPROVED: 'Zatwierdzony',
   SIGNED: 'Podpisany',
-  IN_PROGRESS: 'W toku',
 };
 
 export const DOCUMENT_STATUS_CLASSES: Record<DocumentStatus, string> = {
@@ -38,7 +36,6 @@ export const DOCUMENT_STATUS_CLASSES: Record<DocumentStatus, string> = {
   PENDING_APPROVAL: 'bg-amber-100 text-amber-700',
   APPROVED: 'bg-lightGreen text-darkGreen',
   SIGNED: 'bg-darkGreen text-white',
-  IN_PROGRESS: 'bg-gray-100 text-gray-600',
 };
 export const DOCUMENT_KINDS_OPTIONS: ReadonlyArray<{
   value: string;

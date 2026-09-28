@@ -661,6 +661,21 @@ export const api = {
     );
   },
 
+  async submitForApproval(
+    accessToken: string,
+    projectId: string,
+    documentId: string,
+  ): Promise<BackendDocument> {
+    return request<BackendDocument>(
+      `/api/v1/projects/${projectId}/documents/${documentId}/submit`,
+      {
+        method: 'POST',
+        accessToken,
+        fallbackMessage: 'Nie udało się przekazać dokumentu do akceptacji',
+      },
+    );
+  },
+
   async getPendingCount(
     accessToken: string,
     projectId: string,
