@@ -101,6 +101,13 @@ export class DocumentsService {
 
     const canApprove = await this.access.canManageTasks(actor, projectId);
 
+    let status = 'PENDING_APPROVAL';
+    if (dto.asDraft === 'true') {
+      status = 'DRAFT';
+    } else if (canApprove) {
+      status = 'APPROVED';
+    }
+
     const documentId = randomUUID();
     const key = `${projectId}/${documentId}/v1`;
 
@@ -114,7 +121,7 @@ export class DocumentsService {
           folderId,
           name: dto.name,
           kind: dto.kind,
-          status: canApprove ? 'APPROVED' : 'PENDING_APPROVAL',
+          status,
           ownerId,
         },
       }),
@@ -144,6 +151,21 @@ export class DocumentsService {
     await this.access.assertCanRead(actor, projectId);
     await this.assertDocumentLevel(actor, projectId, documentId, true);
     await this.access.assertNotArchived(projectId);
+
+    const document = await this.prisma.document.findFirst({
+      where: { id: documentId, projectId, deletedAt: null },
+    });
+    if (!document) {
+      throw new NotFoundException('Nie znaleziono dokumentu');
+    }
+
+    const signing = dto.markSigned === 'true';
+    if (signing && document.status !== 'APPROVED') {
+      throw new BadRequestException(
+        'Podpisany może być tylko zatwierdzony dokument',
+      );
+    }
+
     const versionLast = await this.prisma.documentVersion.findFirst({
       where: {
         document: { projectId, id: documentId, deletedAt: null },
@@ -153,28 +175,44 @@ export class DocumentsService {
     if (!versionLast) {
       throw new NotFoundException('Nie znaleziono dokumentu');
     }
+
     const newVersion = versionLast.versionNo + 1;
     const key = `${projectId}/${documentId}/v${newVersion}-${randomUUID().slice(0, 8)}`;
     await this.storage.save(key, file.buffer, file.mimetype);
 
-    try {
-      return await this.prisma.documentVersion.create({
-        data: {
-          documentId,
-          versionNo: newVersion,
-          storageKey: key,
-          fileName: file.originalname,
-          mimeType: file.mimetype,
-          sizeBytes: file.size,
-          uploadedById: ownerId,
-          changeNote: dto.changeNote,
-        },
-      });
-    } catch {
-      throw new ConflictException(
-        'Ktoś właśnie dodał nową wersję. Odśwież stronę i spróbuj ponownie.',
-      );
+    let nextStatus = document.status;
+    if (signing) {
+      nextStatus = 'SIGNED';
+    } else if (document.status === 'APPROVED' || document.status === 'SIGNED') {
+      nextStatus = 'PENDING_APPROVAL';
     }
+
+    const [version] = await this.prisma
+      .$transaction([
+        this.prisma.documentVersion.create({
+          data: {
+            documentId,
+            versionNo: newVersion,
+            storageKey: key,
+            fileName: file.originalname,
+            mimeType: file.mimetype,
+            sizeBytes: file.size,
+            uploadedById: ownerId,
+            changeNote: dto.changeNote,
+          },
+        }),
+        this.prisma.document.update({
+          where: { id: documentId },
+          data: { status: nextStatus },
+        }),
+      ])
+      .catch(() => {
+        throw new ConflictException(
+          'Ktoś właśnie dodał nową wersję. Odśwież stronę i spróbuj ponownie.',
+        );
+      });
+
+    return version;
   }
 
   async getDocuments(
@@ -342,9 +380,12 @@ export class DocumentsService {
         'Wskazany dokument nie należy do tego projektu',
       );
     }
-    if (document.status === 'APPROVED' && !actor.isDirector) {
+    const locked =
+      document.status === 'APPROVED' || document.status === 'SIGNED';
+
+    if (locked && !actor.isDirector) {
       throw new ForbiddenException(
-        'Zatwierdzony dokument może usunąć tylko dyrektor',
+        'Zatwierdzony lub podpisany dokument może usunąć tylko dyrektor',
       );
     }
 
@@ -405,6 +446,31 @@ export class DocumentsService {
     return await this.prisma.document.update({
       where: { id: documentId },
       data: { status: 'APPROVED' },
+    });
+  }
+  async submitForApproval(
+    projectId: string,
+    documentId: string,
+    actor: AuthenticatedUser,
+  ) {
+    await this.access.assertCanRead(actor, projectId);
+    await this.access.assertNotArchived(projectId);
+    await this.assertDocumentLevel(actor, projectId, documentId, true);
+
+    const document = await this.prisma.document.findFirst({
+      where: { id: documentId, projectId: projectId, deletedAt: null },
+    });
+    if (!document) {
+      throw new NotFoundException('Nie znaleziono dokumentu');
+    }
+
+    if (document.status !== 'DRAFT') {
+      throw new BadRequestException('Ten dokument nie jest roboczy');
+    }
+
+    return await this.prisma.document.update({
+      where: { id: documentId },
+      data: { status: 'PENDING_APPROVAL' },
     });
   }
 

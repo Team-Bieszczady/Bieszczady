@@ -151,6 +151,19 @@ export class DocumentVersionsController {
     );
   }
 
+  @Post('/:documentId/submit')
+  async submitForApproval(
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('documentId', ParseUUIDPipe) documentId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return await this.documentService.submitForApproval(
+      projectId,
+      documentId,
+      user,
+    );
+  }
+
   @Patch('/:documentId')
   async updateDocument(
     @Param('projectId', ParseUUIDPipe) projectId: string,

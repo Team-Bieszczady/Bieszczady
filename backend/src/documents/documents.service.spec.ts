@@ -350,6 +350,19 @@ describe('DocumentsService', () => {
         ),
       ).rejects.toThrow(NotFoundException);
     });
+
+    it('saves as a draft when the uploader asks for it', async () => {
+      const created = await service.createDocument(
+        PROJECT,
+        FOLDER,
+        OWNER,
+        { name: 'Umowa', kind: 'CONTRACT', asDraft: 'true' },
+        FILE,
+        ACTOR,
+      );
+
+      expect(created.status).toBe('DRAFT');
+    });
   });
 
   describe('createVersion', () => {
@@ -384,6 +397,83 @@ describe('DocumentsService', () => {
       await expect(
         service.createVersion('doc-x', PROJECT, OWNER, {}, FILE, ACTOR),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it('sends an approved document back for approval', async () => {
+      addDocument({ id: 'doc-1', status: 'APPROVED' });
+      addVersion({ id: 'v1', documentId: 'doc-1' });
+
+      await service.createVersion('doc-1', PROJECT, OWNER, {}, FILE, ACTOR);
+
+      expect(prisma.documents[0].status).toBe('PENDING_APPROVAL');
+    });
+
+    it('leaves a draft as a draft', async () => {
+      addDocument({ id: 'doc-1', status: 'DRAFT' });
+      addVersion({ id: 'v1', documentId: 'doc-1' });
+
+      await service.createVersion('doc-1', PROJECT, OWNER, {}, FILE, ACTOR);
+
+      expect(prisma.documents[0].status).toBe('DRAFT');
+    });
+
+    it('marks the document as signed when the scan is uploaded', async () => {
+      addDocument({ id: 'doc-1', status: 'APPROVED' });
+      addVersion({ id: 'v1', documentId: 'doc-1' });
+
+      await service.createVersion(
+        'doc-1',
+        PROJECT,
+        OWNER,
+        { markSigned: 'true' },
+        FILE,
+        ACTOR,
+      );
+
+      expect(prisma.documents[0].status).toBe('SIGNED');
+    });
+
+    it('refuses to sign a document that is not approved', async () => {
+      addDocument({ id: 'doc-1', status: 'DRAFT' });
+      addVersion({ id: 'v1', documentId: 'doc-1' });
+
+      await expect(
+        service.createVersion(
+          'doc-1',
+          PROJECT,
+          OWNER,
+          { markSigned: 'true' },
+          FILE,
+          ACTOR,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('submitForApproval', () => {
+    it('sends a draft for approval', async () => {
+      addDocument({ id: 'doc-1', status: 'DRAFT' });
+
+      const sent = await service.submitForApproval(PROJECT, 'doc-1', ACTOR);
+
+      expect(sent.status).toBe('PENDING_APPROVAL');
+    });
+
+    it('refuses a document that is not a draft', async () => {
+      addDocument({ id: 'doc-1', status: 'APPROVED' });
+
+      await expect(
+        service.submitForApproval(PROJECT, 'doc-1', ACTOR),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('refuses with view access only', async () => {
+      level = 'VIEW';
+      addDocument({ id: 'doc-1', status: 'DRAFT' });
+
+      await expect(
+        service.submitForApproval(PROJECT, 'doc-1', ACTOR),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 
@@ -591,6 +681,14 @@ describe('DocumentsService', () => {
       const deleted = await service.deleteDocument(PROJECT, 'doc-1', DIRECTOR);
 
       expect(deleted.deletedAt).toBeInstanceOf(Date);
+    });
+
+    it('refuses to delete a signed document unless the caller is a director', async () => {
+      addDocument({ id: 'doc-1', status: 'SIGNED' });
+
+      await expect(
+        service.deleteDocument(PROJECT, 'doc-1', ACTOR),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 

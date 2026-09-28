@@ -1,4 +1,10 @@
-import { IsString, MaxLength, IsNotEmpty, IsIn } from 'class-validator';
+import {
+  IsString,
+  MaxLength,
+  IsNotEmpty,
+  IsIn,
+  IsOptional,
+} from 'class-validator';
 import {
   DOCUMENT_KINDS,
   type DocumentKind,
@@ -12,4 +18,8 @@ export class CreateDocumentDto {
 
   @IsIn(DOCUMENT_KINDS)
   kind!: DocumentKind;
+
+  @IsOptional()
+  @IsIn(['true', 'false'])
+  asDraft?: string;
 }
