@@ -242,7 +242,9 @@ function DocumentsView({ projectId }: { projectId: string }) {
     return null;
   }
 
-  const nameFolder = folders.find((el) => el.id === folderId)?.name;
+  const openFolder = folders.find((el) => el.id === folderId);
+  const nameFolder = openFolder?.name;
+  const canEditFolder = openFolder?.accessLevel === 'EDIT';
   const permanentDeleteName = trash?.find(
     (el) => el.id === permanentDeleteId,
   )?.name;
@@ -277,7 +279,7 @@ function DocumentsView({ projectId }: { projectId: string }) {
           variant="primary"
           size="small"
           onClick={openUpload}
-          disabled={!folderId || showTrash}
+          disabled={!folderId || showTrash || !canEditFolder}
           className="shrink-0 max-lg:h-7 max-lg:gap-1.5 max-lg:px-4 max-lg:py-1 max-lg:text-xs"
         >
           <HiOutlinePlus className="h-4 w-4" aria-hidden="true" />

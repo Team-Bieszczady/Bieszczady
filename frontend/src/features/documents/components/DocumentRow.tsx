@@ -67,6 +67,7 @@ export const DocumentRow = ({
     document.status === 'APPROVED' || document.status === 'SIGNED';
   const canDelete = !isLocked || Boolean(user?.isDirector);
   const canManage = useViewerManages(projectId);
+  const canEdit = document.accessLevel === 'EDIT';
 
   return (
     <>
@@ -146,7 +147,12 @@ export const DocumentRow = ({
               items={documentMenuItems(
                 document,
                 variant,
-                { canDelete, canManage, isDirector: Boolean(user?.isDirector) },
+                {
+                  canDelete,
+                  canManage,
+                  canEdit,
+                  isDirector: Boolean(user?.isDirector),
+                },
                 {
                   onNewVersion,
                   onRenameDocument,
@@ -169,7 +175,7 @@ export const DocumentRow = ({
             <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">
               Historia wersji
             </p>
-            {variant === 'folder' && (
+            {variant === 'folder' && canEdit && (
               <button
                 type="button"
                 onClick={() => onNewVersion(document.id)}
@@ -236,6 +242,7 @@ export const DocumentRow = ({
                         </button>
                       )}
                       {variant === 'folder' &&
+                        canEdit &&
                         wersja.storageKey !== versions[0]?.storageKey && (
                           <button
                             type="button"

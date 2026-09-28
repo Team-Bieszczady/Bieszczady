@@ -35,6 +35,10 @@ export function ActionMenu({
       restoreFocus: true,
     });
 
+  if (items.length === 0) {
+    return null;
+  }
+
   return (
     <>
       <button

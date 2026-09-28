@@ -42,6 +42,7 @@ export interface BackendFolder {
   updatedAt: string;
   deletedAt: string | null;
   pendingCount: number;
+  accessLevel: 'VIEW' | 'EDIT' | null;
 }
 
 export interface BackendDocumentVersion {
@@ -91,6 +92,7 @@ export interface BackendDocument {
   updatedAt: string;
   deletedAt: string | null;
   versions: BackendDocumentVersion[];
+  accessLevel: 'VIEW' | 'EDIT' | null;
   folder?: { name: string; deletedAt: string | null };
 }
 

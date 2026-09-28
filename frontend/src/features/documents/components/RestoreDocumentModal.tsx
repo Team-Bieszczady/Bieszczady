@@ -31,10 +31,12 @@ export function RestoreDocumentModal({
     formState: { errors },
   } = useForm<Inputs>({ defaultValues: { folderId: '' } });
 
-  const folderOptions = folders.map((folder) => ({
-    value: folder.id,
-    label: folder.name,
-  }));
+  const folderOptions = folders
+    .filter((folder) => folder.accessLevel === 'EDIT')
+    .map((folder) => ({
+      value: folder.id,
+      label: folder.name,
+    }));
 
   const submit: SubmitHandler<Inputs> = (data) => {
     onSubmit(data.folderId);

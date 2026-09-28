@@ -81,12 +81,14 @@ export function UploadDocumentModal({
   const upload = useUploadDocument(projectId, folderId);
   const uploadVersion = useUploadVersion(projectId, folderId, versionForId);
 
-  const documentOptions = documents.map((doc) => ({
-    value: doc.id,
-    label: doc.versions[0]
-      ? `${doc.name} (v${doc.versions[0].versionNo})`
-      : doc.name,
-  }));
+  const documentOptions = documents
+    .filter((doc) => doc.accessLevel === 'EDIT')
+    .map((doc) => ({
+      value: doc.id,
+      label: doc.versions[0]
+        ? `${doc.name} (v${doc.versions[0].versionNo})`
+        : doc.name,
+    }));
 
   const nextVersionNo = versionForId
     ? (documents.find((doc) => doc.id === versionForId)?.versions[0]

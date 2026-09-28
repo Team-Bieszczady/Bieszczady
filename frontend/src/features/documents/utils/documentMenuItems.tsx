@@ -24,17 +24,26 @@ interface Handlers {
 export function documentMenuItems(
   document: BackendDocument,
   variant: 'folder' | 'trash',
-  flags: { canDelete: boolean; canManage: boolean; isDirector: boolean },
+  flags: {
+    canDelete: boolean;
+    canManage: boolean;
+    canEdit: boolean;
+    isDirector: boolean;
+  },
   handlers: Handlers,
 ) {
   if (variant === 'trash') {
     return [
-      {
-        id: 'restore-document',
-        label: 'Przywróć',
-        icon: <IoArrowUndoOutline className="h-4 w-4" />,
-        onSelect: () => handlers.onRestoreDocument(document.id),
-      },
+      ...(flags.canEdit
+        ? [
+            {
+              id: 'restore-document',
+              label: 'Przywróć',
+              icon: <IoArrowUndoOutline className="h-4 w-4" />,
+              onSelect: () => handlers.onRestoreDocument(document.id),
+            },
+          ]
+        : []),
       ...(flags.isDirector
         ? [
             {
@@ -50,18 +59,22 @@ export function documentMenuItems(
   }
 
   return [
-    {
-      id: 'new-version',
-      label: 'Wgraj nową wersję',
-      icon: <IoCreateOutline className="h-4 w-4" />,
-      onSelect: () => handlers.onNewVersion(document.id),
-    },
-    {
-      id: 'rename-document',
-      label: 'Zmień nazwę',
-      icon: <IoCreateOutline className="h-4 w-4" />,
-      onSelect: () => handlers.onRenameDocument(document.id),
-    },
+    ...(flags.canEdit
+      ? [
+          {
+            id: 'new-version',
+            label: 'Wgraj nową wersję',
+            icon: <IoCreateOutline className="h-4 w-4" />,
+            onSelect: () => handlers.onNewVersion(document.id),
+          },
+          {
+            id: 'rename-document',
+            label: 'Zmień nazwę',
+            icon: <IoCreateOutline className="h-4 w-4" />,
+            onSelect: () => handlers.onRenameDocument(document.id),
+          },
+        ]
+      : []),
     ...(flags.canManage
       ? [
           {
@@ -72,7 +85,7 @@ export function documentMenuItems(
           },
         ]
       : []),
-    ...(document.status === 'DRAFT'
+    ...(document.status === 'DRAFT' && flags.canEdit
       ? [
           {
             id: 'submit-document',
@@ -104,7 +117,7 @@ export function documentMenuItems(
         ]
       : []),
 
-    ...(flags.canDelete
+    ...(flags.canDelete && flags.canEdit
       ? [
           {
             id: 'delete-document',

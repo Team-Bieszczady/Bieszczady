@@ -56,6 +56,7 @@ export const DocumentCard = ({
     document.status === 'APPROVED' || document.status === 'SIGNED';
   const canDelete = !isLocked || Boolean(user?.isDirector);
   const canManage = useViewerManages(projectId);
+  const canEdit = document.accessLevel === 'EDIT';
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4">
@@ -77,7 +78,12 @@ export const DocumentCard = ({
           items={documentMenuItems(
             document,
             variant,
-            { canDelete, canManage, isDirector: Boolean(user?.isDirector) },
+            {
+              canDelete,
+              canManage,
+              canEdit,
+              isDirector: Boolean(user?.isDirector),
+            },
             {
               onNewVersion,
               onRenameDocument,
