@@ -452,11 +452,20 @@ describe('DocumentsService', () => {
 
   describe('submitForApproval', () => {
     it('sends a draft for approval', async () => {
+      canManage = false;
       addDocument({ id: 'doc-1', status: 'DRAFT' });
 
       const sent = await service.submitForApproval(PROJECT, 'doc-1', ACTOR);
 
       expect(sent.status).toBe('PENDING_APPROVAL');
+    });
+
+    it('approves the draft straight away for someone who manages', async () => {
+      addDocument({ id: 'doc-1', status: 'DRAFT' });
+
+      const sent = await service.submitForApproval(PROJECT, 'doc-1', ACTOR);
+
+      expect(sent.status).toBe('APPROVED');
     });
 
     it('refuses a document that is not a draft', async () => {

@@ -234,7 +234,7 @@ export class DocumentsService {
         },
       },
 
-      orderBy: { updatedAt: 'desc' },
+      orderBy: { name: 'asc' },
     });
     return documents;
   }
@@ -468,9 +468,11 @@ export class DocumentsService {
       throw new BadRequestException('Ten dokument nie jest roboczy');
     }
 
+    const canApprove = await this.access.canManageTasks(actor, projectId);
+
     return await this.prisma.document.update({
       where: { id: documentId },
-      data: { status: 'PENDING_APPROVAL' },
+      data: { status: canApprove ? 'APPROVED' : 'PENDING_APPROVAL' },
     });
   }
 
