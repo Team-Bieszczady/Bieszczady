@@ -5,6 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from './storage.service';
 import { randomUUID } from 'crypto';
@@ -96,14 +97,24 @@ export class DocumentsService {
     actor: AuthenticatedUser,
   ) {
     await this.access.assertCanRead(actor, projectId);
+    await this.access.assertNotArchived(projectId);
     await this.assertFolderLevel(actor, projectId, folderId, true);
     await this.assertFolderExists(folderId, projectId, actor);
 
     const canApprove = await this.access.canManageTasks(actor, projectId);
 
+    const asSigned = dto.asSigned === 'true';
+    if (asSigned && !canApprove) {
+      throw new ForbiddenException(
+        'Tylko dyrektor lub koordynator może wgrać dokument jako podpisany',
+      );
+    }
+
     let status = 'PENDING_APPROVAL';
     if (dto.asDraft === 'true') {
       status = 'DRAFT';
+    } else if (asSigned) {
+      status = 'SIGNED';
     } else if (canApprove) {
       status = 'APPROVED';
     }
@@ -160,10 +171,18 @@ export class DocumentsService {
     }
 
     const signing = dto.markSigned === 'true';
-    if (signing && document.status !== 'APPROVED') {
-      throw new BadRequestException(
-        'Podpisany może być tylko zatwierdzony dokument',
-      );
+    if (signing) {
+      const canApprove = await this.access.canManageTasks(actor, projectId);
+      if (!canApprove) {
+        throw new ForbiddenException(
+          'Tylko dyrektor lub koordynator może oznaczyć dokument jako podpisany',
+        );
+      }
+      if (document.status !== 'APPROVED') {
+        throw new BadRequestException(
+          'Podpisany może być tylko zatwierdzony dokument',
+        );
+      }
     }
 
     const versionLast = await this.prisma.documentVersion.findFirst({
@@ -206,10 +225,19 @@ export class DocumentsService {
           data: { status: nextStatus },
         }),
       ])
-      .catch(() => {
-        throw new ConflictException(
-          'Ktoś właśnie dodał nową wersję. Odśwież stronę i spróbuj ponownie.',
-        );
+      .catch(async (error: unknown) => {
+        await this.storage.remove(key).catch(() => undefined);
+
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2002'
+        ) {
+          throw new ConflictException(
+            'Ktoś właśnie dodał nową wersję. Odśwież stronę i spróbuj ponownie.',
+          );
+        }
+
+        throw error;
       });
 
     return version;
@@ -350,18 +378,38 @@ export class DocumentsService {
       throw new BadRequestException('Aktualna wersja ma już tę treść');
     }
 
-    return await this.prisma.documentVersion.create({
-      data: {
-        documentId,
-        versionNo: latest.versionNo + 1,
-        storageKey: source?.storageKey,
-        fileName: source.fileName,
-        mimeType: source.mimeType,
-        sizeBytes: source.sizeBytes,
-        uploadedById: userId,
-        changeNote: `Przywrócono wersję v${versionNo}`,
-      },
+    const document = await this.prisma.document.findFirst({
+      where: { id: documentId, projectId, deletedAt: null },
     });
+    if (!document) {
+      throw new NotFoundException('Nie znaleziono dokumentu');
+    }
+
+    let nextStatus = document.status;
+    if (document.status === 'APPROVED' || document.status === 'SIGNED') {
+      nextStatus = 'PENDING_APPROVAL';
+    }
+
+    const [version] = await this.prisma.$transaction([
+      this.prisma.documentVersion.create({
+        data: {
+          documentId,
+          versionNo: latest.versionNo + 1,
+          storageKey: source.storageKey,
+          fileName: source.fileName,
+          mimeType: source.mimeType,
+          sizeBytes: source.sizeBytes,
+          uploadedById: userId,
+          changeNote: `Przywrócono wersję v${versionNo}`,
+        },
+      }),
+      this.prisma.document.update({
+        where: { id: documentId },
+        data: { status: nextStatus },
+      }),
+    ]);
+
+    return version;
   }
 
   async deleteDocument(

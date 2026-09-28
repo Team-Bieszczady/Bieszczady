@@ -218,6 +218,7 @@ describe('DocumentsService', () => {
 
   // Set per test to steer the two permission services.
   let canManage: boolean;
+  let archived: boolean;
   let level: 'VIEW' | 'EDIT' | null;
 
   const addFolder = (row: Partial<FolderRow> & { id: string }): FolderRow => {
@@ -270,11 +271,17 @@ describe('DocumentsService', () => {
     prisma = createFakePrisma();
     storage = createFakeStorage();
     canManage = true;
+    archived = false;
     level = 'EDIT';
 
     const fakeAccess = {
       assertCanRead: () => Promise.resolve(),
-      assertNotArchived: () => Promise.resolve(),
+      assertNotArchived: () =>
+        archived
+          ? Promise.reject(
+              new ForbiddenException('Projekt jest zarchiwizowany'),
+            )
+          : Promise.resolve(),
       canManageTasks: () => Promise.resolve(canManage),
     };
 
@@ -349,6 +356,62 @@ describe('DocumentsService', () => {
           ACTOR,
         ),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it('saves as signed when someone who manages asks for it', async () => {
+      const created = await service.createDocument(
+        PROJECT,
+        FOLDER,
+        OWNER,
+        { name: 'Umowa', kind: 'CONTRACT', asSigned: 'true' },
+        FILE,
+        ACTOR,
+      );
+
+      expect(created.status).toBe('SIGNED');
+    });
+
+    it('refuses to save as signed when the uploader cannot approve', async () => {
+      canManage = false;
+
+      await expect(
+        service.createDocument(
+          PROJECT,
+          FOLDER,
+          OWNER,
+          { name: 'Umowa', kind: 'CONTRACT', asSigned: 'true' },
+          FILE,
+          ACTOR,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('keeps a draft a draft even when signed is asked for too', async () => {
+      const created = await service.createDocument(
+        PROJECT,
+        FOLDER,
+        OWNER,
+        { name: 'Umowa', kind: 'CONTRACT', asDraft: 'true', asSigned: 'true' },
+        FILE,
+        ACTOR,
+      );
+
+      expect(created.status).toBe('DRAFT');
+    });
+
+    it('refuses to upload into an archived project', async () => {
+      archived = true;
+
+      await expect(
+        service.createDocument(
+          PROJECT,
+          FOLDER,
+          OWNER,
+          { name: 'Umowa', kind: 'CONTRACT' },
+          FILE,
+          ACTOR,
+        ),
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it('saves as a draft when the uploader asks for it', async () => {
@@ -431,6 +494,32 @@ describe('DocumentsService', () => {
       );
 
       expect(prisma.documents[0].status).toBe('SIGNED');
+    });
+
+    it('refuses to sign for someone who cannot approve', async () => {
+      canManage = false;
+      addDocument({ id: 'doc-1', status: 'APPROVED' });
+      addVersion({ id: 'v1', documentId: 'doc-1' });
+
+      await expect(
+        service.createVersion(
+          'doc-1',
+          PROJECT,
+          OWNER,
+          { markSigned: 'true' },
+          FILE,
+          ACTOR,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('sends a signed document back for approval', async () => {
+      addDocument({ id: 'doc-1', status: 'SIGNED' });
+      addVersion({ id: 'v1', documentId: 'doc-1' });
+
+      await service.createVersion('doc-1', PROJECT, OWNER, {}, FILE, ACTOR);
+
+      expect(prisma.documents[0].status).toBe('PENDING_APPROVAL');
     });
 
     it('refuses to sign a document that is not approved', async () => {
@@ -640,6 +729,26 @@ describe('DocumentsService', () => {
       expect(created.versionNo).toBe(3);
       expect(created.storageKey).toBe('stary');
       expect(created.changeNote).toBe('Przywrócono wersję v1');
+    });
+
+    it('sends a signed document back for approval', async () => {
+      addDocument({ id: 'doc-1', status: 'SIGNED' });
+      addVersion({
+        id: 'v1',
+        documentId: 'doc-1',
+        versionNo: 1,
+        storageKey: 'stary',
+      });
+      addVersion({
+        id: 'v2',
+        documentId: 'doc-1',
+        versionNo: 2,
+        storageKey: 'nowy',
+      });
+
+      await service.restoreVersion(PROJECT, 'doc-1', 1, OWNER, ACTOR);
+
+      expect(prisma.documents[0].status).toBe('PENDING_APPROVAL');
     });
 
     it('refuses when the latest version already holds that content', async () => {

@@ -22,4 +22,8 @@ export class CreateDocumentDto {
   @IsOptional()
   @IsIn(['true', 'false'])
   asDraft?: string;
+
+  @IsOptional()
+  @IsIn(['true', 'false'])
+  asSigned?: string;
 }

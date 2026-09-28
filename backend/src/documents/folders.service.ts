@@ -23,7 +23,6 @@ const TEMPLATE_FOLDERS = [
   'Budżet',
 ];
 
-
 @Injectable()
 export class FoldersService {
   constructor(
