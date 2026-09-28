@@ -75,6 +75,29 @@ export class DocumentAccessService {
     return await this.folderLevelFor(doc.folderId, userId);
   }
 
+  async levelsForDocuments(
+    actor: AuthenticatedUser,
+    projectId: string,
+    folderId: string,
+    documentIds: string[],
+  ): Promise<Map<string, string | null>> {
+    const canManage = await this.access.canManageTasks(actor, projectId);
+    if (canManage) {
+      return new Map(documentIds.map((id) => [id, 'EDIT']));
+    }
+
+    const folderLevel = await this.folderLevelFor(folderId, actor.id);
+    const rows = await this.prisma.documentAccess.findMany({
+      where: { userId: actor.id, documentId: { in: documentIds } },
+      select: { documentId: true, level: true },
+    });
+    const byDocument = new Map(rows.map((row) => [row.documentId, row.level]));
+
+    return new Map(
+      documentIds.map((id) => [id, byDocument.get(id) ?? folderLevel]),
+    );
+  }
+
   async levelFor(
     actor: AuthenticatedUser,
     projectId: string,

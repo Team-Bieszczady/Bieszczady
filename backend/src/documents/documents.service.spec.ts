@@ -220,6 +220,8 @@ describe('DocumentsService', () => {
   let canManage: boolean;
   let archived: boolean;
   let level: 'VIEW' | 'EDIT' | null;
+  // Left undefined, folders answer with `level` like everything else.
+  let folderLevel: 'VIEW' | 'EDIT' | null | undefined;
 
   const addFolder = (row: Partial<FolderRow> & { id: string }): FolderRow => {
     const full: FolderRow = {
@@ -273,6 +275,7 @@ describe('DocumentsService', () => {
     canManage = true;
     archived = false;
     level = 'EDIT';
+    folderLevel = undefined;
 
     const fakeAccess = {
       assertCanRead: () => Promise.resolve(),
@@ -286,7 +289,20 @@ describe('DocumentsService', () => {
     };
 
     const fakeDocumentAccess = {
-      levelFor: () => Promise.resolve(level),
+      levelFor: (
+        _actor: AuthenticatedUser,
+        _projectId: string,
+        target: { folderId?: string; documentId?: string },
+      ) =>
+        Promise.resolve(
+          target.folderId && folderLevel !== undefined ? folderLevel : level,
+        ),
+      levelsForDocuments: (
+        _actor: AuthenticatedUser,
+        _projectId: string,
+        _folderId: string,
+        documentIds: string[],
+      ) => Promise.resolve(new Map(documentIds.map((id) => [id, level]))),
     };
 
     service = new DocumentsService(
@@ -586,6 +602,15 @@ describe('DocumentsService', () => {
       expect(found.map((d) => d.id)).toEqual(['doc-1']);
     });
 
+    it('tells the caller what they may do with each document', async () => {
+      level = 'VIEW';
+      addDocument({ id: 'doc-1' });
+
+      const found = await service.getDocuments(PROJECT, FOLDER, ACTOR);
+
+      expect(found[0].accessLevel).toBe('VIEW');
+    });
+
     it('refuses when the folder is not shared with the caller', async () => {
       level = null;
 
@@ -681,6 +706,30 @@ describe('DocumentsService', () => {
       await expect(
         service.restoreDocument(PROJECT, 'doc-1', {}, ACTOR),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it('refuses with view access only', async () => {
+      level = 'VIEW';
+      addDocument({ id: 'doc-1', deletedAt: new Date() });
+
+      await expect(
+        service.restoreDocument(PROJECT, 'doc-1', {}, ACTOR),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('refuses to restore into a folder the caller may only view', async () => {
+      folderLevel = 'VIEW';
+      addFolder({ id: 'folder-2' });
+      addDocument({ id: 'doc-1', deletedAt: new Date() });
+
+      await expect(
+        service.restoreDocument(
+          PROJECT,
+          'doc-1',
+          { folderId: 'folder-2' },
+          ACTOR,
+        ),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 

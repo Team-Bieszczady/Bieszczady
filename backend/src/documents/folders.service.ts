@@ -44,31 +44,42 @@ export class FoldersService {
       return folders.map((folder) => ({
         ...folder,
         pendingCount: pendingByFolder.get(folder.id) ?? 0,
+        accessLevel: 'EDIT',
       }));
     }
 
     const granted = await this.prisma.documentAccess.findMany({
       where: { projectId: id, userId: actor.id, folderId: { not: null } },
-      select: { folderId: true },
+      select: { folderId: true, level: true },
     });
-    const grantedIds = new Set(granted.map((g) => g.folderId));
+    const levelByFolder = new Map(
+      granted.map((g) => [g.folderId as string, g.level]),
+    );
     const byId = new Map(folders.map((f) => [f.id, f]));
 
-    const visible = folders.filter((folder) => {
-      let current: typeof folder | undefined = folder;
-      while (current) {
-        if (grantedIds.has(current.id)) {
-          return true;
+    const levelOf = (folder: (typeof folders)[number]) => {
+      let current: (typeof folders)[number] | undefined = folder;
+      let steps = 0;
+
+      while (current && steps++ <= MAX_FOLDER_DEPTH) {
+        const level = levelByFolder.get(current.id);
+        if (level) {
+          return level;
         }
         current = current.parentId ? byId.get(current.parentId) : undefined;
       }
-      return false;
-    });
+      return null;
+    };
 
-    const visibleIds = new Set(visible.map((f) => f.id));
-    return visible.map((folder) => ({
+    const visible = folders
+      .map((folder) => ({ folder, accessLevel: levelOf(folder) }))
+      .filter((row) => row.accessLevel !== null);
+
+    const visibleIds = new Set(visible.map((row) => row.folder.id));
+    return visible.map(({ folder, accessLevel }) => ({
       ...folder,
       pendingCount: 0,
+      accessLevel,
       parentId:
         folder.parentId && visibleIds.has(folder.parentId)
           ? folder.parentId

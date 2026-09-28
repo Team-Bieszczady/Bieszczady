@@ -21,6 +21,13 @@ interface DocumentRow {
   deletedAt: Date | null;
 }
 
+interface AccessRow {
+  [key: string]: unknown;
+  folderId: string;
+  userId: string;
+  level: string;
+}
+
 type Where = Record<string, unknown>;
 
 function matches(row: Record<string, unknown>, where: Where): boolean {
@@ -34,11 +41,17 @@ function matches(row: Record<string, unknown>, where: Where): boolean {
 function createFakePrisma() {
   const folders: FolderRow[] = [];
   const documents: DocumentRow[] = [];
+  const accesses: AccessRow[] = [];
   let nextId = 1;
 
   return {
     folders,
     documents,
+    accesses,
+    documentAccess: {
+      findMany: ({ where }: { where: Where }) =>
+        Promise.resolve(accesses.filter((row) => row.userId === where.userId)),
+    },
     folder: {
       findMany: ({
         where,
@@ -102,11 +115,13 @@ describe('FoldersService', () => {
   const OWNER = 'user-1';
   const ACTOR = { id: OWNER, isDirector: true } as AuthenticatedUser;
 
-  // These tests cover folder rules, not permissions, so access always passes.
+  // Most tests cover folder rules, not permissions, so access passes by default.
+  let canManage = true;
+
   const fakeAccess = {
     assertCanRead: () => Promise.resolve(),
     assertNotArchived: () => Promise.resolve(),
-    canManageTasks: () => Promise.resolve(true),
+    canManageTasks: () => Promise.resolve(canManage),
   };
 
   let prisma: ReturnType<typeof createFakePrisma>;
@@ -126,6 +141,7 @@ describe('FoldersService', () => {
   };
 
   beforeEach(() => {
+    canManage = true;
     prisma = createFakePrisma();
     service = new FoldersService(
       prisma as unknown as PrismaService,
@@ -150,6 +166,57 @@ describe('FoldersService', () => {
       const found = await service.findAllForProject(PROJECT, ACTOR);
 
       expect(found.map((f) => f.id)).toEqual(['a']);
+    });
+
+    it('marks every folder as editable for someone who manages', async () => {
+      addFolder({ id: 'a' });
+
+      const found = await service.findAllForProject(PROJECT, ACTOR);
+
+      expect(found[0].accessLevel).toBe('EDIT');
+    });
+
+    it('shows a viewer only the folders granted to them', async () => {
+      addFolder({ id: 'a' });
+      addFolder({ id: 'b' });
+      canManage = false;
+      prisma.accesses.push({ folderId: 'a', userId: OWNER, level: 'VIEW' });
+
+      const found = await service.findAllForProject(PROJECT, ACTOR);
+
+      expect(found.map((f) => f.id)).toEqual(['a']);
+      expect(found[0].accessLevel).toBe('VIEW');
+    });
+
+    it('passes the level down from the granted parent to its subfolders', async () => {
+      addFolder({ id: 'parent' });
+      addFolder({ id: 'child', parentId: 'parent' });
+      canManage = false;
+      prisma.accesses.push({
+        folderId: 'parent',
+        userId: OWNER,
+        level: 'EDIT',
+      });
+
+      const found = await service.findAllForProject(PROJECT, ACTOR);
+
+      expect(found.map((f) => f.accessLevel)).toEqual(['EDIT', 'EDIT']);
+    });
+
+    it('lets a grant on a subfolder differ from the one above it', async () => {
+      addFolder({ id: 'parent' });
+      addFolder({ id: 'child', parentId: 'parent' });
+      canManage = false;
+      prisma.accesses.push({
+        folderId: 'parent',
+        userId: OWNER,
+        level: 'EDIT',
+      });
+      prisma.accesses.push({ folderId: 'child', userId: OWNER, level: 'VIEW' });
+
+      const found = await service.findAllForProject(PROJECT, ACTOR);
+
+      expect(found.find((f) => f.id === 'child')?.accessLevel).toBe('VIEW');
     });
 
     it('sorts by name', async () => {

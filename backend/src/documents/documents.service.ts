@@ -264,7 +264,18 @@ export class DocumentsService {
 
       orderBy: { name: 'asc' },
     });
-    return documents;
+
+    const levels = await this.documentAccess.levelsForDocuments(
+      actor,
+      projectId,
+      folderId,
+      documents.map((document) => document.id),
+    );
+
+    return documents.map((document) => ({
+      ...document,
+      accessLevel: levels.get(document.id) ?? null,
+    }));
   }
 
   async downloadDocument(
@@ -295,6 +306,7 @@ export class DocumentsService {
   ) {
     await this.access.assertCanRead(actor, projectId);
     await this.access.assertNotArchived(projectId);
+    await this.assertDocumentLevel(actor, projectId, documentId, true);
     const document = await this.prisma.document.findFirst({
       where: { projectId, id: documentId, deletedAt: { not: null } },
       include: { folder: { select: { deletedAt: true } } },
@@ -305,6 +317,7 @@ export class DocumentsService {
 
     if (dto.folderId) {
       await this.assertFolderExists(dto.folderId, projectId, actor);
+      await this.assertFolderLevel(actor, projectId, dto.folderId, true);
       return await this.prisma.document.update({
         where: { id: documentId },
         data: { folderId: dto.folderId, deletedAt: null },
@@ -544,7 +557,10 @@ export class DocumentsService {
 
     const canManage = await this.access.canManageTasks(actor, projectId);
     if (canManage) {
-      return documents;
+      return documents.map((document) => ({
+        ...document,
+        accessLevel: 'EDIT',
+      }));
     }
 
     const visible = [];
@@ -553,7 +569,7 @@ export class DocumentsService {
         documentId: document.id,
       });
       if (level) {
-        visible.push(document);
+        visible.push({ ...document, accessLevel: level });
       }
     }
 
