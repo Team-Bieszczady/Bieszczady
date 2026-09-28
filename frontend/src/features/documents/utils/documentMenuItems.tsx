@@ -2,6 +2,7 @@ import {
   IoArrowUndoOutline,
   IoCheckmarkOutline,
   IoCreateOutline,
+  IoDocumentTextOutline,
   IoPersonAddOutline,
   IoSendOutline,
   IoTrashOutline,
@@ -17,12 +18,13 @@ interface Handlers {
   onRestoreDocument: (documentId: string) => void;
   onDeletePermanently: (documentId: string) => void;
   onSubmitForApproval: (documentId: string) => void;
+  onMarkSigned: (documentId: string) => void;
 }
 
 export function documentMenuItems(
   document: BackendDocument,
   variant: 'folder' | 'trash',
-  flags: { canDelete: boolean; canManage: boolean },
+  flags: { canDelete: boolean; canManage: boolean; isDirector: boolean },
   handlers: Handlers,
 ) {
   if (variant === 'trash') {
@@ -33,13 +35,17 @@ export function documentMenuItems(
         icon: <IoArrowUndoOutline className="h-4 w-4" />,
         onSelect: () => handlers.onRestoreDocument(document.id),
       },
-      {
-        id: 'delete-permanently',
-        label: 'Usuń trwale',
-        icon: <IoTrashOutline className="h-4 w-4" />,
-        tone: 'danger' as const,
-        onSelect: () => handlers.onDeletePermanently(document.id),
-      },
+      ...(flags.isDirector
+        ? [
+            {
+              id: 'delete-permanently',
+              label: 'Usuń trwale',
+              icon: <IoTrashOutline className="h-4 w-4" />,
+              tone: 'danger' as const,
+              onSelect: () => handlers.onDeletePermanently(document.id),
+            },
+          ]
+        : []),
     ];
   }
 
@@ -56,12 +62,16 @@ export function documentMenuItems(
       icon: <IoCreateOutline className="h-4 w-4" />,
       onSelect: () => handlers.onRenameDocument(document.id),
     },
-    {
-      id: 'share-document',
-      label: 'Udostępnij',
-      icon: <IoPersonAddOutline className="h-4 w-4" />,
-      onSelect: () => handlers.onShare(document.id),
-    },
+    ...(flags.canManage
+      ? [
+          {
+            id: 'share-document',
+            label: 'Udostępnij',
+            icon: <IoPersonAddOutline className="h-4 w-4" />,
+            onSelect: () => handlers.onShare(document.id),
+          },
+        ]
+      : []),
     ...(document.status === 'DRAFT'
       ? [
           {
@@ -73,7 +83,7 @@ export function documentMenuItems(
         ]
       : []),
 
-    ...(document.status === 'PENDING_APPROVAL'
+    ...(document.status === 'PENDING_APPROVAL' && flags.canManage
       ? [
           {
             id: 'approve-document',
@@ -83,6 +93,17 @@ export function documentMenuItems(
           },
         ]
       : []),
+    ...(document.status === 'APPROVED' && flags.canManage
+      ? [
+          {
+            id: 'mark-signed',
+            label: 'Oznacz jako podpisany',
+            icon: <IoDocumentTextOutline className="h-4 w-4" />,
+            onSelect: () => handlers.onMarkSigned(document.id),
+          },
+        ]
+      : []),
+
     ...(flags.canDelete
       ? [
           {

@@ -49,6 +49,7 @@ function DocumentsView({ projectId }: { projectId: string }) {
 
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
   const [collapsedIds, setCollapsedIds] = useState<string[]>([]);
+  const [signing, setSigning] = useState(false);
 
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [newFolderParentId, setNewFolderParentId] = useState<string | null>(
@@ -212,12 +213,21 @@ function DocumentsView({ projectId }: { projectId: string }) {
   const openUpload = () => {
     setUploadMode('document');
     setUploadDocumentId(null);
+    setSigning(false);
     setShowUpload(true);
   };
 
   const openNewVersion = (documentId: string) => {
     setUploadMode('version');
     setUploadDocumentId(documentId);
+    setSigning(false);
+    setShowUpload(true);
+  };
+
+  const openSigning = (documentId: string) => {
+    setUploadMode('version');
+    setUploadDocumentId(documentId);
+    setSigning(true);
     setShowUpload(true);
   };
 
@@ -356,6 +366,7 @@ function DocumentsView({ projectId }: { projectId: string }) {
               onApprove={approve}
               onShare={shareDocument}
               onSubmitForApproval={sendForApproval}
+              onMarkSigned={openSigning}
             />
           )}
           {!showTrash && !folderId && (
@@ -395,6 +406,7 @@ function DocumentsView({ projectId }: { projectId: string }) {
               onApprove={approve}
               onShare={shareDocument}
               onSubmitForApproval={sendForApproval}
+              onMarkSigned={openSigning}
             />
           )}
         </section>
@@ -417,8 +429,11 @@ function DocumentsView({ projectId }: { projectId: string }) {
 
       <UploadDocumentModal
         key={
-          showUpload ? `${uploadMode}-${uploadDocumentId ?? 'new'}` : 'closed'
+          showUpload
+            ? `${uploadMode}-${uploadDocumentId ?? 'new'}-${signing}`
+            : 'closed'
         }
+
         isOpen={showUpload}
         projectId={projectId}
         folderId={folderId ?? ''}
@@ -428,6 +443,7 @@ function DocumentsView({ projectId }: { projectId: string }) {
         initialDocumentId={uploadDocumentId}
         onClose={() => setShowUpload(false)}
         canManage={canManage}
+        signing={signing}
       />
 
       <RenameDocumentModal

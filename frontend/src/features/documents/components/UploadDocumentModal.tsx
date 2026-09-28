@@ -30,6 +30,7 @@ interface Inputs {
   kind: DocumentKind;
   versionForId: string;
   changeNote: string;
+  asSigned: boolean;
 }
 
 interface Props {
@@ -41,6 +42,7 @@ interface Props {
   initialMode: UploadMode;
   initialDocumentId: string | null;
   canManage: boolean;
+  signing: boolean;
   onClose: () => void;
 }
 
@@ -53,6 +55,7 @@ export function UploadDocumentModal({
   initialMode,
   initialDocumentId,
   canManage,
+  signing,
   onClose,
 }: Props) {
   const {
@@ -68,6 +71,7 @@ export function UploadDocumentModal({
       kind: 'CONTRACT',
       versionForId: initialDocumentId ?? '',
       changeNote: '',
+      asSigned: false,
     },
   });
 
@@ -90,9 +94,16 @@ export function UploadDocumentModal({
     : null;
 
   let primaryLabel = 'Zapisz';
-  if (mode === 'document') {
+  if (signing) {
+    primaryLabel = 'Oznacz jako podpisany';
+  } else if (mode === 'document') {
     primaryLabel = canManage ? 'Zapisz i zatwierdź' : 'Wyślij do akceptacji';
   }
+
+  const title = signing ? 'Wgraj skan podpisanego dokumentu' : 'Wgraj plik';
+
+  const signedDocumentLabel =
+    documents.find((doc) => doc.id === initialDocumentId)?.name ?? '';
 
   const submit = (data: Inputs, asDraft: boolean) => {
     if (!data.file) {
@@ -101,7 +112,13 @@ export function UploadDocumentModal({
 
     if (data.mode === 'document') {
       upload.mutate(
-        { name: data.name.trim(), kind: data.kind, file: data.file, asDraft },
+        {
+          name: data.name.trim(),
+          kind: data.kind,
+          file: data.file,
+          asDraft,
+          asSigned: data.asSigned,
+        },
         {
           onSuccess: () => {
             showSuccess(asDraft ? 'Zapisano jako roboczy' : 'Dokument wgrany');
@@ -115,10 +132,19 @@ export function UploadDocumentModal({
     }
 
     uploadVersion.mutate(
-      { file: data.file, changeNote: data.changeNote.trim() },
+      {
+        file: data.file,
+        changeNote: data.changeNote.trim(),
+        markSigned: signing,
+      },
       {
         onSuccess: () => {
-          showSuccess('Nowa wersja wgrana');
+          showSuccess(
+            signing
+              ? 'Dokument oznaczony jako podpisany'
+              : 'Nowa wersja wgrana',
+          );
+
           onClose();
         },
         onError: showError,
@@ -127,7 +153,7 @@ export function UploadDocumentModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Wgraj plik">
+    <Modal isOpen={isOpen} onClose={onClose} title={title}>
       <form
         onSubmit={handleSubmit((data) => submit(data, false))}
         className="space-y-5"
@@ -144,27 +170,29 @@ export function UploadDocumentModal({
           <FieldError message={errors.file?.message} />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <label className="flex items-center gap-2 text-xs font-semibold text-dark/75 cursor-pointer">
-            <input
-              type="radio"
-              value="document"
-              className="accent-darkGreen"
-              {...register('mode')}
-            />
-            Nowy dokument
-          </label>
+        {!signing && (
+          <div className="grid grid-cols-2 gap-4">
+            <label className="flex items-center gap-2 text-xs font-semibold text-dark/75 cursor-pointer">
+              <input
+                type="radio"
+                value="document"
+                className="accent-darkGreen"
+                {...register('mode')}
+              />
+              Nowy dokument
+            </label>
 
-          <label className="flex items-center gap-2 text-xs font-semibold text-dark/75 cursor-pointer">
-            <input
-              type="radio"
-              value="version"
-              className="accent-darkGreen"
-              {...register('mode')}
-            />
-            Nowa wersja
-          </label>
-        </div>
+            <label className="flex items-center gap-2 text-xs font-semibold text-dark/75 cursor-pointer">
+              <input
+                type="radio"
+                value="version"
+                className="accent-darkGreen"
+                {...register('mode')}
+              />
+              Nowa wersja
+            </label>
+          </div>
+        )}
 
         {mode === 'document' && (
           <>
@@ -218,6 +246,16 @@ export function UploadDocumentModal({
                 <FieldError message={errors.kind?.message} />
               </div>
             </div>
+            {canManage && (
+              <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold text-dark/75">
+                <input
+                  type="checkbox"
+                  className="accent-darkGreen"
+                  {...register('asSigned')}
+                />
+                Dokument jest już podpisany
+              </label>
+            )}
           </>
         )}
 
@@ -228,31 +266,42 @@ export function UploadDocumentModal({
                 Dokument, do którego dodajesz wersję:{' '}
                 <span className="text-red-500">*</span>
               </label>
-              <Controller
-                name="versionForId"
-                control={control}
-                rules={{
-                  validate: (value, values) =>
-                    values.mode !== 'version' ||
-                    value.length > 0 ||
-                    'Wybierz dokument',
-                }}
-                render={({ field }) => (
-                  <Select
-                    size="md"
-                    options={documentOptions}
-                    placeholder="Wybierz"
-                    value={field.value}
-                    onChange={field.onChange}
-                    onBlur={field.onBlur}
+
+              {signing ? (
+                <p className="rounded-lg bg-gray-50 px-3 py-2 text-sm text-dark">
+                  {signedDocumentLabel}
+                </p>
+              ) : (
+                <>
+                  <Controller
+                    name="versionForId"
+                    control={control}
+                    rules={{
+                      validate: (value, values) =>
+                        values.mode !== 'version' ||
+                        value.length > 0 ||
+                        'Wybierz dokument',
+                    }}
+                    render={({ field }) => (
+                      <Select
+                        size="md"
+                        options={documentOptions}
+                        placeholder="Wybierz"
+                        value={field.value}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                      />
+                    )}
                   />
-                )}
-              />
-              <FieldError message={errors.versionForId?.message} />
-              <p className="mt-1 text-xs text-gray-400">
-                Lista zawiera dokumenty z folderu:{' '}
-                <span className="font-semibold text-dark">{folderName}</span>
-              </p>
+                  <FieldError message={errors.versionForId?.message} />
+                  <p className="mt-1 text-xs text-gray-400">
+                    Lista zawiera dokumenty z folderu:{' '}
+                    <span className="font-semibold text-dark">
+                      {folderName}
+                    </span>
+                  </p>
+                </>
+              )}
             </div>
 
             {nextVersionNo && (

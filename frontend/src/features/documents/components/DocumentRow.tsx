@@ -28,6 +28,7 @@ interface Props {
   onApprove: (documentId: string) => void;
   onShare: (documentId: string) => void;
   onSubmitForApproval: (documentId: string) => void;
+  onMarkSigned: (documentId: string) => void;
 }
 
 const canPreview = (mimeType: string) => {
@@ -51,6 +52,7 @@ export const DocumentRow = ({
   onApprove,
   onShare,
   onSubmitForApproval,
+  onMarkSigned,
 }: Props) => {
   const version = document.versions[0];
   const {
@@ -139,26 +141,25 @@ export const DocumentRow = ({
                 </button>
               )}
             </div>
-            {variant === 'folder' && (
-              <ActionMenu
-                ariaLabel={`Akcje dokumentu ${document.name}`}
-                items={documentMenuItems(
-                  document,
-                  variant,
-                  { canDelete, canManage },
-                  {
-                    onNewVersion,
-                    onRenameDocument,
-                    onShare,
-                    onApprove,
-                    onDeleteDocument,
-                    onRestoreDocument,
-                    onDeletePermanently,
-                    onSubmitForApproval,
-                  },
-                )}
-              />
-            )}
+            <ActionMenu
+              ariaLabel={`Akcje dokumentu ${document.name}`}
+              items={documentMenuItems(
+                document,
+                variant,
+                { canDelete, canManage, isDirector: Boolean(user?.isDirector) },
+                {
+                  onNewVersion,
+                  onRenameDocument,
+                  onShare,
+                  onApprove,
+                  onDeleteDocument,
+                  onRestoreDocument,
+                  onDeletePermanently,
+                  onSubmitForApproval,
+                  onMarkSigned,
+                },
+              )}
+            />
           </div>
         </td>
       </tr>

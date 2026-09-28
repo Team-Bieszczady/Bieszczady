@@ -5,6 +5,7 @@ import { useAuthToken } from '../../../context/useAuthToken';
 interface UploadVersionInput {
   file: File;
   changeNote?: string;
+  markSigned?: boolean;
 }
 export function useUploadVersion(
   projectId: string,
@@ -20,6 +21,10 @@ export function useUploadVersion(
       if (payload.changeNote) {
         formData.append('changeNote', payload.changeNote);
       }
+      if (payload.markSigned) {
+        formData.append('markSigned', 'true');
+      }
+
       return api.uploadVersion(requireToken(), projectId, documentId, formData);
     },
     onSuccess: async () => {
@@ -29,6 +34,10 @@ export function useUploadVersion(
       queryClient.invalidateQueries({
         queryKey: ['documents', projectId, folderId],
       });
+      queryClient.invalidateQueries({
+        queryKey: ['pending-count', projectId],
+      });
+      queryClient.invalidateQueries({ queryKey: ['folders', projectId] });
     },
   });
 }

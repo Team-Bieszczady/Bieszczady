@@ -8,6 +8,7 @@ interface UploadDocumentInput {
   kind: DocumentKind;
   file: File;
   asDraft: boolean;
+  asSigned: boolean;
 }
 
 export function useUploadDocument(projectId: string, folderId: string) {
@@ -22,6 +23,9 @@ export function useUploadDocument(projectId: string, folderId: string) {
       formData.append('file', payload.file);
       if (payload.asDraft) {
         formData.append('asDraft', 'true');
+      }
+      if (payload.asSigned) {
+        formData.append('asSigned', 'true');
       }
 
       return api.uploadDocument(requireToken(), projectId, folderId, formData);

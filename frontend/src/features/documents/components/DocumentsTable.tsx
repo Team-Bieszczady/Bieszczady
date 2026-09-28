@@ -16,6 +16,7 @@ interface Props {
   onPreview: (documentId: string, versionNo: number) => void;
   onRestoreVersion: (documentId: string, versionNo: number) => void;
   onSubmitForApproval: (documentId: string) => void;
+  onMarkSigned: (documentId: string) => void;
   onApprove: (documentId: string) => void;
   onShare: (documentId: string) => void;
 }
@@ -40,6 +41,7 @@ export function DocumentsTable({
   onApprove,
   onShare,
   onSubmitForApproval,
+  onMarkSigned,
 }: Props) {
   if (documents.length === 0) {
     return (
@@ -84,6 +86,7 @@ export function DocumentsTable({
                 onApprove={onApprove}
                 onShare={onShare}
                 onSubmitForApproval={onSubmitForApproval}
+                onMarkSigned={onMarkSigned}
               />
             ))}
           </tbody>
@@ -110,6 +113,7 @@ export function DocumentsTable({
             onApprove={onApprove}
             onShare={onShare}
             onSubmitForApproval={onSubmitForApproval}
+            onMarkSigned={onMarkSigned}
           />
         ))}
       </div>

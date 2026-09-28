@@ -8,6 +8,7 @@ import { fileExtension, formatDate, formatFileSize } from '../utils/formatters';
 import { documentMenuItems } from '../utils/documentMenuItems';
 import { ActionMenu } from '../../../components/ui/ActionMenu';
 import { useAuth } from '../../../context/useAuth';
+import { useViewerManages } from '../../projects/hooks/useViewerManages';
 
 interface Props {
   document: BackendDocument;
@@ -26,6 +27,7 @@ interface Props {
   onApprove: (documentId: string) => void;
   onShare: (documentId: string) => void;
   onSubmitForApproval: (documentId: string) => void;
+  onMarkSigned: (documentId: string) => void;
 }
 
 const canPreview = (mimeType: string) =>
@@ -33,6 +35,7 @@ const canPreview = (mimeType: string) =>
 
 export const DocumentCard = ({
   document,
+  projectId,
   variant,
   onDownload,
   onNewVersion,
@@ -44,6 +47,7 @@ export const DocumentCard = ({
   onApprove,
   onShare,
   onSubmitForApproval,
+  onMarkSigned,
 }: Props) => {
   const version = document.versions[0];
   const { user } = useAuth();
@@ -51,6 +55,7 @@ export const DocumentCard = ({
   const isLocked =
     document.status === 'APPROVED' || document.status === 'SIGNED';
   const canDelete = !isLocked || Boolean(user?.isDirector);
+  const canManage = useViewerManages(projectId);
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4">
@@ -69,16 +74,22 @@ export const DocumentCard = ({
 
         <ActionMenu
           ariaLabel={`Akcje dokumentu ${document.name}`}
-          items={documentMenuItems(document, variant, canDelete, {
-            onNewVersion,
-            onRenameDocument,
-            onShare,
-            onApprove,
-            onDeleteDocument,
-            onRestoreDocument,
-            onDeletePermanently,
-            onSubmitForApproval,
-          })}
+          items={documentMenuItems(
+            document,
+            variant,
+            { canDelete, canManage, isDirector: Boolean(user?.isDirector) },
+            {
+              onNewVersion,
+              onRenameDocument,
+              onShare,
+              onApprove,
+              onDeleteDocument,
+              onRestoreDocument,
+              onDeletePermanently,
+              onSubmitForApproval,
+              onMarkSigned,
+            },
+          )}
         />
       </div>
 

@@ -26,7 +26,7 @@ interface Props {
 }
 
 export function ShareModal({ projectId, target, targetName, onClose }: Props) {
-  const { data: rows } = useDocumentAccess(projectId, target);
+  const { data: rows, error } = useDocumentAccess(projectId, target);
   const grant = useGrantAccess(projectId);
   const revoke = useRevokeAccess(projectId);
 
@@ -67,6 +67,12 @@ export function ShareModal({ projectId, target, targetName, onClose }: Props) {
       title={`Udostępnij: ${targetName ?? ''}`}
     >
       <div className="space-y-4">
+        {error && (
+          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+            {error.message}
+          </p>
+        )}
+
         {rows?.map((row) => (
           <div
             key={row.userId}
