@@ -18,7 +18,11 @@ const TEMPLATE_FOLDERS = [
   'Promocyjne',
   'Zatwierdzone',
   'Sprawozdawczość',
+  'Umowa',
+  'Wskaźniki',
+  'Budżet',
 ];
+
 
 @Injectable()
 export class FoldersService {
