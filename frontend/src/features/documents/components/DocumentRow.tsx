@@ -29,11 +29,14 @@ interface Props {
   onShare: (documentId: string) => void;
   onSubmitForApproval: (documentId: string) => void;
   onMarkSigned: (documentId: string) => void;
+  onRevertApproval: (documentId: string) => void;
+  onWithdrawToDraft: (documentId: string) => void;
 }
 
-const canPreview = (mimeType: string) => {
-  return mimeType === 'application/pdf' || mimeType.startsWith('image/');
-};
+const PREVIEWABLE = ['application/pdf', 'text/plain', 'text/csv'];
+
+const canPreview = (mimeType: string) =>
+  PREVIEWABLE.includes(mimeType) || mimeType.startsWith('image/');
 
 export const DocumentRow = ({
   document,
@@ -53,6 +56,8 @@ export const DocumentRow = ({
   onShare,
   onSubmitForApproval,
   onMarkSigned,
+  onRevertApproval,
+  onWithdrawToDraft,
 }: Props) => {
   const version = document.versions[0];
   const {
@@ -121,7 +126,7 @@ export const DocumentRow = ({
 
         <td className="px-4 py-3">
           <div className="flex items-center justify-end gap-2">
-            <div className="flex gap-4">
+            <div className="flex w-32 justify-end gap-4">
               {version && canPreview(version.mimeType) && (
                 <button
                   type="button"
@@ -143,30 +148,34 @@ export const DocumentRow = ({
                 </button>
               )}
             </div>
-            <ActionMenu
-              ariaLabel={`Akcje dokumentu ${document.name}`}
-              items={documentMenuItems(
-                document,
-                variant,
-                {
-                  canDelete,
-                  canManage,
-                  canEdit,
-                  isDirector: Boolean(user?.isDirector),
-                },
-                {
-                  onNewVersion,
-                  onRenameDocument,
-                  onShare,
-                  onApprove,
-                  onDeleteDocument,
-                  onRestoreDocument,
-                  onDeletePermanently,
-                  onSubmitForApproval,
-                  onMarkSigned,
-                },
-              )}
-            />
+            <div className="w-7 shrink-0">
+              <ActionMenu
+                ariaLabel={`Akcje dokumentu ${document.name}`}
+                items={documentMenuItems(
+                  document,
+                  variant,
+                  {
+                    canDelete,
+                    canManage,
+                    canEdit,
+                    isDirector: Boolean(user?.isDirector),
+                  },
+                  {
+                    onNewVersion,
+                    onRenameDocument,
+                    onShare,
+                    onApprove,
+                    onDeleteDocument,
+                    onRestoreDocument,
+                    onDeletePermanently,
+                    onSubmitForApproval,
+                    onMarkSigned,
+                    onRevertApproval,
+                    onWithdrawToDraft,
+                  },
+                )}
+              />
+            </div>
           </div>
         </td>
       </tr>

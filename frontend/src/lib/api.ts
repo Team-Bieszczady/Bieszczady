@@ -678,6 +678,36 @@ export const api = {
     );
   },
 
+  async withdrawToDraft(
+    accessToken: string,
+    projectId: string,
+    documentId: string,
+  ): Promise<BackendDocument> {
+    return request<BackendDocument>(
+      `/api/v1/projects/${projectId}/documents/${documentId}/withdraw`,
+      {
+        method: 'POST',
+        accessToken,
+        fallbackMessage: 'Nie udało się wycofać dokumentu',
+      },
+    );
+  },
+
+  async revertApproval(
+    accessToken: string,
+    projectId: string,
+    documentId: string,
+  ): Promise<BackendDocument> {
+    return request<BackendDocument>(
+      `/api/v1/projects/${projectId}/documents/${documentId}/revert-approval`,
+      {
+        method: 'POST',
+        accessToken,
+        fallbackMessage: 'Nie udało się cofnąć akceptacji',
+      },
+    );
+  },
+
   async getPendingCount(
     accessToken: string,
     projectId: string,

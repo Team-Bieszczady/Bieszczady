@@ -981,6 +981,61 @@ describe('DocumentsService', () => {
     });
   });
 
+  describe('withdrawToDraft', () => {
+    it('sends a waiting document back to the author', async () => {
+      canManage = false;
+      addDocument({ id: 'doc-1', status: 'PENDING_APPROVAL' });
+
+      const withdrawn = await service.withdrawToDraft(PROJECT, 'doc-1', ACTOR);
+
+      expect(withdrawn.status).toBe('DRAFT');
+    });
+
+    it('refuses with view access only', async () => {
+      level = 'VIEW';
+      addDocument({ id: 'doc-1', status: 'PENDING_APPROVAL' });
+
+      await expect(
+        service.withdrawToDraft(PROJECT, 'doc-1', ACTOR),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('refuses for a document that is not waiting', async () => {
+      addDocument({ id: 'doc-1', status: 'APPROVED' });
+
+      await expect(
+        service.withdrawToDraft(PROJECT, 'doc-1', ACTOR),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('revertApproval', () => {
+    it('sends an approved document back for approval', async () => {
+      addDocument({ id: 'doc-1', status: 'APPROVED' });
+
+      const reverted = await service.revertApproval(PROJECT, 'doc-1', ACTOR);
+
+      expect(reverted.status).toBe('PENDING_APPROVAL');
+    });
+
+    it('refuses for someone who does not manage the project', async () => {
+      canManage = false;
+      addDocument({ id: 'doc-1', status: 'APPROVED' });
+
+      await expect(
+        service.revertApproval(PROJECT, 'doc-1', ACTOR),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('refuses for a document that is not approved', async () => {
+      addDocument({ id: 'doc-1', status: 'SIGNED' });
+
+      await expect(
+        service.revertApproval(PROJECT, 'doc-1', ACTOR),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
   describe('getTrash', () => {
     it('shows the whole trash to someone who manages the project', async () => {
       addDocument({ id: 'doc-1', deletedAt: new Date() });

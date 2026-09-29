@@ -1,9 +1,11 @@
 import {
   IoArrowUndoOutline,
   IoCheckmarkOutline,
+  IoCloseCircleOutline,
+  IoCloudUploadOutline,
   IoCreateOutline,
-  IoDocumentTextOutline,
   IoPersonAddOutline,
+  IoRibbonOutline,
   IoSendOutline,
   IoTrashOutline,
 } from 'react-icons/io5';
@@ -19,6 +21,8 @@ interface Handlers {
   onDeletePermanently: (documentId: string) => void;
   onSubmitForApproval: (documentId: string) => void;
   onMarkSigned: (documentId: string) => void;
+  onRevertApproval: (documentId: string) => void;
+  onWithdrawToDraft: (documentId: string) => void;
 }
 
 export function documentMenuItems(
@@ -68,7 +72,7 @@ export function documentMenuItems(
           {
             id: 'new-version',
             label: 'Wgraj nową wersję',
-            icon: <IoCreateOutline className="h-4 w-4" />,
+            icon: <IoCloudUploadOutline className="h-4 w-4" />,
             onSelect: () => handlers.onNewVersion(document.id),
           },
         ]
@@ -104,6 +108,16 @@ export function documentMenuItems(
         ]
       : []),
 
+    ...(document.status === 'PENDING_APPROVAL' && flags.canEdit
+      ? [
+          {
+            id: 'withdraw-document',
+            label: 'Wycofaj do roboczych',
+            icon: <IoArrowUndoOutline className="h-4 w-4" />,
+            onSelect: () => handlers.onWithdrawToDraft(document.id),
+          },
+        ]
+      : []),
     ...(document.status === 'PENDING_APPROVAL' && flags.canManage
       ? [
           {
@@ -117,9 +131,15 @@ export function documentMenuItems(
     ...(document.status === 'APPROVED' && flags.canManage
       ? [
           {
+            id: 'revert-approval',
+            label: 'Cofnij zatwierdzenie',
+            icon: <IoCloseCircleOutline className="h-4 w-4" />,
+            onSelect: () => handlers.onRevertApproval(document.id),
+          },
+          {
             id: 'mark-signed',
             label: 'Oznacz jako podpisany',
-            icon: <IoDocumentTextOutline className="h-4 w-4" />,
+            icon: <IoRibbonOutline className="h-4 w-4" />,
             onSelect: () => handlers.onMarkSigned(document.id),
           },
         ]

@@ -18,6 +18,8 @@ interface Props {
   onRestoreVersion: (documentId: string, versionNo: number) => void;
   onSubmitForApproval: (documentId: string) => void;
   onMarkSigned: (documentId: string) => void;
+  onRevertApproval: (documentId: string) => void;
+  onWithdrawToDraft: (documentId: string) => void;
   onApprove: (documentId: string) => void;
   onShare: (documentId: string) => void;
   sortKey?: 'name' | 'updatedAt';
@@ -50,6 +52,8 @@ export function DocumentsTable({
   onShare,
   onSubmitForApproval,
   onMarkSigned,
+  onRevertApproval,
+  onWithdrawToDraft,
   sortKey,
   sortAsc,
   onSort,
@@ -66,17 +70,22 @@ export function DocumentsTable({
         <button
           type="button"
           onClick={() => onSort(key)}
-          className={`flex cursor-pointer items-center gap-1 whitespace-nowrap uppercase ${
+          title={`Sortuj po: ${label.toLowerCase()}`}
+          className={`group flex cursor-pointer items-center gap-1 whitespace-nowrap uppercase transition-colors hover:text-dark ${
             sortKey === key ? 'text-dark' : ''
           }`}
         >
           {label}
-          {sortKey === key &&
-            (sortAsc ? (
+          {sortKey === key ? (
+            sortAsc ? (
               <IoChevronUp className="h-3 w-3" />
             ) : (
               <IoChevronDown className="h-3 w-3" />
-            ))}
+            )
+          ) : (
+            // Blada strzałka pod kursorem mówi „w to da się kliknąć".
+            <IoChevronDown className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-50" />
+          )}
         </button>
       </th>
     );
@@ -126,6 +135,8 @@ export function DocumentsTable({
                 onShare={onShare}
                 onSubmitForApproval={onSubmitForApproval}
                 onMarkSigned={onMarkSigned}
+                onRevertApproval={onRevertApproval}
+                onWithdrawToDraft={onWithdrawToDraft}
               />
             ))}
           </tbody>
@@ -153,6 +164,8 @@ export function DocumentsTable({
             onShare={onShare}
             onSubmitForApproval={onSubmitForApproval}
             onMarkSigned={onMarkSigned}
+            onRevertApproval={onRevertApproval}
+            onWithdrawToDraft={onWithdrawToDraft}
           />
         ))}
       </div>

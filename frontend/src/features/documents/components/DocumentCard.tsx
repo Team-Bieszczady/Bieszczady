@@ -30,10 +30,14 @@ interface Props {
   onShare: (documentId: string) => void;
   onSubmitForApproval: (documentId: string) => void;
   onMarkSigned: (documentId: string) => void;
+  onRevertApproval: (documentId: string) => void;
+  onWithdrawToDraft: (documentId: string) => void;
 }
 
+const PREVIEWABLE = ['application/pdf', 'text/plain', 'text/csv'];
+
 const canPreview = (mimeType: string) =>
-  mimeType === 'application/pdf' || mimeType.startsWith('image/');
+  PREVIEWABLE.includes(mimeType) || mimeType.startsWith('image/');
 
 export const DocumentCard = ({
   document,
@@ -53,6 +57,8 @@ export const DocumentCard = ({
   onShare,
   onSubmitForApproval,
   onMarkSigned,
+  onRevertApproval,
+  onWithdrawToDraft,
 }: Props) => {
   const version = document.versions[0];
   const { user } = useAuth();
@@ -105,6 +111,8 @@ export const DocumentCard = ({
               onDeletePermanently,
               onSubmitForApproval,
               onMarkSigned,
+              onRevertApproval,
+              onWithdrawToDraft,
             },
           )}
         />

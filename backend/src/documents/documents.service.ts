@@ -567,6 +567,64 @@ export class DocumentsService {
       data: { status: 'APPROVED' },
     });
   }
+  async withdrawToDraft(
+    projectId: string,
+    documentId: string,
+    actor: AuthenticatedUser,
+  ) {
+    await this.access.assertCanRead(actor, projectId);
+    await this.access.assertNotArchived(projectId);
+    await this.assertDocumentLevel(actor, projectId, documentId, true);
+
+    const document = await this.prisma.document.findFirst({
+      where: { id: documentId, projectId: projectId, deletedAt: null },
+    });
+    if (!document) {
+      throw new NotFoundException('Nie znaleziono dokumentu');
+    }
+
+    if (document.status !== 'PENDING_APPROVAL') {
+      throw new BadRequestException('Ten dokument nie czeka na akceptację');
+    }
+
+    return await this.prisma.document.update({
+      where: { id: documentId },
+      data: { status: 'DRAFT' },
+    });
+  }
+
+  async revertApproval(
+    projectId: string,
+    documentId: string,
+    actor: AuthenticatedUser,
+  ) {
+    await this.access.assertCanRead(actor, projectId);
+    await this.access.assertNotArchived(projectId);
+
+    const canApprove = await this.access.canManageTasks(actor, projectId);
+    if (!canApprove) {
+      throw new ForbiddenException(
+        'Tylko dyrektor lub koordynator projektu może cofnąć akceptację',
+      );
+    }
+
+    const document = await this.prisma.document.findFirst({
+      where: { id: documentId, projectId: projectId, deletedAt: null },
+    });
+    if (!document) {
+      throw new NotFoundException('Nie znaleziono dokumentu');
+    }
+
+    if (document.status !== 'APPROVED') {
+      throw new BadRequestException('Ten dokument nie jest zatwierdzony');
+    }
+
+    return await this.prisma.document.update({
+      where: { id: documentId },
+      data: { status: 'PENDING_APPROVAL' },
+    });
+  }
+
   async submitForApproval(
     projectId: string,
     documentId: string,

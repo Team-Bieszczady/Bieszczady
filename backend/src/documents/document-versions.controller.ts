@@ -151,6 +151,32 @@ export class DocumentVersionsController {
     );
   }
 
+  @Post('/:documentId/withdraw')
+  async withdrawToDraft(
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('documentId', ParseUUIDPipe) documentId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return await this.documentService.withdrawToDraft(
+      projectId,
+      documentId,
+      user,
+    );
+  }
+
+  @Post('/:documentId/revert-approval')
+  async revertApproval(
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('documentId', ParseUUIDPipe) documentId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return await this.documentService.revertApproval(
+      projectId,
+      documentId,
+      user,
+    );
+  }
+
   @Post('/:documentId/submit')
   async submitForApproval(
     @Param('projectId', ParseUUIDPipe) projectId: string,

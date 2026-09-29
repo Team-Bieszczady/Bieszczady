@@ -31,6 +31,8 @@ import { ShareModal } from '../features/documents/components/ShareModal';
 import { MoveFolderModal } from '../features/documents/components/MoveFolderModal';
 import { useCreateFolderTemplate } from '../features/documents/hooks/useCreateFolderTemplate';
 import { useSubmitForApproval } from '../features/documents/hooks/useSubmitForApproval';
+import { useRevertApproval } from '../features/documents/hooks/useRevertApproval';
+import { useWithdrawToDraft } from '../features/documents/hooks/useWithdrawToDraft';
 import { useViewerManages } from '../features/projects/hooks/useViewerManages';
 import { DocumentsToolbar } from '../features/documents/components/DocumentsToolbar';
 
@@ -104,6 +106,10 @@ function DocumentsView({ projectId }: { projectId: string }) {
 
   const approveDocument = useApproveDocument(projectId, folderId ?? '');
 
+  const revertApproval = useRevertApproval(projectId, folderId ?? '');
+
+  const withdrawToDraft = useWithdrawToDraft(projectId, folderId ?? '');
+
   const canManage = useViewerManages(projectId);
 
   const [shareTarget, setShareTarget] = useState<{
@@ -135,6 +141,26 @@ function DocumentsView({ projectId }: { projectId: string }) {
     }
     approveDocument.mutate(documentId, {
       onSuccess: () => showSuccess('Dokument zatwierdzony'),
+      onError: showError,
+    });
+  };
+
+  const withdraw = (documentId: string) => {
+    if (withdrawToDraft.isPending) {
+      return;
+    }
+    withdrawToDraft.mutate(documentId, {
+      onSuccess: () => showSuccess('Wycofano do roboczych'),
+      onError: showError,
+    });
+  };
+
+  const revertApprovalOf = (documentId: string) => {
+    if (revertApproval.isPending) {
+      return;
+    }
+    revertApproval.mutate(documentId, {
+      onSuccess: () => showSuccess('Cofnięto akceptację'),
       onError: showError,
     });
   };
@@ -411,6 +437,8 @@ function DocumentsView({ projectId }: { projectId: string }) {
               onShare={shareDocument}
               onSubmitForApproval={sendForApproval}
               onMarkSigned={openSigning}
+              onRevertApproval={revertApprovalOf}
+              onWithdrawToDraft={withdraw}
             />
           )}
           {!showTrash && !folderId && (
@@ -476,6 +504,8 @@ function DocumentsView({ projectId }: { projectId: string }) {
               onShare={shareDocument}
               onSubmitForApproval={sendForApproval}
               onMarkSigned={openSigning}
+              onRevertApproval={revertApprovalOf}
+              onWithdrawToDraft={withdraw}
             />
           )}
         </section>
