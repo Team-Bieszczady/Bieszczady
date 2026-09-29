@@ -32,6 +32,7 @@ import { MoveFolderModal } from '../features/documents/components/MoveFolderModa
 import { useCreateFolderTemplate } from '../features/documents/hooks/useCreateFolderTemplate';
 import { useSubmitForApproval } from '../features/documents/hooks/useSubmitForApproval';
 import { useViewerManages } from '../features/projects/hooks/useViewerManages';
+import { DocumentsToolbar } from '../features/documents/components/DocumentsToolbar';
 
 const DOCUMENT_FORMS: PluralForms = ['dokument', 'dokumenty', 'dokumentów'];
 
@@ -52,6 +53,20 @@ function DocumentsView({ projectId }: { projectId: string }) {
   const [showUpload, setShowUpload] = useState(false);
   const [uploadMode, setUploadMode] = useState<UploadMode>('document');
   const [uploadDocumentId, setUploadDocumentId] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const [kindFilter, setKindFilter] = useState('');
+
+  const [sortKey, setSortKey] = useState<'name' | 'updatedAt'>('name');
+  const [sortAsc, setSortAsc] = useState(true);
+
+  const sortBy = (key: 'name' | 'updatedAt') => {
+    if (key === sortKey) {
+      setSortAsc((wasAscending) => !wasAscending);
+      return;
+    }
+    setSortKey(key);
+    setSortAsc(key === 'name');
+  };
 
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
   const [collapsedIds, setCollapsedIds] = useState<string[]>([]);
@@ -165,6 +180,8 @@ function DocumentsView({ projectId }: { projectId: string }) {
   const selectFolder = (folderId: string) => {
     setFolderId(folderId);
     setShowTrash(false);
+    setQuery('');
+    setKindFilter('');
   };
 
   const deleteFolderName = folders?.find(
@@ -256,6 +273,22 @@ function DocumentsView({ projectId }: { projectId: string }) {
     );
   }
 
+  const needle = query.trim().toLowerCase();
+
+  const visibleDocuments = documents
+    ?.filter((doc) => {
+      const matchesName = doc.name.toLowerCase().includes(needle);
+      const matchesKind = kindFilter === '' || doc.kind === kindFilter;
+      return matchesName && matchesKind;
+    })
+    .sort((a, b) => {
+      const result =
+        sortKey === 'name'
+          ? a.name.localeCompare(b.name, 'pl')
+          : a.updatedAt.localeCompare(b.updatedAt);
+      return sortAsc ? result : -result;
+    });
+
   const openFolder = folders.find((el) => el.id === folderId);
   const nameFolder = openFolder?.name;
   const canEditFolder = openFolder?.accessLevel === 'EDIT';
@@ -264,7 +297,7 @@ function DocumentsView({ projectId }: { projectId: string }) {
   )?.name;
 
   const bytes =
-    documents?.reduce(
+    visibleDocuments?.reduce(
       (accumulator, currentValue) =>
         accumulator + (currentValue.versions[0]?.sizeBytes ?? 0),
       0,
@@ -388,15 +421,29 @@ function DocumentsView({ projectId }: { projectId: string }) {
 
           {!showTrash && folderId && (
             <div className="border-b border-gray-200 px-4 py-4 max-sm:border-0 max-sm:px-0">
-              <p className="text-base font-semibold text-dark">{nameFolder}</p>
-              {documents && (
-                <p className="mt-0.5 text-xs text-gray-400">
-                  {pluralizePl(documents.length, DOCUMENT_FORMS)} ·{' '}
-                  {formatFileSize(bytes)}
-                </p>
-              )}
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-base font-semibold text-dark">
+                    {nameFolder}
+                  </p>
+                  {visibleDocuments && (
+                    <p className="mt-0.5 text-xs text-gray-400">
+                      {pluralizePl(visibleDocuments.length, DOCUMENT_FORMS)} ·{' '}
+                      {formatFileSize(bytes)}
+                    </p>
+                  )}
+                </div>
+
+                <DocumentsToolbar
+                  query={query}
+                  onQueryChange={setQuery}
+                  kind={kindFilter}
+                  onKindChange={setKindFilter}
+                />
+              </div>
             </div>
           )}
+
           {folderId && documentsPending && !showTrash && (
             <p className="px-4 py-10 text-center text-xs text-gray-400">
               Ładowanie...
@@ -407,10 +454,13 @@ function DocumentsView({ projectId }: { projectId: string }) {
               Nie udało się wczytać dokumentów z tego folderu.
             </p>
           )}
-          {documents && !showTrash && (
+          {visibleDocuments && !showTrash && (
             <DocumentsTable
-              documents={documents}
+              documents={visibleDocuments}
               projectId={projectId}
+              sortKey={sortKey}
+              sortAsc={sortAsc}
+              onSort={sortBy}
               onDownload={download}
               expandedIds={expandedIds}
               onToggle={toggleExpanded}

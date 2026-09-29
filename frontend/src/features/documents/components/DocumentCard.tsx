@@ -78,7 +78,8 @@ export const DocumentCard = ({
           {version && (
             <p className="mt-0.5 text-xs text-gray-400">
               {fileExtension(version.fileName)} ·{' '}
-              {formatFileSize(version.sizeBytes)} · v{version.versionNo}
+              {formatFileSize(version.sizeBytes)} · v{version.versionNo} ·{' '}
+              {version.uploadedBy.firstName} {version.uploadedBy.lastName}
             </p>
           )}
         </div>

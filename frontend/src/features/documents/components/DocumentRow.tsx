@@ -91,9 +91,10 @@ export const DocumentRow = ({
         <td className="px-4 py-3">
           <p className="text-sm text-dark">{document.name}</p>
           {version && (
-            <p className="mt-0.5 text-xs text-gray-400">
+            <p className="mt-0.5 text-xs whitespace-nowrap text-gray-400">
               {fileExtension(version.fileName)} ·{' '}
-              {formatFileSize(version.sizeBytes)}
+              {formatFileSize(version.sizeBytes)} ·{' '}
+              {version.uploadedBy.firstName} {version.uploadedBy.lastName}
             </p>
           )}
         </td>

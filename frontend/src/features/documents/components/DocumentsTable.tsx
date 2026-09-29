@@ -1,3 +1,4 @@
+import { IoChevronDown, IoChevronUp } from 'react-icons/io5';
 import type { BackendDocument } from '../../../lib/api';
 import { DocumentCard } from './DocumentCard';
 import { DocumentRow } from './DocumentRow';
@@ -19,10 +20,17 @@ interface Props {
   onMarkSigned: (documentId: string) => void;
   onApprove: (documentId: string) => void;
   onShare: (documentId: string) => void;
+  sortKey?: 'name' | 'updatedAt';
+  sortAsc?: boolean;
+  onSort?: (key: 'name' | 'updatedAt') => void;
 }
 
 const HEAD_CLASS =
   'px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-400';
+
+// Krótkie kolumny zwężają się do treści, a całą wolną przestrzeń
+// zabiera kolumna z nazwą — to ona jej potrzebuje.
+const HEAD_SHRINK = `${HEAD_CLASS} w-px whitespace-nowrap`;
 
 export function DocumentsTable({
   projectId,
@@ -42,7 +50,38 @@ export function DocumentsTable({
   onShare,
   onSubmitForApproval,
   onMarkSigned,
+  sortKey,
+  sortAsc,
+  onSort,
 }: Props) {
+  const sortableHead = (key: 'name' | 'updatedAt', label: string) => {
+    const headClass = key === 'name' ? HEAD_CLASS : HEAD_SHRINK;
+
+    if (!onSort) {
+      return <th className={headClass}>{label}</th>;
+    }
+
+    return (
+      <th className={headClass}>
+        <button
+          type="button"
+          onClick={() => onSort(key)}
+          className={`flex cursor-pointer items-center gap-1 whitespace-nowrap uppercase ${
+            sortKey === key ? 'text-dark' : ''
+          }`}
+        >
+          {label}
+          {sortKey === key &&
+            (sortAsc ? (
+              <IoChevronUp className="h-3 w-3" />
+            ) : (
+              <IoChevronDown className="h-3 w-3" />
+            ))}
+        </button>
+      </th>
+    );
+  };
+
   if (documents.length === 0) {
     return (
       <p className="px-4 py-10 text-center text-xs text-gray-400">
@@ -58,11 +97,11 @@ export function DocumentsTable({
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50">
               <th className={HEAD_CLASS}></th>
-              <th className={HEAD_CLASS}>Nazwa dokumentu</th>
-              <th className={HEAD_CLASS}>Rodzaj</th>
-              <th className={HEAD_CLASS}>Zmieniono</th>
-              <th className={HEAD_CLASS}>Wersja</th>
-              <th className={HEAD_CLASS}>Status</th>
+              {sortableHead('name', 'Nazwa dokumentu')}
+              <th className={HEAD_SHRINK}>Rodzaj</th>
+              {sortableHead('updatedAt', 'Zmieniono')}
+              <th className={HEAD_SHRINK}>Wersja</th>
+              <th className={HEAD_SHRINK}>Status</th>
               <th className={HEAD_CLASS}></th>
             </tr>
           </thead>
