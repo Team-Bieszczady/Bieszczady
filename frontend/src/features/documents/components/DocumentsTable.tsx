@@ -46,7 +46,7 @@ export function DocumentsTable({
   if (documents.length === 0) {
     return (
       <p className="px-4 py-10 text-center text-xs text-gray-400">
-        Ten folder jest pusty
+        {variant === 'trash' ? 'Kosz jest pusty' : 'Ten folder jest pusty'}
       </p>
     );
   }

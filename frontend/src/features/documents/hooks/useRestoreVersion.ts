@@ -17,6 +17,8 @@ export function useRestoreVersion(projectId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['versions', projectId] });
       queryClient.invalidateQueries({ queryKey: ['documents', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['pending-count', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['folders', projectId] });
     },
   });
 }

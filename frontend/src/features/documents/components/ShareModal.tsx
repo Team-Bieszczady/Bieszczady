@@ -67,6 +67,10 @@ export function ShareModal({ projectId, target, targetName, onClose }: Props) {
       title={`Udostępnij: ${targetName ?? ''}`}
     >
       <div className="space-y-4">
+        {(grant.isPending || revoke.isPending) && (
+          <p className="text-xs text-gray-400">Zapisywanie zmiany...</p>
+        )}
+
         {error && (
           <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
             {error.message}

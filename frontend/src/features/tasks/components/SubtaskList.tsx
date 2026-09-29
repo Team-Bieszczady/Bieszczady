@@ -57,7 +57,10 @@ function AddSubtaskForm({
         type="text"
         placeholder="Co trzeba zrobić?"
         onKeyDown={(event) => {
-          if (event.key === 'Escape') onClose();
+          if (event.key === 'Escape') {
+            event.preventDefault();
+            onClose();
+          }
         }}
         className={INPUT_CLASSES}
       />

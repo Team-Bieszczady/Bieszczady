@@ -9,6 +9,8 @@ import { documentMenuItems } from '../utils/documentMenuItems';
 import { ActionMenu } from '../../../components/ui/ActionMenu';
 import { useAuth } from '../../../context/useAuth';
 import { useViewerManages } from '../../projects/hooks/useViewerManages';
+import { useVersions } from '../hooks/useVersions';
+import { IoChevronDown, IoChevronForward } from 'react-icons/io5';
 
 interface Props {
   document: BackendDocument;
@@ -36,6 +38,9 @@ const canPreview = (mimeType: string) =>
 export const DocumentCard = ({
   document,
   projectId,
+  isExpanded,
+  onToggle,
+  onRestoreVersion,
   variant,
   onDownload,
   onNewVersion,
@@ -51,6 +56,11 @@ export const DocumentCard = ({
 }: Props) => {
   const version = document.versions[0];
   const { user } = useAuth();
+  const {
+    data: versions,
+    error: versionsError,
+    isPending: versionsPending,
+  } = useVersions(projectId, isExpanded ? document.id : null);
 
   const isLocked =
     document.status === 'APPROVED' || document.status === 'SIGNED';
@@ -135,6 +145,96 @@ export const DocumentCard = ({
               Podgląd
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => onToggle(document.id)}
+            className="ml-auto flex cursor-pointer items-center gap-1 text-xs font-medium text-darkGreen"
+          >
+            {isExpanded ? (
+              <IoChevronDown className="h-3.5 w-3.5" />
+            ) : (
+              <IoChevronForward className="h-3.5 w-3.5" />
+            )}
+            Historia
+          </button>
+        </div>
+      )}
+
+      {isExpanded && (
+        <div className="mt-3 border-t border-gray-200 pt-3">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
+            Historia wersji
+          </p>
+
+          {versionsPending && (
+            <p className="text-xs text-gray-400">Ładowanie historii...</p>
+          )}
+          {versionsError && (
+            <p className="text-xs text-darkRed">
+              Nie udało się wczytać historii wersji
+            </p>
+          )}
+
+          <div className="flex flex-col gap-3">
+            {versions?.map((wersja, index) => (
+              <div key={wersja.id} className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-dark">
+                    v{wersja.versionNo}
+                  </span>
+                  {index === 0 && (
+                    <span className="rounded-full bg-lightGreen px-2 py-0.5 text-xs font-medium text-darkGreen">
+                      AKTUALNA
+                    </span>
+                  )}
+                </div>
+
+                <p className="text-sm text-dark">
+                  {wersja.changeNote ?? 'Utworzenie dokumentu'}
+                </p>
+
+                <p className="text-xs text-gray-400">
+                  {wersja.uploadedBy.firstName} {wersja.uploadedBy.lastName} ·{' '}
+                  {formatDate(wersja.createdAt)} ·{' '}
+                  {formatFileSize(wersja.sizeBytes)}
+                </p>
+
+                <div className="flex flex-wrap gap-4">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onDownload(document.id, wersja.versionNo, wersja.fileName)
+                    }
+                    className="cursor-pointer text-xs font-medium text-darkGreen"
+                  >
+                    Pobierz
+                  </button>
+                  {canPreview(wersja.mimeType) && (
+                    <button
+                      type="button"
+                      onClick={() => onPreview(document.id, wersja.versionNo)}
+                      className="cursor-pointer text-xs font-medium text-darkGreen"
+                    >
+                      Podgląd
+                    </button>
+                  )}
+                  {variant === 'folder' &&
+                    canEdit &&
+                    wersja.storageKey !== versions[0]?.storageKey && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onRestoreVersion(document.id, wersja.versionNo)
+                        }
+                        className="cursor-pointer text-xs font-medium text-darkGreen"
+                      >
+                        Przywróć jako v{(versions[0]?.versionNo ?? 0) + 1}
+                      </button>
+                    )}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

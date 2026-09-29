@@ -3,6 +3,12 @@ import { IoCloudUploadOutline } from 'react-icons/io5';
 import { formatFileSize } from '../../features/documents/utils/formatters';
 import toast from 'react-hot-toast';
 
+const DROPZONE_TOAST_ID = 'file-dropzone';
+
+// Ten sam limit co w backendzie (upload.config.ts). Sprawdzamy go tutaj,
+// żeby nie wysyłać przez sieć pliku, który i tak zostanie odrzucony.
+const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024;
+
 interface Props {
   value: File | null;
   onChange: (file: File | null) => void;
@@ -11,22 +17,34 @@ interface Props {
 export function FileDropzone({ value, onChange }: Props) {
   const [isDragging, setIsDragging] = useState(false);
 
-useEffect(() => {
-     const handlePaste = (e: ClipboardEvent) => {
-       const files = e.clipboardData?.files;
-       if (!files || files.length === 0) {
-         return;
-       }
-       if (files.length > 1) {
-         toast.error('Wybierz jeden plik');
-         return;
-       }
-       onChange(files[0]);
-     };
+  const accept = (file: File | null) => {
+    if (file && file.size > MAX_FILE_SIZE_BYTES) {
+      toast.error(
+        `Plik jest za duży. Największy dopuszczalny rozmiar to ${formatFileSize(MAX_FILE_SIZE_BYTES)}.`,
+        { id: DROPZONE_TOAST_ID },
+      );
+      onChange(null);
+      return;
+    }
+    onChange(file);
+  };
+
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      const files = e.clipboardData?.files;
+      if (!files || files.length === 0) {
+        return;
+      }
+      if (files.length > 1) {
+        toast.error('Wybierz jeden plik', { id: DROPZONE_TOAST_ID });
+        return;
+      }
+      accept(files[0]);
+    };
 
     document.addEventListener('paste', handlePaste);
     return () => document.removeEventListener('paste', handlePaste);
-}, [onChange])
+  });
 
   return (
     <label
@@ -42,11 +60,11 @@ useEffect(() => {
         setIsDragging(false);
 
         if (e.dataTransfer.files.length > 1) {
-          toast.error('Wybierz jeden plik');
+          toast.error('Wybierz jeden plik', { id: DROPZONE_TOAST_ID });
           return;
         }
 
-        onChange(e.dataTransfer.files?.[0] ?? null);
+        accept(e.dataTransfer.files?.[0] ?? null);
       }}
 
       className={`flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed p-8 text-center transition-colors ${
@@ -56,11 +74,13 @@ useEffect(() => {
       }`}
     >
       <input
-  
-
         type="file"
         className="hidden"
-        onChange={(e) => onChange(e.target.files?.[0] ?? null)}
+        onChange={(e) => {
+          accept(e.target.files?.[0] ?? null);
+          // Bez tego ponowny wybór tego samego pliku nie wywołuje zdarzenia.
+          e.target.value = '';
+        }}
       />
 
       <IoCloudUploadOutline className="h-8 w-8 text-gray-400" />

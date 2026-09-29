@@ -45,6 +45,11 @@ export function ActionMenu({
         ref={buttonRef}
         type="button"
         onClick={toggle}
+        onKeyDown={(event) => {
+          // Bez tego menu zostaje otwarte po przejściu dalej tabulatorem
+          // i dwie listy naraz biją się o klawisz Escape.
+          if (event.key === 'Tab' && isOpen) close();
+        }}
         aria-label={ariaLabel}
         aria-haspopup="menu"
         aria-expanded={isOpen}

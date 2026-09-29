@@ -27,21 +27,30 @@ import { RestoreDocumentModal } from '../features/documents/components/RestoreDo
 import { DeletePermanentlyDialog } from '../features/documents/components/DeletePermanentlyDialog';
 import { useDocumentFile } from '../features/documents/hooks/useDocumentFile';
 import { showError, showSuccess } from '../features/documents/utils/toasts';
+import { pluralizePl, type PluralForms } from '../lib/pluralizePl';
 import { ShareModal } from '../features/documents/components/ShareModal';
 import { MoveFolderModal } from '../features/documents/components/MoveFolderModal';
 import { useCreateFolderTemplate } from '../features/documents/hooks/useCreateFolderTemplate';
 import { useSubmitForApproval } from '../features/documents/hooks/useSubmitForApproval';
 import { useViewerManages } from '../features/projects/hooks/useViewerManages';
 
+const DOCUMENT_FORMS: PluralForms = ['dokument', 'dokumenty', 'dokumentów'];
+
 function DocumentsView({ projectId }: { projectId: string }) {
   const { data: project } = useProject(projectId);
 
   const [folderId, setFolderId] = useState<string | null>(null);
-  const { data: folders, isPending: foldersPending } = useFolders(projectId);
-  const { data: documents, isPending: documentsPending } = useDocuments(
-    projectId,
-    folderId,
-  );
+  const {
+    data: folders,
+    isPending: foldersPending,
+    isError: foldersFailed,
+    refetch: refetchFolders,
+  } = useFolders(projectId);
+  const {
+    data: documents,
+    isPending: documentsPending,
+    isError: documentsFailed,
+  } = useDocuments(projectId, folderId);
 
   const [showUpload, setShowUpload] = useState(false);
   const [uploadMode, setUploadMode] = useState<UploadMode>('document');
@@ -123,7 +132,10 @@ function DocumentsView({ projectId }: { projectId: string }) {
       return;
     }
     submitForApproval.mutate(documentId, {
-      onSuccess: () => showSuccess('Przekazano do akceptacji'),
+      onSuccess: () =>
+        showSuccess(
+          canManage ? 'Dokument zatwierdzony' : 'Przekazano do akceptacji',
+        ),
       onError: showError,
     });
   };
@@ -238,8 +250,13 @@ function DocumentsView({ projectId }: { projectId: string }) {
       </p>
     );
   }
-  if (!folders) {
-    return null;
+  if (foldersFailed || !folders) {
+    return (
+      <PageMessage
+        message="Nie udało się wczytać folderów projektu."
+        onRetry={() => void refetchFolders()}
+      />
+    );
   }
 
   const openFolder = folders.find((el) => el.id === folderId);
@@ -380,14 +397,22 @@ function DocumentsView({ projectId }: { projectId: string }) {
           {!showTrash && folderId && (
             <div className="border-b border-gray-200 px-4 py-4 max-sm:border-0 max-sm:px-0">
               <p className="text-base font-semibold text-dark">{nameFolder}</p>
-              <p className="mt-0.5 text-xs text-gray-400">
-                {documents?.length ?? 0} dokumentów · {formatFileSize(bytes)}
-              </p>
+              {documents && (
+                <p className="mt-0.5 text-xs text-gray-400">
+                  {pluralizePl(documents.length, DOCUMENT_FORMS)} ·{' '}
+                  {formatFileSize(bytes)}
+                </p>
+              )}
             </div>
           )}
           {folderId && documentsPending && !showTrash && (
             <p className="px-4 py-10 text-center text-xs text-gray-400">
               Ładowanie...
+            </p>
+          )}
+          {folderId && documentsFailed && !showTrash && (
+            <p className="px-4 py-10 text-center text-xs text-darkRed">
+              Nie udało się wczytać dokumentów z tego folderu.
             </p>
           )}
           {documents && !showTrash && (

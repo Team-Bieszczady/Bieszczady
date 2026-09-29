@@ -42,10 +42,15 @@ export function useAnchoredPopup<
   const position = useAnchoredPosition(buttonRef, isOpen, positionOptions);
 
   useOnClickOutside([panelRef, buttonRef], close, isOpen);
-  useEscapeKey(() => {
-    close();
-    if (restoreFocus) buttonRef.current?.focus();
-  }, isOpen);
+  useEscapeKey(
+    () => {
+      close();
+      if (restoreFocus) buttonRef.current?.focus();
+    },
+    isOpen,
+    // Faza przechwytywania, żeby wewnętrzna lista wyprzedziła okno modalne.
+    true,
+  );
 
   return { isOpen, open, close, toggle, buttonRef, panelRef, position };
 }
