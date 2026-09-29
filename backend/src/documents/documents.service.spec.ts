@@ -707,9 +707,14 @@ describe('DocumentsService', () => {
       expect(restored.deletedAt).toBeNull();
     });
 
-    it('moves the document to the folder that was picked', async () => {
+    it('moves the document to the folder that was picked when its own folder is gone', async () => {
+      addFolder({ id: 'folder-usuniety', deletedAt: new Date() });
       addFolder({ id: 'folder-2' });
-      addDocument({ id: 'doc-1', deletedAt: new Date() });
+      addDocument({
+        id: 'doc-1',
+        folderId: 'folder-usuniety',
+        deletedAt: new Date(),
+      });
 
       const restored = await service.restoreDocument(
         PROJECT,
@@ -752,10 +757,46 @@ describe('DocumentsService', () => {
       ).rejects.toThrow(ForbiddenException);
     });
 
-    it('refuses to restore into a folder the caller may only view', async () => {
-      folderLevel = 'VIEW';
+    it('refuses another folder while its own folder is still there', async () => {
       addFolder({ id: 'folder-2' });
       addDocument({ id: 'doc-1', deletedAt: new Date() });
+
+      await expect(
+        service.restoreDocument(
+          PROJECT,
+          'doc-1',
+          { folderId: 'folder-2' },
+          ACTOR,
+        ),
+      ).rejects.toThrow(BadRequestException);
+      expect(
+        prisma.documents.find((doc) => doc.id === 'doc-1')?.deletedAt,
+      ).not.toBeNull();
+    });
+
+    it('accepts its own folder when it is named explicitly', async () => {
+      addDocument({ id: 'doc-1', deletedAt: new Date() });
+
+      const restored = await service.restoreDocument(
+        PROJECT,
+        'doc-1',
+        { folderId: FOLDER },
+        ACTOR,
+      );
+
+      expect(restored.folderId).toBe(FOLDER);
+      expect(restored.deletedAt).toBeNull();
+    });
+
+    it('refuses to restore into a folder the caller may only view', async () => {
+      folderLevel = 'VIEW';
+      addFolder({ id: 'folder-usuniety', deletedAt: new Date() });
+      addFolder({ id: 'folder-2' });
+      addDocument({
+        id: 'doc-1',
+        folderId: 'folder-usuniety',
+        deletedAt: new Date(),
+      });
 
       await expect(
         service.restoreDocument(

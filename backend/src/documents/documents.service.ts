@@ -347,6 +347,14 @@ export class DocumentsService {
       throw new NotFoundException('Nie znaleziono dokumentu w Koszu');
     }
 
+    const pickedAnotherFolder =
+      Boolean(dto.folderId) && dto.folderId !== document.folderId;
+    if (pickedAnotherFolder && document.folder.deletedAt === null) {
+      throw new BadRequestException(
+        'Dokument wraca do swojego folderu. Inny folder można wskazać tylko wtedy, gdy tamten został usunięty',
+      );
+    }
+
     if (dto.folderId) {
       await this.assertFolderExists(dto.folderId, projectId, actor);
       await this.assertFolderLevel(actor, projectId, dto.folderId, true);

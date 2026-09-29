@@ -41,9 +41,11 @@ export class FoldersService {
     const canManage = await this.access.canManageTasks(actor, id);
     if (canManage) {
       const pendingByFolder = await this.countPendingByFolder(id, folders);
+      const sharedByFolder = await this.countSharesByFolder(id);
       return folders.map((folder) => ({
         ...folder,
         pendingCount: pendingByFolder.get(folder.id) ?? 0,
+        sharedWith: sharedByFolder.get(folder.id) ?? 0,
         accessLevel: 'EDIT',
       }));
     }
@@ -103,12 +105,45 @@ export class FoldersService {
     return visible.map(({ folder, accessLevel }) => ({
       ...folder,
       pendingCount: 0,
+      sharedWith: 0,
       accessLevel,
       parentId:
         folder.parentId && visibleIds.has(folder.parentId)
           ? folder.parentId
           : null,
     }));
+  }
+
+  private async countSharesByFolder(projectId: string) {
+    const rows = await this.prisma.documentAccess.findMany({
+      where: { projectId, folderId: { not: null } },
+      select: { folderId: true, userId: true },
+    });
+
+    const members = await this.prisma.projectMember.findMany({
+      where: {
+        projectId,
+        projectRole: { not: 'COORDINATOR' },
+        user: { isDirector: false, deletedAt: null },
+      },
+      select: { userId: true },
+    });
+    const counted = new Set(members.map((member) => member.userId));
+
+    const people = new Map<string, Set<string>>();
+    for (const row of rows) {
+      if (!counted.has(row.userId)) {
+        continue;
+      }
+      const folderId = row.folderId as string;
+      const users = people.get(folderId) ?? new Set<string>();
+      users.add(row.userId);
+      people.set(folderId, users);
+    }
+
+    return new Map(
+      [...people].map(([folderId, users]) => [folderId, users.size]),
+    );
   }
 
   private async countPendingByFolder(

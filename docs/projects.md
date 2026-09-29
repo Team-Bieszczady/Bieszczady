@@ -285,7 +285,9 @@ one project and execute another, which is why the role lives on the membership
 and never on the user.
 
 Removing a member unassigns their risks and tasks on that project first, so the
-rows survive with no owner rather than disappearing.
+rows survive with no owner rather than disappearing. Their folder and document
+shares on that project are deleted in the same transaction, so adding them back
+later does not silently bring back old access.
 
 ## Archive is the trash
 

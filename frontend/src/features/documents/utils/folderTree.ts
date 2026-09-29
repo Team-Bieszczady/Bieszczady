@@ -33,3 +33,33 @@ export function collectAncestorIds(folders: BackendFolder[], folderId: string) {
 
   return path;
 }
+
+export function sharedFolderIdsAbove(
+  folders: BackendFolder[],
+  parentId: string | null,
+) {
+  if (!parentId) {
+    return [];
+  }
+  const byId = new Map(folders.map((folder) => [folder.id, folder]));
+  return [...collectAncestorIds(folders, parentId)].filter(
+    (id) => (byId.get(id)?.sharedWith ?? 0) > 0,
+  );
+}
+
+export function accessChangeOnMove(
+  folders: BackendFolder[],
+  folderId: string,
+  parentId: string | null,
+) {
+  const folder = folders.find((el) => el.id === folderId);
+  if (!folder) {
+    return { gains: [], losses: [] };
+  }
+  const before = sharedFolderIdsAbove(folders, folder.parentId);
+  const after = sharedFolderIdsAbove(folders, parentId);
+  return {
+    gains: after.filter((id) => !before.includes(id)),
+    losses: before.filter((id) => !after.includes(id)),
+  };
+}

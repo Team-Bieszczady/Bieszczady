@@ -233,7 +233,14 @@ export class DocumentAccessService {
     const members = await this.prisma.projectMember.findMany({
       where: { projectId },
       include: {
-        user: { select: { firstName: true, lastName: true, email: true } },
+        user: {
+          select: {
+            firstName: true,
+            lastName: true,
+            email: true,
+            isDirector: true,
+          },
+        },
       },
     });
 
@@ -258,7 +265,8 @@ export class DocumentAccessService {
         userId: member.userId,
         firstName: member.user.firstName,
         lastName: member.user.lastName,
-        isManager: member.projectRole === 'COORDINATOR',
+        isManager:
+          member.projectRole === 'COORDINATOR' || member.user.isDirector,
         accessId: explicit?.id ?? null,
         level: explicit?.level ?? null,
         effectiveLevel,

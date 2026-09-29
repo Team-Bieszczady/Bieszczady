@@ -1,13 +1,17 @@
-import { Controller, useForm, type SubmitHandler } from 'react-hook-form';
+import {
+  Controller,
+  useForm,
+  useWatch,
+  type SubmitHandler,
+} from 'react-hook-form';
 import type { BackendFolder } from '../../../lib/api';
 import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
 import { Select } from '../../../components/ui/Select';
 import { FieldError } from '../../../components/ui/FieldError';
 import { FIELD_LABEL_CLASSES } from '../../../components/ui/formStyles';
-import { showError, showSuccess } from '../utils/toasts';
-import { useMoveFolder } from '../hooks/useMoveFolder';
-import { collectSubtreeIds } from '../utils/folderTree';
+import { accessChangeOnMove, collectSubtreeIds } from '../utils/folderTree';
+import { AccessChangeNotice } from './AccessChangeNotice';
 
 const ROOT = 'ROOT';
 
@@ -16,22 +20,20 @@ interface Inputs {
 }
 
 interface Props {
-  projectId: string;
   folderId: string | null;
   folders: BackendFolder[];
-  onMoved: (parentId: string | null) => void;
+  isPending: boolean;
+  onSubmit: (parentId: string | null) => void;
   onClose: () => void;
 }
 
 export function MoveFolderModal({
-  projectId,
   folderId,
   folders,
-  onMoved,
+  isPending,
+  onSubmit,
   onClose,
 }: Props) {
-  const moveFolder = useMoveFolder(projectId);
-
   const folder = folders.find((el) => el.id === folderId);
   const blocked = folderId
     ? collectSubtreeIds(folders, folderId)
@@ -52,6 +54,14 @@ export function MoveFolderModal({
     defaultValues: { parentId: folder?.parentId ?? ROOT },
   });
 
+  const picked = useWatch({ control, name: 'parentId' });
+  const pickedParentId = picked === ROOT ? null : picked;
+  const change =
+    folderId && folder && pickedParentId !== folder.parentId
+      ? accessChangeOnMove(folders, folderId, pickedParentId)
+      : { gains: [], losses: [] };
+  const changesAccess = change.gains.length > 0 || change.losses.length > 0;
+
   const submit: SubmitHandler<Inputs> = (data) => {
     if (!folderId) {
       return;
@@ -63,17 +73,7 @@ export function MoveFolderModal({
       return;
     }
 
-    moveFolder.mutate(
-      { folderId, parentId },
-      {
-        onSuccess: () => {
-          showSuccess('Folder przeniesiony');
-          onMoved(parentId);
-          onClose();
-        },
-        onError: showError,
-      },
-    );
+    onSubmit(parentId);
   };
 
   return (
@@ -109,6 +109,22 @@ export function MoveFolderModal({
           </p>
         </div>
 
+        {changesAccess && (
+          <div
+            role="alert"
+            className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800"
+          >
+            <p>
+              <AccessChangeNotice
+                folders={folders}
+                folderName={folder?.name ?? ''}
+                gains={change.gains}
+                losses={change.losses}
+              />
+            </p>
+          </div>
+        )}
+
         <div className="border-t border-gray-200 flex gap-3 justify-end pt-4">
           <Button
             variant="outline"
@@ -122,10 +138,10 @@ export function MoveFolderModal({
             variant="primary"
             size="small"
             type="submit"
-            isPending={moveFolder.isPending}
+            isPending={isPending}
             className="font-medium!"
           >
-            Przenieś
+            {changesAccess ? 'Przenieś mimo to' : 'Przenieś'}
           </Button>
         </div>
       </form>

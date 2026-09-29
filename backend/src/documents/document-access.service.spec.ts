@@ -29,7 +29,17 @@ function createFakePrisma() {
   const folders: FolderRow[] = [];
   const documents: DocumentRow[] = [];
   const accesses: AccessRow[] = [];
-  const members: { projectId: string; userId: string }[] = [];
+  const members: {
+    projectId: string;
+    userId: string;
+    projectRole?: string;
+    user?: {
+      firstName: string;
+      lastName: string;
+      email: string;
+      isDirector: boolean;
+    };
+  }[] = [];
   let findManyCalls = 0;
   let nextId = 1;
 
@@ -47,7 +57,10 @@ function createFakePrisma() {
               row.projectId === where.projectId && row.userId === where.userId,
           ) ?? null,
         ),
-      findMany: () => Promise.resolve([]),
+      findMany: ({ where }: { where: Where }) =>
+        Promise.resolve(
+          members.filter((row) => row.projectId === where.projectId),
+        ),
     },
     folder: {
       findFirst: ({ where }: { where: Where }) =>
@@ -88,7 +101,17 @@ function createFakePrisma() {
       },
       findMany: ({ where }: { where: Where }) => {
         findManyCalls++;
-        const wanted = (where.documentId as { in: string[] }).in;
+        const byDocuments = where.documentId as { in: string[] } | null;
+        if (!byDocuments || !Array.isArray(byDocuments.in)) {
+          return Promise.resolve(
+            accesses.filter(
+              (row) =>
+                row.folderId === (where.folderId ?? null) &&
+                row.documentId === (where.documentId ?? null),
+            ),
+          );
+        }
+        const wanted = byDocuments.in;
         return Promise.resolve(
           accesses.filter(
             (row) =>
@@ -243,6 +266,37 @@ describe('DocumentAccessService', () => {
       await expect(
         service.listFor(ACTOR, PROJECT, { folderId: FOLDER }),
       ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('marks coordinators and directors as always having access', async () => {
+      canManage = true;
+      const person = (
+        userId: string,
+        projectRole: string,
+        isDirector: boolean,
+      ) =>
+        prisma.members.push({
+          projectId: PROJECT,
+          userId,
+          projectRole,
+          user: {
+            firstName: userId,
+            lastName: '',
+            email: userId + '@example.com',
+            isDirector,
+          },
+        });
+      person('koordynator', 'COORDINATOR', false);
+      person('dyrektor', 'EXECUTOR', true);
+      person(USER, 'EXECUTOR', false);
+
+      const rows = await service.listFor(ACTOR, PROJECT, { folderId: FOLDER });
+      const isManager = (userId: string) =>
+        rows.find((row) => row.userId === userId)?.isManager;
+
+      expect(isManager('koordynator')).toBe(true);
+      expect(isManager('dyrektor')).toBe(true);
+      expect(isManager(USER)).toBe(false);
     });
   });
 

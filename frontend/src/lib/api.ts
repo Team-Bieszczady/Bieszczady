@@ -42,6 +42,7 @@ export interface BackendFolder {
   updatedAt: string;
   deletedAt: string | null;
   pendingCount: number;
+  sharedWith: number;
   accessLevel: 'VIEW' | 'EDIT' | null;
 }
 

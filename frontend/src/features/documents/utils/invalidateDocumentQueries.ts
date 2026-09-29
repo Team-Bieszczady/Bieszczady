@@ -7,6 +7,7 @@ const DOCUMENT_QUERIES = [
   'folders',
   'trash',
   'versions',
+  'access-list',
 ];
 
 export function invalidateDocumentQueries(

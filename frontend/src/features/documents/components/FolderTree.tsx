@@ -4,12 +4,16 @@ import {
   IoCreateOutline,
   IoFolderOutline,
   IoMoveOutline,
+  IoPeopleOutline,
   IoPersonAddOutline,
   IoTrashOutline,
 } from 'react-icons/io5';
 import type { BackendFolder } from '../../../lib/api';
 import { ActionMenu } from '../../../components/ui/ActionMenu';
 import { collectSubtreeIds } from '../utils/folderTree';
+import { pluralizePl, type PluralForms } from '../../../lib/pluralizePl';
+
+const SHARED_WITH_FORMS: PluralForms = ['osobie', 'osobom', 'osobom'];
 
 interface Props {
   folders: BackendFolder[];
@@ -133,6 +137,12 @@ export const FolderTree = ({
               >
                 <IoFolderOutline className="h-4 w-4 shrink-0" />
                 <span className="truncate">{folder.name}</span>
+                {folder.sharedWith > 0 && (
+                  <IoPeopleOutline
+                    className="h-3.5 w-3.5 shrink-0 text-gray-400"
+                    title={`Udostępniony ${pluralizePl(folder.sharedWith, SHARED_WITH_FORMS)}`}
+                  />
+                )}
               </button>
 
               {folder.pendingCount > 0 && (

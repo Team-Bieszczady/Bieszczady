@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useFolders } from '../features/documents/hooks/useFolders';
 import { useDocuments } from '../features/documents/hooks/useDocuments';
 import { DocumentsTable } from '../features/documents/components/DocumentsTable';
@@ -23,6 +23,7 @@ import {
 } from '../features/documents/components/UploadDocumentModal';
 import { useSelectedProject } from '../context/useSelectedProject';
 import { PageMessage } from '../components/ui/PageMessage';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { PageLoading } from '../components/ui/PageLoading';
 import { InlineQueryState } from '../components/ui/InlineQueryState';
 import { useApproveDocument } from '../features/documents/hooks/useApproveDocument';
@@ -33,6 +34,7 @@ import { showError, showSuccess } from '../features/documents/utils/toasts';
 import { pluralizePl, type PluralForms } from '../lib/pluralizePl';
 import { ShareModal } from '../features/documents/components/ShareModal';
 import { MoveFolderModal } from '../features/documents/components/MoveFolderModal';
+import { AccessChangeNotice } from '../features/documents/components/AccessChangeNotice';
 import { useCreateFolderTemplate } from '../features/documents/hooks/useCreateFolderTemplate';
 import { useSubmitForApproval } from '../features/documents/hooks/useSubmitForApproval';
 import { useRevertApproval } from '../features/documents/hooks/useRevertApproval';
@@ -40,7 +42,10 @@ import { useWithdrawToDraft } from '../features/documents/hooks/useWithdrawToDra
 import { useViewerManages } from '../features/projects/hooks/useViewerManages';
 import { DocumentsToolbar } from '../features/documents/components/DocumentsToolbar';
 import { useMoveFolder } from '../features/documents/hooks/useMoveFolder';
-import { collectAncestorIds } from '../features/documents/utils/folderTree';
+import {
+  accessChangeOnMove,
+  collectAncestorIds,
+} from '../features/documents/utils/folderTree';
 
 const DOCUMENT_FORMS: PluralForms = ['dokument', 'dokumenty', 'dokumentów'];
 const DELETED_DOCUMENT_FORMS: PluralForms = [
@@ -96,6 +101,12 @@ function DocumentsView({ projectId }: { projectId: string }) {
 
   const [renameFolderId, setRenameFolderId] = useState<string | null>(null);
   const [moveFolderId, setMoveFolderId] = useState<string | null>(null);
+  const [moveRequest, setMoveRequest] = useState<{
+    folderId: string;
+    parentId: string | null;
+  } | null>(null);
+  const checkingMove = useRef(false);
+  const moving = useRef(false);
   const [restoreDocumentId, setRestoreDocumentId] = useState<string | null>(
     null,
   );
@@ -244,7 +255,13 @@ function DocumentsView({ projectId }: { projectId: string }) {
     setDraggedFolderId(folderId);
     if (folderId === null) {
       setDropTargetId(null);
+      return;
     }
+    void refetchFolders();
+  };
+
+  const openMoveFolder = (folderId: string) => {
+    void refetchFolders().then(() => setMoveFolderId(folderId));
   };
 
   const revealFolder = (targetId: string | null) => {
@@ -253,6 +270,51 @@ function DocumentsView({ projectId }: { projectId: string }) {
     }
     const path = collectAncestorIds(folders ?? [], targetId);
     setCollapsedIds((ids) => ids.filter((id) => !path.has(id)));
+  };
+
+  const runMove = (folderId: string, parentId: string | null) => {
+    if (moving.current) {
+      return;
+    }
+    moving.current = true;
+    moveFolder.mutate(
+      { folderId, parentId },
+      {
+        onSuccess: () => {
+          showSuccess('Folder przeniesiony');
+          revealFolder(parentId);
+          setMoveFolderId((current) => (current === folderId ? null : current));
+          setMoveRequest((current) =>
+            current?.folderId === folderId ? null : current,
+          );
+        },
+        onError: showError,
+        onSettled: () => {
+          moving.current = false;
+        },
+      },
+    );
+  };
+
+  const requestMove = async (folderId: string, parentId: string | null) => {
+    if (moving.current || checkingMove.current) {
+      return;
+    }
+    checkingMove.current = true;
+    const fresh = await refetchFolders({ cancelRefetch: false });
+    checkingMove.current = false;
+
+    if (fresh.isError || !fresh.data) {
+      showError(fresh.error ?? new Error('Nie udało się wczytać folderów'));
+      return;
+    }
+
+    const change = accessChangeOnMove(fresh.data, folderId, parentId);
+    if (change.gains.length === 0 && change.losses.length === 0) {
+      runMove(folderId, parentId);
+      return;
+    }
+    setMoveRequest({ folderId, parentId });
   };
 
   const dropFolderOn = (parentId: string | null) => {
@@ -272,16 +334,7 @@ function DocumentsView({ projectId }: { projectId: string }) {
       return;
     }
 
-    moveFolder.mutate(
-      { folderId: draggedId, parentId },
-      {
-        onSuccess: () => {
-          showSuccess('Folder przeniesiony');
-          revealFolder(parentId);
-        },
-        onError: showError,
-      },
-    );
+    void requestMove(draggedId, parentId);
   };
 
   const selectFolder = (folderId: string) => {
@@ -417,6 +470,11 @@ function DocumentsView({ projectId }: { projectId: string }) {
   const nameFolder = openFolder?.name;
   const canEditFolder = openFolder?.accessLevel === 'EDIT';
   const draggedFolder = folders.find((el) => el.id === draggedFolderId);
+  const movingFolderName =
+    folders.find((el) => el.id === moveRequest?.folderId)?.name ?? '';
+  const pendingChange = moveRequest
+    ? accessChangeOnMove(folders, moveRequest.folderId, moveRequest.parentId)
+    : { gains: [], losses: [] };
   const permanentDeleteName = trash?.find(
     (el) => el.id === permanentDeleteId,
   )?.name;
@@ -482,7 +540,7 @@ function DocumentsView({ projectId }: { projectId: string }) {
               onAddSubfolder={openNewFolder}
               onDeleteFolder={setDeleteFolderId}
               onRename={setRenameFolderId}
-              onMove={setMoveFolderId}
+              onMove={openMoveFolder}
               onShare={shareFolder}
               canManage={canManage}
               draggedId={draggedFolderId}
@@ -745,11 +803,36 @@ function DocumentsView({ projectId }: { projectId: string }) {
       />
       <MoveFolderModal
         key={moveFolderId ?? 'closed'}
-        projectId={projectId}
         folderId={moveFolderId}
         folders={folders}
-        onMoved={revealFolder}
+        isPending={moveFolder.isPending}
+        onSubmit={(parentId) => {
+          if (moveFolderId) {
+            runMove(moveFolderId, parentId);
+          }
+        }}
         onClose={() => setMoveFolderId(null)}
+      />
+
+      <ConfirmDialog
+        isOpen={moveRequest !== null}
+        onClose={() => setMoveRequest(null)}
+        onConfirm={() => {
+          if (moveRequest) {
+            runMove(moveRequest.folderId, moveRequest.parentId);
+          }
+        }}
+        title="Przenieść folder?"
+        description={
+          <AccessChangeNotice
+            folders={folders}
+            folderName={movingFolderName}
+            gains={pendingChange.gains}
+            losses={pendingChange.losses}
+          />
+        }
+        confirmLabel="Przenieś"
+        isPending={moveFolder.isPending}
       />
 
       <ShareModal

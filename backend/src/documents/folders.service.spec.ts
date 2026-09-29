@@ -23,10 +23,19 @@ interface DocumentRow {
 
 interface AccessRow {
   [key: string]: unknown;
+  projectId?: string;
   folderId: string | null;
   documentId?: string | null;
   userId: string;
   level: string;
+}
+
+interface MemberRow {
+  projectId: string;
+  userId: string;
+  projectRole: string;
+  isDirector: boolean;
+  deletedAt: Date | null;
 }
 
 type Where = Record<string, unknown>;
@@ -43,15 +52,50 @@ function createFakePrisma() {
   const folders: FolderRow[] = [];
   const documents: DocumentRow[] = [];
   const accesses: AccessRow[] = [];
+  const members: MemberRow[] = [];
   let nextId = 1;
 
   return {
     folders,
     documents,
     accesses,
+    members,
+    projectMember: {
+      findMany: ({
+        where,
+      }: {
+        where: {
+          projectId: string;
+          projectRole?: { not: string };
+          user?: { isDirector?: boolean; deletedAt?: null };
+        };
+      }) =>
+        Promise.resolve(
+          members
+            .filter(
+              (row) =>
+                row.projectId === where.projectId &&
+                row.projectRole !== where.projectRole?.not &&
+                (where.user?.isDirector === undefined ||
+                  row.isDirector === where.user.isDirector) &&
+                (where.user?.deletedAt === undefined ||
+                  row.deletedAt === where.user.deletedAt),
+            )
+            .map((row) => ({ userId: row.userId })),
+        ),
+    },
     documentAccess: {
       findMany: ({ where }: { where: Where }) =>
-        Promise.resolve(accesses.filter((row) => row.userId === where.userId)),
+        Promise.resolve(
+          accesses.filter(
+            (row) =>
+              (where.userId === undefined || row.userId === where.userId) &&
+              (where.projectId === undefined ||
+                row.projectId === undefined ||
+                row.projectId === where.projectId) &&
+              (where.folderId === undefined || row.folderId !== null),
+          ),
+        ),
     },
     folder: {
       findMany: ({
@@ -145,6 +189,21 @@ describe('FoldersService', () => {
     };
     prisma.folders.push(full);
     return full;
+  };
+
+  const addMember = (
+    userId: string,
+    projectRole = 'EXECUTOR',
+    extra: Partial<MemberRow> = {},
+  ) => {
+    prisma.members.push({
+      projectId: PROJECT,
+      userId,
+      projectRole,
+      isDirector: false,
+      deletedAt: null,
+      ...extra,
+    });
   };
 
   beforeEach(() => {
@@ -242,6 +301,187 @@ describe('FoldersService', () => {
 
       expect(found.map((f) => f.id)).toEqual(['b']);
       expect(found[0].accessLevel).toBe('VIEW');
+    });
+
+    it('tells someone who manages how many people each folder is shared with', async () => {
+      addFolder({ id: 'shared' });
+      addFolder({ id: 'private' });
+      addMember('anna');
+      addMember('piotr');
+      prisma.accesses.push({
+        projectId: PROJECT,
+        folderId: 'shared',
+        userId: 'anna',
+        level: 'VIEW',
+      });
+      prisma.accesses.push({
+        projectId: PROJECT,
+        folderId: 'shared',
+        userId: 'piotr',
+        level: 'EDIT',
+      });
+
+      const found = await service.findAllForProject(PROJECT, ACTOR);
+
+      expect(found.find((f) => f.id === 'shared')?.sharedWith).toBe(2);
+      expect(found.find((f) => f.id === 'private')?.sharedWith).toBe(0);
+    });
+
+    it('counts a person once when they have two rows on the same folder', async () => {
+      addFolder({ id: 'shared' });
+      addMember('anna');
+      prisma.accesses.push({
+        projectId: PROJECT,
+        folderId: 'shared',
+        userId: 'anna',
+        level: 'VIEW',
+      });
+      prisma.accesses.push({
+        projectId: PROJECT,
+        folderId: 'shared',
+        userId: 'anna',
+        level: 'EDIT',
+      });
+
+      const found = await service.findAllForProject(PROJECT, ACTOR);
+
+      expect(found[0].sharedWith).toBe(1);
+    });
+
+    it('does not count a file shared on its own as a shared folder', async () => {
+      addFolder({ id: 'a' });
+      addMember('anna');
+      prisma.documents.push({ id: 'doc-1', folderId: 'a', deletedAt: null });
+      prisma.accesses.push({
+        projectId: PROJECT,
+        folderId: null,
+        documentId: 'doc-1',
+        userId: 'anna',
+        level: 'VIEW',
+      });
+
+      const found = await service.findAllForProject(PROJECT, ACTOR);
+
+      expect(found[0].sharedWith).toBe(0);
+    });
+
+    it('ignores sharing that belongs to another project', async () => {
+      addFolder({ id: 'a' });
+      addMember('anna');
+      prisma.accesses.push({
+        projectId: OTHER_PROJECT,
+        folderId: 'a',
+        userId: 'anna',
+        level: 'VIEW',
+      });
+
+      const found = await service.findAllForProject(PROJECT, ACTOR);
+
+      expect(found[0].sharedWith).toBe(0);
+    });
+
+    it('does not count a coordinator, who has access anyway', async () => {
+      addFolder({ id: 'a' });
+      addMember('marek', 'COORDINATOR');
+      prisma.accesses.push({
+        projectId: PROJECT,
+        folderId: 'a',
+        userId: 'marek',
+        level: 'EDIT',
+      });
+
+      const found = await service.findAllForProject(PROJECT, ACTOR);
+
+      expect(found[0].sharedWith).toBe(0);
+    });
+
+    it('does not count someone who is no longer in the project', async () => {
+      addFolder({ id: 'a' });
+      addMember('anna');
+      prisma.accesses.push({
+        projectId: PROJECT,
+        folderId: 'a',
+        userId: 'ewa',
+        level: 'VIEW',
+      });
+      prisma.accesses.push({
+        projectId: PROJECT,
+        folderId: 'a',
+        userId: 'anna',
+        level: 'VIEW',
+      });
+
+      const found = await service.findAllForProject(PROJECT, ACTOR);
+
+      expect(found[0].sharedWith).toBe(1);
+    });
+
+    it('does not count a director who is also a member', async () => {
+      addFolder({ id: 'a' });
+      addMember('dyrektor', 'EXECUTOR', { isDirector: true });
+      addMember('anna');
+      prisma.accesses.push({
+        projectId: PROJECT,
+        folderId: 'a',
+        userId: 'dyrektor',
+        level: 'VIEW',
+      });
+      prisma.accesses.push({
+        projectId: PROJECT,
+        folderId: 'a',
+        userId: 'anna',
+        level: 'VIEW',
+      });
+
+      const found = await service.findAllForProject(PROJECT, ACTOR);
+
+      expect(found[0].sharedWith).toBe(1);
+    });
+
+    it('does not count someone whose account was deleted', async () => {
+      addFolder({ id: 'a' });
+      addMember('ewa', 'EXECUTOR', { deletedAt: new Date() });
+      addMember('anna');
+      prisma.accesses.push({
+        projectId: PROJECT,
+        folderId: 'a',
+        userId: 'ewa',
+        level: 'VIEW',
+      });
+      prisma.accesses.push({
+        projectId: PROJECT,
+        folderId: 'a',
+        userId: 'anna',
+        level: 'VIEW',
+      });
+
+      const found = await service.findAllForProject(PROJECT, ACTOR);
+
+      expect(found[0].sharedWith).toBe(1);
+    });
+
+    it('does not tell a viewer who else the folder is shared with', async () => {
+      addFolder({ id: 'a' });
+      addMember(OWNER);
+      addMember('anna');
+      canManage = false;
+      prisma.accesses.push({
+        projectId: PROJECT,
+        folderId: 'a',
+        userId: OWNER,
+        level: 'VIEW',
+      });
+      prisma.accesses.push({
+        projectId: PROJECT,
+        folderId: 'a',
+        userId: 'anna',
+        level: 'EDIT',
+      });
+
+      const found = await service.findAllForProject(PROJECT, ACTOR);
+
+      expect(found.map((f) => f.id)).toEqual(['a']);
+      expect(found[0].sharedWith).toBe(0);
     });
 
     it('sorts by name', async () => {

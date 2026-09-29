@@ -129,6 +129,12 @@ export function ShareModal({ projectId, target, targetName, onClose }: Props) {
         <div className="border-t border-gray-200 pt-4 text-xs text-gray-400">
           <p>Dyrektor i koordynatorzy projektu mają dostęp zawsze.</p>
           <p>Bez ustawienia = dostęp może wynikać z folderu nadrzędnego.</p>
+          {target.folderId && (
+            <p>
+              Dostęp do folderu obejmuje wszystko w środku, także to, co trafi
+              tu później.
+            </p>
+          )}
         </div>
       </div>
     </Modal>
