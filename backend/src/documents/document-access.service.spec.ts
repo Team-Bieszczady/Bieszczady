@@ -1,3 +1,4 @@
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ProjectAccessService } from '../projects/project-access.service';
 import { DocumentAccessService } from './document-access.service';
@@ -14,6 +15,8 @@ interface DocumentRow {
 }
 
 interface AccessRow {
+  id?: string;
+  projectId?: string;
   folderId: string | null;
   documentId: string | null;
   userId: string;
@@ -26,13 +29,26 @@ function createFakePrisma() {
   const folders: FolderRow[] = [];
   const documents: DocumentRow[] = [];
   const accesses: AccessRow[] = [];
+  const members: { projectId: string; userId: string }[] = [];
   let findManyCalls = 0;
+  let nextId = 1;
 
   return {
     folders,
     documents,
     accesses,
+    members,
     countFindManyCalls: () => findManyCalls,
+    projectMember: {
+      findFirst: ({ where }: { where: Where }) =>
+        Promise.resolve(
+          members.find(
+            (row) =>
+              row.projectId === where.projectId && row.userId === where.userId,
+          ) ?? null,
+        ),
+      findMany: () => Promise.resolve([]),
+    },
     folder: {
       findFirst: ({ where }: { where: Where }) =>
         Promise.resolve(folders.find((row) => row.id === where.id) ?? null),
@@ -44,13 +60,32 @@ function createFakePrisma() {
     documentAccess: {
       findFirst: ({ where }: { where: Where }) =>
         Promise.resolve(
-          accesses.find(
-            (row) =>
-              row.userId === where.userId &&
-              row.folderId === (where.folderId ?? null) &&
-              row.documentId === (where.documentId ?? null),
+          accesses.find((row) =>
+            where.id !== undefined
+              ? row.id === where.id
+              : row.userId === where.userId &&
+                row.folderId === (where.folderId ?? null) &&
+                row.documentId === (where.documentId ?? null),
           ) ?? null,
         ),
+      create: ({ data }: { data: AccessRow }) => {
+        const row = { ...data, id: 'access-' + nextId++ };
+        accesses.push(row);
+        return Promise.resolve(row);
+      },
+      update: ({ where, data }: { where: Where; data: Partial<AccessRow> }) => {
+        const row = accesses.find((item) => item.id === where.id);
+        if (!row) {
+          return Promise.reject(new Error('Record to update not found'));
+        }
+        Object.assign(row, data);
+        return Promise.resolve(row);
+      },
+      delete: ({ where }: { where: Where }) => {
+        const index = accesses.findIndex((item) => item.id === where.id);
+        const [row] = accesses.splice(index, 1);
+        return Promise.resolve(row);
+      },
       findMany: ({ where }: { where: Where }) => {
         findManyCalls++;
         const wanted = (where.documentId as { in: string[] }).in;
@@ -76,6 +111,7 @@ describe('DocumentAccessService', () => {
   let prisma: ReturnType<typeof createFakePrisma>;
   let service: DocumentAccessService;
   let canManage: boolean;
+  let archived: boolean;
 
   const grantFolder = (folderId: string, level: string) =>
     prisma.accesses.push({ folderId, documentId: null, userId: USER, level });
@@ -86,6 +122,7 @@ describe('DocumentAccessService', () => {
   beforeEach(() => {
     prisma = createFakePrisma();
     canManage = false;
+    archived = false;
 
     prisma.folders.push({ id: FOLDER, parentId: null });
     prisma.documents.push({ id: 'doc-1', folderId: FOLDER });
@@ -93,12 +130,120 @@ describe('DocumentAccessService', () => {
 
     const fakeAccess = {
       canManageTasks: () => Promise.resolve(canManage),
+      assertNotArchived: () =>
+        archived
+          ? Promise.reject(
+              new ForbiddenException('Projekt jest zarchiwizowany'),
+            )
+          : Promise.resolve(),
     };
 
     service = new DocumentAccessService(
       prisma as unknown as PrismaService,
       fakeAccess as unknown as ProjectAccessService,
     );
+  });
+
+  describe('grant', () => {
+    const DTO = { userId: USER, level: 'VIEW' as const, folderId: FOLDER };
+
+    beforeEach(() => {
+      canManage = true;
+      prisma.members.push({ projectId: PROJECT, userId: USER });
+    });
+
+    it('refuses for someone who does not manage the project', async () => {
+      canManage = false;
+
+      await expect(service.grant(ACTOR, PROJECT, DTO)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('refuses in an archived project', async () => {
+      archived = true;
+
+      await expect(service.grant(ACTOR, PROJECT, DTO)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('refuses when neither a folder nor a document is given', async () => {
+      await expect(
+        service.grant(ACTOR, PROJECT, { userId: USER, level: 'VIEW' }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('refuses when both a folder and a document are given', async () => {
+      await expect(
+        service.grant(ACTOR, PROJECT, {
+          userId: USER,
+          level: 'VIEW',
+          folderId: FOLDER,
+          documentId: 'doc-1',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('refuses for someone outside the project', async () => {
+      prisma.members.length = 0;
+
+      await expect(service.grant(ACTOR, PROJECT, DTO)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('changes the level instead of adding a second row', async () => {
+      await service.grant(ACTOR, PROJECT, DTO);
+      await service.grant(ACTOR, PROJECT, { ...DTO, level: 'EDIT' });
+
+      expect(prisma.accesses).toHaveLength(1);
+      expect(prisma.accesses[0].level).toBe('EDIT');
+    });
+  });
+
+  describe('revoke', () => {
+    beforeEach(() => {
+      canManage = true;
+      prisma.accesses.push({
+        id: 'access-9',
+        projectId: PROJECT,
+        folderId: FOLDER,
+        documentId: null,
+        userId: USER,
+        level: 'VIEW',
+      });
+    });
+
+    it('refuses for someone who does not manage the project', async () => {
+      canManage = false;
+
+      await expect(service.revoke(ACTOR, PROJECT, 'access-9')).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('refuses in an archived project', async () => {
+      archived = true;
+
+      await expect(service.revoke(ACTOR, PROJECT, 'access-9')).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('removes the row', async () => {
+      await service.revoke(ACTOR, PROJECT, 'access-9');
+
+      expect(prisma.accesses).toHaveLength(0);
+    });
+  });
+
+  describe('listFor', () => {
+    it('refuses for someone who does not manage the project', async () => {
+      await expect(
+        service.listFor(ACTOR, PROJECT, { folderId: FOLDER }),
+      ).rejects.toThrow(ForbiddenException);
+    });
   });
 
   describe('folderLevelFor', () => {

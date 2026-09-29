@@ -93,9 +93,13 @@ export class DocumentsService {
     folderId: string,
     ownerId: string,
     dto: CreateDocumentDto,
-    file: UploadedFile,
+    file: UploadedFile | undefined,
     actor: AuthenticatedUser,
   ) {
+    if (!file) {
+      throw new BadRequestException('Nie wybrano pliku');
+    }
+
     await this.access.assertCanRead(actor, projectId);
     await this.access.assertNotArchived(projectId);
     await this.assertFolderLevel(actor, projectId, folderId, true);
@@ -124,30 +128,35 @@ export class DocumentsService {
 
     await this.storage.save(key, file.buffer, file.mimetype);
 
-    const [document, version] = await this.prisma.$transaction([
-      this.prisma.document.create({
-        data: {
-          id: documentId,
-          projectId,
-          folderId,
-          name: dto.name,
-          kind: dto.kind,
-          status,
-          ownerId,
-        },
-      }),
-      this.prisma.documentVersion.create({
-        data: {
-          documentId,
-          versionNo: 1,
-          storageKey: key,
-          fileName: file.originalname,
-          mimeType: file.mimetype,
-          sizeBytes: file.size,
-          uploadedById: ownerId,
-        },
-      }),
-    ]);
+    const [document, version] = await this.prisma
+      .$transaction([
+        this.prisma.document.create({
+          data: {
+            id: documentId,
+            projectId,
+            folderId,
+            name: dto.name,
+            kind: dto.kind,
+            status,
+            ownerId,
+          },
+        }),
+        this.prisma.documentVersion.create({
+          data: {
+            documentId,
+            versionNo: 1,
+            storageKey: key,
+            fileName: file.originalname,
+            mimeType: file.mimetype,
+            sizeBytes: file.size,
+            uploadedById: ownerId,
+          },
+        }),
+      ])
+      .catch(async (error: unknown) => {
+        await this.storage.remove(key).catch(() => undefined);
+        throw error;
+      });
     return { ...document, versions: [version] };
   }
 
@@ -156,9 +165,13 @@ export class DocumentsService {
     projectId: string,
     ownerId: string,
     dto: CreateVersionDto,
-    file: UploadedFile,
+    file: UploadedFile | undefined,
     actor: AuthenticatedUser,
   ) {
+    if (!file) {
+      throw new BadRequestException('Nie wybrano pliku');
+    }
+
     await this.access.assertCanRead(actor, projectId);
     await this.assertDocumentLevel(actor, projectId, documentId, true);
     await this.access.assertNotArchived(projectId);
@@ -249,7 +262,16 @@ export class DocumentsService {
     actor: AuthenticatedUser,
   ) {
     await this.access.assertCanRead(actor, projectId);
-    await this.assertFolderExists(folderId, projectId, actor);
+
+    const folder = await this.prisma.folder.findFirst({
+      where: { id: folderId, projectId: projectId, deletedAt: null },
+    });
+    if (!folder) {
+      throw new NotFoundException(
+        'Wskazany folder nie należy do tego projektu',
+      );
+    }
+
     const documents = await this.prisma.document.findMany({
       where: { projectId, folderId, deletedAt: null },
       include: {
@@ -272,10 +294,20 @@ export class DocumentsService {
       documents.map((document) => document.id),
     );
 
-    return documents.map((document) => ({
-      ...document,
-      accessLevel: levels.get(document.id) ?? null,
-    }));
+    const visible = documents
+      .map((document) => ({
+        ...document,
+        accessLevel: levels.get(document.id) ?? null,
+      }))
+      .filter((document) => document.accessLevel !== null);
+
+    // Ktoś, komu udostępniono jeden plik, folderu nie ma nadanego wcale —
+    // folder jest wtedy dla niego tylko pojemnikiem na ten plik.
+    if (visible.length === 0) {
+      await this.assertFolderLevel(actor, projectId, folderId, false);
+    }
+
+    return visible;
   }
 
   async downloadDocument(
@@ -403,24 +435,37 @@ export class DocumentsService {
       nextStatus = 'PENDING_APPROVAL';
     }
 
-    const [version] = await this.prisma.$transaction([
-      this.prisma.documentVersion.create({
-        data: {
-          documentId,
-          versionNo: latest.versionNo + 1,
-          storageKey: source.storageKey,
-          fileName: source.fileName,
-          mimeType: source.mimeType,
-          sizeBytes: source.sizeBytes,
-          uploadedById: userId,
-          changeNote: `Przywrócono wersję v${versionNo}`,
-        },
-      }),
-      this.prisma.document.update({
-        where: { id: documentId },
-        data: { status: nextStatus },
-      }),
-    ]);
+    const [version] = await this.prisma
+      .$transaction([
+        this.prisma.documentVersion.create({
+          data: {
+            documentId,
+            versionNo: latest.versionNo + 1,
+            storageKey: source.storageKey,
+            fileName: source.fileName,
+            mimeType: source.mimeType,
+            sizeBytes: source.sizeBytes,
+            uploadedById: userId,
+            changeNote: `Przywrócono wersję v${versionNo}`,
+          },
+        }),
+        this.prisma.document.update({
+          where: { id: documentId },
+          data: { status: nextStatus },
+        }),
+      ])
+      .catch((error: unknown) => {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2002'
+        ) {
+          throw new ConflictException(
+            'Ktoś właśnie dodał nową wersję. Odśwież stronę i spróbuj ponownie.',
+          );
+        }
+
+        throw error;
+      });
 
     return version;
   }
@@ -593,6 +638,7 @@ export class DocumentsService {
     }
 
     await this.prisma.$transaction([
+      this.prisma.documentAccess.deleteMany({ where: { documentId } }),
       this.prisma.documentVersion.deleteMany({ where: { documentId } }),
       this.prisma.document.delete({ where: { id: documentId } }),
     ]);

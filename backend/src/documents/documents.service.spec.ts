@@ -63,6 +63,7 @@ function createFakePrisma() {
   const folders: FolderRow[] = [];
   const documents: DocumentRow[] = [];
   const versions: VersionRow[] = [];
+  const accesses: { documentId: string }[] = [];
   let nextId = 1;
 
   const matchesVersion = (row: VersionRow, where: Where): boolean =>
@@ -83,6 +84,18 @@ function createFakePrisma() {
     folders,
     documents,
     versions,
+    accesses,
+    documentAccess: {
+      deleteMany: ({ where }: { where: Where }) => {
+        const kept = accesses.filter(
+          (row) => row.documentId !== where.documentId,
+        );
+        const removed = accesses.length - kept.length;
+        accesses.length = 0;
+        accesses.push(...kept);
+        return Promise.resolve({ count: removed });
+      },
+    },
     folder: {
       findFirst: ({ where }: { where: Where }) =>
         Promise.resolve(folders.find((row) => matchesRow(row, where)) ?? null),
@@ -222,6 +235,8 @@ describe('DocumentsService', () => {
   let level: 'VIEW' | 'EDIT' | null;
   // Left undefined, folders answer with `level` like everything else.
   let folderLevel: 'VIEW' | 'EDIT' | null | undefined;
+  // Left undefined, every document answers with `level`.
+  let documentLevels: Record<string, 'VIEW' | 'EDIT' | null> | undefined;
 
   const addFolder = (row: Partial<FolderRow> & { id: string }): FolderRow => {
     const full: FolderRow = {
@@ -276,6 +291,7 @@ describe('DocumentsService', () => {
     archived = false;
     level = 'EDIT';
     folderLevel = undefined;
+    documentLevels = undefined;
 
     const fakeAccess = {
       assertCanRead: () => Promise.resolve(),
@@ -302,7 +318,15 @@ describe('DocumentsService', () => {
         _projectId: string,
         _folderId: string,
         documentIds: string[],
-      ) => Promise.resolve(new Map(documentIds.map((id) => [id, level]))),
+      ) =>
+        Promise.resolve(
+          new Map(
+            documentIds.map((id) => [
+              id,
+              documentLevels ? (documentLevels[id] ?? null) : level,
+            ]),
+          ),
+        ),
     };
 
     service = new DocumentsService(
@@ -609,6 +633,17 @@ describe('DocumentsService', () => {
       const found = await service.getDocuments(PROJECT, FOLDER, ACTOR);
 
       expect(found[0].accessLevel).toBe('VIEW');
+    });
+
+    it('shows the one file shared with someone who has no folder access', async () => {
+      level = null;
+      documentLevels = { 'doc-1': 'VIEW', 'doc-2': null };
+      addDocument({ id: 'doc-1' });
+      addDocument({ id: 'doc-2' });
+
+      const found = await service.getDocuments(PROJECT, FOLDER, ACTOR);
+
+      expect(found.map((d) => d.id)).toEqual(['doc-1']);
     });
 
     it('refuses when the folder is not shared with the caller', async () => {
@@ -949,6 +984,16 @@ describe('DocumentsService', () => {
       await expect(
         service.deleteDocumentPermanently(PROJECT, 'doc-1', ACTOR),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it('also clears the sharing rows that point at the document', async () => {
+      addDocument({ id: 'doc-1', deletedAt: new Date() });
+      addVersion({ id: 'v1', documentId: 'doc-1' });
+      prisma.accesses.push({ documentId: 'doc-1' });
+
+      await service.deleteDocumentPermanently(PROJECT, 'doc-1', ACTOR);
+
+      expect(prisma.accesses).toHaveLength(0);
     });
   });
 

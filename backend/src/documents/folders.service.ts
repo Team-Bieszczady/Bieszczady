@@ -49,12 +49,32 @@ export class FoldersService {
     }
 
     const granted = await this.prisma.documentAccess.findMany({
-      where: { projectId: id, userId: actor.id, folderId: { not: null } },
-      select: { folderId: true, level: true },
+      where: { projectId: id, userId: actor.id },
+      select: { folderId: true, documentId: true, level: true },
     });
     const levelByFolder = new Map(
-      granted.map((g) => [g.folderId as string, g.level]),
+      granted
+        .filter((g) => g.folderId)
+        .map((g) => [g.folderId as string, g.level]),
     );
+
+    // Dostęp do samego pliku musi też odsłonić folder, w którym on leży,
+    // inaczej udostępnienie pojedynczego dokumentu byłoby nie do odnalezienia.
+    const grantedDocumentIds = granted
+      .filter((g) => g.documentId)
+      .map((g) => g.documentId as string);
+
+    const holdingFolderIds = new Set(
+      grantedDocumentIds.length
+        ? (
+            await this.prisma.document.findMany({
+              where: { id: { in: grantedDocumentIds }, deletedAt: null },
+              select: { folderId: true },
+            })
+          ).map((document) => document.folderId)
+        : [],
+    );
+
     const byId = new Map(folders.map((f) => [f.id, f]));
 
     const levelOf = (folder: (typeof folders)[number]) => {
@@ -72,7 +92,11 @@ export class FoldersService {
     };
 
     const visible = folders
-      .map((folder) => ({ folder, accessLevel: levelOf(folder) }))
+      .map((folder) => ({
+        folder,
+        accessLevel:
+          levelOf(folder) ?? (holdingFolderIds.has(folder.id) ? 'VIEW' : null),
+      }))
       .filter((row) => row.accessLevel !== null);
 
     const visibleIds = new Set(visible.map((row) => row.folder.id));

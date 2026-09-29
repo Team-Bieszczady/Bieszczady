@@ -121,6 +121,7 @@ export class DocumentAccessService {
     projectId: string,
     dto: GrantAccessDto,
   ) {
+    await this.access.assertNotArchived(projectId);
     const canManage = await this.access.canManageTasks(actor, projectId);
 
     if (!canManage) {
@@ -200,6 +201,7 @@ export class DocumentAccessService {
   }
 
   async revoke(actor: AuthenticatedUser, projectId: string, accessId: string) {
+    await this.access.assertNotArchived(projectId);
     const canManage = await this.access.canManageTasks(actor, projectId);
     if (!canManage) {
       throw new ForbiddenException(

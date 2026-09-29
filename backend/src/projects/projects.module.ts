@@ -55,6 +55,6 @@ import { ProjectAccessService } from './project-access.service';
     StageCompletionService,
     ProjectAccessService,
   ],
-  exports: [ProjectAccessService]
+  exports: [ProjectAccessService],
 })
 export class ProjectsModule {}

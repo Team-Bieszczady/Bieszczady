@@ -30,6 +30,7 @@ const ALLOWED_TYPES: Record<string, string[]> = {
 };
 
 export const DOCUMENT_UPLOAD_OPTIONS: MulterOptions = {
+  defParamCharset: 'utf8',
   limits: { fileSize: MAX_FILE_SIZE_BYTES },
   fileFilter: (_req, file, callback) => {
     const ext = file.originalname.split('.').pop()?.toLowerCase() ?? '';

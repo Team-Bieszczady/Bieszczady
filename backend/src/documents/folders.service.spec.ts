@@ -23,7 +23,8 @@ interface DocumentRow {
 
 interface AccessRow {
   [key: string]: unknown;
-  folderId: string;
+  folderId: string | null;
+  documentId?: string | null;
   userId: string;
   level: string;
 }
@@ -103,6 +104,12 @@ function createFakePrisma() {
     document: {
       findFirst: ({ where }: { where: Where }) =>
         Promise.resolve(documents.find((row) => matches(row, where)) ?? null),
+      findMany: ({ where }: { where: Where }) => {
+        const wanted = (where.id as { in: string[] } | undefined)?.in ?? [];
+        return Promise.resolve(
+          documents.filter((row) => wanted.includes(row.id)),
+        );
+      },
       groupBy: () =>
         Promise.resolve([] as { folderId: string; _count: number }[]),
     },
@@ -217,6 +224,24 @@ describe('FoldersService', () => {
       const found = await service.findAllForProject(PROJECT, ACTOR);
 
       expect(found.find((f) => f.id === 'child')?.accessLevel).toBe('VIEW');
+    });
+
+    it('shows the folder holding a file shared with the viewer', async () => {
+      addFolder({ id: 'a' });
+      addFolder({ id: 'b' });
+      prisma.documents.push({ id: 'doc-1', folderId: 'b', deletedAt: null });
+      canManage = false;
+      prisma.accesses.push({
+        folderId: null,
+        documentId: 'doc-1',
+        userId: OWNER,
+        level: 'EDIT',
+      });
+
+      const found = await service.findAllForProject(PROJECT, ACTOR);
+
+      expect(found.map((f) => f.id)).toEqual(['b']);
+      expect(found[0].accessLevel).toBe('VIEW');
     });
 
     it('sorts by name', async () => {
