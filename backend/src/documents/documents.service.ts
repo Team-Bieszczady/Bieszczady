@@ -516,6 +516,19 @@ export class DocumentsService {
     if (!document) {
       throw new NotFoundException('Nie znaleziono dokumentu');
     }
+
+    const locked =
+      document.status === 'APPROVED' || document.status === 'SIGNED';
+
+    if (locked) {
+      const canApprove = await this.access.canManageTasks(actor, projectId);
+      if (!canApprove) {
+        throw new ForbiddenException(
+          'Nazwę zatwierdzonego lub podpisanego dokumentu zmieni tylko dyrektor lub koordynator',
+        );
+      }
+    }
+
     return await this.prisma.document.update({
       where: { id: documentId },
       data: { name: dto.name },

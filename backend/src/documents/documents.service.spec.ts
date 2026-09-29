@@ -916,6 +916,42 @@ describe('DocumentsService', () => {
         service.updateDocument(PROJECT, 'doc-1', { name: 'Nowa' }, ACTOR),
       ).rejects.toThrow(ForbiddenException);
     });
+
+    it('refuses to rename a signed document for someone who cannot approve', async () => {
+      canManage = false;
+      addDocument({ id: 'doc-1', status: 'SIGNED' });
+
+      await expect(
+        service.updateDocument(PROJECT, 'doc-1', { name: 'Nowa' }, ACTOR),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('lets someone who manages rename an approved document', async () => {
+      addDocument({ id: 'doc-1', status: 'APPROVED' });
+
+      const updated = await service.updateDocument(
+        PROJECT,
+        'doc-1',
+        { name: 'Nowa' },
+        ACTOR,
+      );
+
+      expect(updated.name).toBe('Nowa');
+    });
+
+    it('lets anyone with edit rename a draft', async () => {
+      canManage = false;
+      addDocument({ id: 'doc-1', status: 'DRAFT' });
+
+      const updated = await service.updateDocument(
+        PROJECT,
+        'doc-1',
+        { name: 'Nowa' },
+        ACTOR,
+      );
+
+      expect(updated.name).toBe('Nowa');
+    });
   });
 
   describe('approveDocument', () => {

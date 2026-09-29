@@ -58,6 +58,10 @@ export function documentMenuItems(
     ];
   }
 
+  // Zamknięty dokument zmienia nazwę tylko ręką kogoś, kto go zatwierdza.
+  const isLocked =
+    document.status === 'APPROVED' || document.status === 'SIGNED';
+
   return [
     ...(flags.canEdit
       ? [
@@ -67,6 +71,10 @@ export function documentMenuItems(
             icon: <IoCreateOutline className="h-4 w-4" />,
             onSelect: () => handlers.onNewVersion(document.id),
           },
+        ]
+      : []),
+    ...(flags.canEdit && (!isLocked || flags.canManage)
+      ? [
           {
             id: 'rename-document',
             label: 'Zmień nazwę',
