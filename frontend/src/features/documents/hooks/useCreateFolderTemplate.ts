@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthToken } from '../../../context/useAuthToken';
 import { api } from '../../../lib/api';
+import { invalidateDocumentQueries } from '../utils/invalidateDocumentQueries';
 
 export function useCreateFolderTemplate(projectId: string) {
   const queryClient = useQueryClient();
@@ -10,8 +11,6 @@ export function useCreateFolderTemplate(projectId: string) {
     mutationFn: async () => {
       return await api.createFolderTemplate(requireToken(), projectId);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['folders', projectId] });
-    },
+    onSuccess: () => invalidateDocumentQueries(queryClient, projectId),
   });
 }

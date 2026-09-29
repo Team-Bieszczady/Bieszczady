@@ -42,7 +42,12 @@ export function NameFormModal({
   } = useForm<Inputs>({ defaultValues: { name: initialName } });
 
   const submit: SubmitHandler<Inputs> = (data) => {
-    onSubmit(data.name.trim());
+    const name = data.name.trim();
+    if (name === initialName) {
+      onClose();
+      return;
+    }
+    onSubmit(name);
   };
 
   return (

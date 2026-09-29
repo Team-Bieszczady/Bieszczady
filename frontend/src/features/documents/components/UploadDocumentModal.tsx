@@ -79,7 +79,7 @@ export function UploadDocumentModal({
   const versionForId = useWatch({ control, name: 'versionForId' });
 
   const upload = useUploadDocument(projectId, folderId);
-  const uploadVersion = useUploadVersion(projectId, folderId, versionForId);
+  const uploadVersion = useUploadVersion(projectId, versionForId);
 
   const documentOptions = documents
     .filter((doc) => doc.accessLevel === 'EDIT')

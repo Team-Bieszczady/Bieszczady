@@ -4,7 +4,6 @@ import { NameFormModal } from './NameFormModal';
 
 interface Props {
   projectId: string;
-  folderId: string;
   documentId: string | null;
   currentName: string;
   onClose: () => void;
@@ -12,12 +11,11 @@ interface Props {
 
 export function RenameDocumentModal({
   projectId,
-  folderId,
   documentId,
   currentName,
   onClose,
 }: Props) {
-  const updateDocument = useUpdateDocument(projectId, folderId);
+  const updateDocument = useUpdateDocument(projectId);
 
   const submit = (name: string) => {
     if (documentId === null) {

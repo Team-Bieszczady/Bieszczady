@@ -19,3 +19,14 @@ export function fileExtension(fileName: string): string {
 export function formatDate(isoDate: string): string {
   return new Date(isoDate).toLocaleDateString('pl-PL');
 }
+
+const PREVIEWABLE = [
+  'application/pdf',
+  'text/plain',
+  'text/csv',
+  'application/csv',
+];
+
+export function canPreview(mimeType: string): boolean {
+  return PREVIEWABLE.includes(mimeType) || mimeType.startsWith('image/');
+}

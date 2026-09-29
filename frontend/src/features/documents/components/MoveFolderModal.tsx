@@ -7,6 +7,7 @@ import { FieldError } from '../../../components/ui/FieldError';
 import { FIELD_LABEL_CLASSES } from '../../../components/ui/formStyles';
 import { showError, showSuccess } from '../utils/toasts';
 import { useMoveFolder } from '../hooks/useMoveFolder';
+import { collectSubtreeIds } from '../utils/folderTree';
 
 const ROOT = 'ROOT';
 
@@ -18,38 +19,23 @@ interface Props {
   projectId: string;
   folderId: string | null;
   folders: BackendFolder[];
+  onMoved: (parentId: string | null) => void;
   onClose: () => void;
-}
-
-function collectBlocked(folders: BackendFolder[], folderId: string) {
-  const blocked = new Set([folderId]);
-  let grew = true;
-
-  while (grew) {
-    grew = false;
-    for (const folder of folders) {
-      if (folder.parentId && blocked.has(folder.parentId)) {
-        if (!blocked.has(folder.id)) {
-          blocked.add(folder.id);
-          grew = true;
-        }
-      }
-    }
-  }
-
-  return blocked;
 }
 
 export function MoveFolderModal({
   projectId,
   folderId,
   folders,
+  onMoved,
   onClose,
 }: Props) {
   const moveFolder = useMoveFolder(projectId);
 
   const folder = folders.find((el) => el.id === folderId);
-  const blocked = folderId ? collectBlocked(folders, folderId) : new Set();
+  const blocked = folderId
+    ? collectSubtreeIds(folders, folderId)
+    : new Set<string>();
 
   const options = [
     { value: ROOT, label: 'Główny poziom' },
@@ -71,14 +57,18 @@ export function MoveFolderModal({
       return;
     }
 
+    const parentId = data.parentId === ROOT ? null : data.parentId;
+    if (folder && parentId === folder.parentId) {
+      onClose();
+      return;
+    }
+
     moveFolder.mutate(
-      {
-        folderId,
-        parentId: data.parentId === ROOT ? null : data.parentId,
-      },
+      { folderId, parentId },
       {
         onSuccess: () => {
           showSuccess('Folder przeniesiony');
+          onMoved(parentId);
           onClose();
         },
         onError: showError,

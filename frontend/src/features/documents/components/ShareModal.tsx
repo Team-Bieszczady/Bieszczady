@@ -1,5 +1,7 @@
 import { Modal } from '../../../components/ui/Modal';
 import { Select } from '../../../components/ui/Select';
+import { InlineQueryState } from '../../../components/ui/InlineQueryState';
+import { isApiError } from '../../../lib/api';
 import { useDocumentAccess } from '../hooks/useDocumentAccess';
 import { useGrantAccess } from '../hooks/useGrantAccess';
 import { useRevokeAccess } from '../hooks/useRevokeAccess';
@@ -26,7 +28,8 @@ interface Props {
 }
 
 export function ShareModal({ projectId, target, targetName, onClose }: Props) {
-  const { data: rows, error } = useDocumentAccess(projectId, target);
+  const { data, error, isPending, isError, isFetching, refetch } =
+    useDocumentAccess(projectId, target);
   const grant = useGrantAccess(projectId);
   const revoke = useRevokeAccess(projectId);
 
@@ -71,47 +74,57 @@ export function ShareModal({ projectId, target, targetName, onClose }: Props) {
           <p className="text-xs text-gray-400">Zapisywanie zmiany...</p>
         )}
 
-        {error && (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-            {error.message}
-          </p>
-        )}
+        <InlineQueryState
+          compact
+          isLoading={isPending}
+          isError={isError}
+          isFetching={isFetching}
+          data={data}
+          errorMessage={
+            isApiError(error) && error.message
+              ? error.message
+              : 'Nie udało się wczytać listy dostępu.'
+          }
+          onRetry={() => void refetch()}
+        >
+          {(rows) =>
+            rows.map((row) => (
+              <div
+                key={row.userId}
+                className="flex items-center justify-between gap-4"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm text-dark">
+                    {row.firstName} {row.lastName}
+                  </p>
+                  {!row.isManager && !row.level && row.effectiveLevel && (
+                    <p className="truncate text-xs text-gray-400">
+                      obowiązuje: {LEVEL_LABELS[row.effectiveLevel]} z folderu
+                      nadrzędnego
+                    </p>
+                  )}
+                </div>
 
-        {rows?.map((row) => (
-          <div
-            key={row.userId}
-            className="flex items-center justify-between gap-4"
-          >
-            <div className="min-w-0">
-              <p className="truncate text-sm text-dark">
-                {row.firstName} {row.lastName}
-              </p>
-              {!row.isManager && !row.level && row.effectiveLevel && (
-                <p className="truncate text-xs text-gray-400">
-                  obowiązuje: {LEVEL_LABELS[row.effectiveLevel]} z folderu
-                  nadrzędnego
-                </p>
-              )}
-            </div>
-
-            {row.isManager ? (
-              <span className="shrink-0 text-xs text-gray-400">
-                zawsze ma dostęp
-              </span>
-            ) : (
-              <div className="w-40 shrink-0">
-                <Select
-                  size="md"
-                  allowEmpty={false}
-                  options={LEVEL_OPTIONS}
-                  placeholder="Wybierz"
-                  value={row.level ?? 'NONE'}
-                  onChange={(v) => changeLevel(row, v as Level)}
-                />
+                {row.isManager ? (
+                  <span className="shrink-0 text-xs text-gray-400">
+                    zawsze ma dostęp
+                  </span>
+                ) : (
+                  <div className="w-40 shrink-0">
+                    <Select
+                      size="md"
+                      allowEmpty={false}
+                      options={LEVEL_OPTIONS}
+                      placeholder="Wybierz"
+                      value={row.level ?? 'NONE'}
+                      onChange={(v) => changeLevel(row, v as Level)}
+                    />
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        ))}
+            ))
+          }
+        </InlineQueryState>
 
         <div className="border-t border-gray-200 pt-4 text-xs text-gray-400">
           <p>Dyrektor i koordynatorzy projektu mają dostęp zawsze.</p>

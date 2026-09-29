@@ -1,4 +1,5 @@
 import { api } from '../../../lib/api';
+import { invalidateDocumentQueries } from '../utils/invalidateDocumentQueries';
 import { useAuthToken } from '../../../context/useAuthToken';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
@@ -15,8 +16,6 @@ export function useCreateFolder(projectId: string) {
     }) => {
       return api.createFolder(requireToken(), projectId, { name, parentId });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['folders', projectId] });
-    },
+    onSuccess: () => invalidateDocumentQueries(queryClient, projectId),
   });
 }

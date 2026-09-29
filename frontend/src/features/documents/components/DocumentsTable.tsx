@@ -108,13 +108,13 @@ export function DocumentsTable({
         <table className="w-full border-collapse text-left">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50">
-              <th className={HEAD_CLASS}></th>
+              <th className={HEAD_SHRINK}></th>
               {sortableHead('name', 'Nazwa dokumentu')}
               <th className={HEAD_SHRINK}>Rodzaj</th>
               {sortableHead('updatedAt', 'Zmieniono')}
               <th className={HEAD_SHRINK}>Wersja</th>
               <th className={HEAD_SHRINK}>Status</th>
-              <th className={HEAD_CLASS}></th>
+              <th className={HEAD_SHRINK}></th>
             </tr>
           </thead>
           <tbody>

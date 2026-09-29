@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthToken } from '../../../context/useAuthToken';
 import { api } from '../../../lib/api';
+import { invalidateDocumentQueries } from '../utils/invalidateDocumentQueries';
 
 export function useDeleteDocumentPermanently(projectId: string) {
   const queryClient = useQueryClient();
@@ -13,15 +14,6 @@ export function useDeleteDocumentPermanently(projectId: string) {
         documentId,
       );
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['trash', projectId] });
-      queryClient.invalidateQueries({
-        queryKey: ['pending-count', projectId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ['pending-documents', projectId],
-      });
-      queryClient.invalidateQueries({ queryKey: ['folders', projectId] });
-    },
+    onSuccess: () => invalidateDocumentQueries(queryClient, projectId),
   });
 }

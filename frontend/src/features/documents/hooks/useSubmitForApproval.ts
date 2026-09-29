@@ -1,8 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthToken } from '../../../context/useAuthToken';
 import { api } from '../../../lib/api';
+import { invalidateDocumentQueries } from '../utils/invalidateDocumentQueries';
 
-export function useSubmitForApproval(projectId: string, folderId: string) {
+export function useSubmitForApproval(projectId: string) {
   const queryClient = useQueryClient();
   const { requireToken } = useAuthToken();
 
@@ -10,17 +11,6 @@ export function useSubmitForApproval(projectId: string, folderId: string) {
     mutationFn: async (documentId: string) => {
       return api.submitForApproval(requireToken(), projectId, documentId);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ['documents', projectId, folderId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ['pending-count', projectId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ['pending-documents', projectId],
-      });
-      queryClient.invalidateQueries({ queryKey: ['folders', projectId] });
-    },
+    onSuccess: () => invalidateDocumentQueries(queryClient, projectId),
   });
 }

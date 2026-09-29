@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthToken } from '../../../context/useAuthToken';
 import { api } from '../../../lib/api';
+import { invalidateDocumentQueries } from '../utils/invalidateDocumentQueries';
 
 export function useMoveFolder(projectId: string) {
   const queryClient = useQueryClient();
@@ -18,8 +19,6 @@ export function useMoveFolder(projectId: string) {
         parentId,
       });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['folders', projectId] });
-    },
+    onSuccess: () => invalidateDocumentQueries(queryClient, projectId),
   });
 }

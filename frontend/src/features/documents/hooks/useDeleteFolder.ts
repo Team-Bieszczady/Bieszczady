@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthToken } from '../../../context/useAuthToken';
 import { api } from '../../../lib/api';
+import { invalidateDocumentQueries } from '../utils/invalidateDocumentQueries';
 
 export function useDeleteFolder(projectId: string) {
   const queryClient = useQueryClient();
@@ -9,9 +10,6 @@ export function useDeleteFolder(projectId: string) {
     mutationFn: async (folderId: string) => {
       return api.deleteFolder(requireToken(), projectId, folderId);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['folders', projectId] });
-      queryClient.invalidateQueries({ queryKey: ['trash', projectId] });
-    },
+    onSuccess: () => invalidateDocumentQueries(queryClient, projectId),
   });
 }

@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthToken } from '../../../context/useAuthToken';
 import { api } from '../../../lib/api';
+import { invalidateDocumentQueries } from '../utils/invalidateDocumentQueries';
 import type { DocumentKind } from '../../../lib/documents';
 
 interface UploadDocumentInput {
@@ -30,17 +31,6 @@ export function useUploadDocument(projectId: string, folderId: string) {
 
       return api.uploadDocument(requireToken(), projectId, folderId, formData);
     },
-    onSuccess: async () => {
-      queryClient.invalidateQueries({
-        queryKey: ['documents', projectId, folderId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ['pending-count', projectId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ['pending-documents', projectId],
-      });
-      queryClient.invalidateQueries({ queryKey: ['folders', projectId] });
-    },
+    onSuccess: () => invalidateDocumentQueries(queryClient, projectId),
   });
 }

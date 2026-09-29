@@ -9,6 +9,7 @@ import {
 } from 'react-icons/io5';
 import type { BackendFolder } from '../../../lib/api';
 import { ActionMenu } from '../../../components/ui/ActionMenu';
+import { collectSubtreeIds } from '../utils/folderTree';
 
 interface Props {
   folders: BackendFolder[];
@@ -29,30 +30,6 @@ interface Props {
   onDragFolder: (folderId: string | null) => void;
   onDragOverFolder: (folderId: string | null) => void;
   onDropOnFolder: (parentId: string) => void;
-}
-
-const MAX_DEPTH = 50;
-
-function isInsideDragged(
-  folders: BackendFolder[],
-  folderId: string,
-  draggedId: string,
-) {
-  let current = folders.find((f) => f.id === folderId);
-  let steps = 0;
-
-  while (current) {
-    if (current.id === draggedId) {
-      return true;
-    }
-    if (steps++ > MAX_DEPTH) {
-      return true;
-    }
-    const parentId: string | null = current.parentId;
-    current = parentId ? folders.find((f) => f.id === parentId) : undefined;
-  }
-
-  return false;
 }
 
 export const FolderTree = ({
@@ -77,6 +54,9 @@ export const FolderTree = ({
 }: Props) => {
   const children = folders.filter((f) => f.parentId === parentId);
   const draggedFolder = folders.find((f) => f.id === draggedId);
+  const draggedSubtree = draggedId
+    ? collectSubtreeIds(folders, draggedId)
+    : new Set<string>();
 
   return (
     <>
@@ -87,7 +67,7 @@ export const FolderTree = ({
           canManage &&
           draggedId !== null &&
           draggedFolder?.parentId !== folder.id &&
-          !isInsideDragged(folders, folder.id, draggedId);
+          !draggedSubtree.has(folder.id);
 
         return (
           <div key={folder.id}>
@@ -167,7 +147,7 @@ export const FolderTree = ({
               {canManage && (
                 <ActionMenu
                   ariaLabel={`Akcje folderu ${folder.name}`}
-                  className="opacity-0 group-hover:opacity-100"
+                  className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 aria-expanded:opacity-100"
                   items={[
                     {
                       id: 'add-subfolder',

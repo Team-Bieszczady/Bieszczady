@@ -23,6 +23,8 @@ import {
 } from '../features/documents/components/UploadDocumentModal';
 import { useSelectedProject } from '../context/useSelectedProject';
 import { PageMessage } from '../components/ui/PageMessage';
+import { PageLoading } from '../components/ui/PageLoading';
+import { InlineQueryState } from '../components/ui/InlineQueryState';
 import { useApproveDocument } from '../features/documents/hooks/useApproveDocument';
 import { RestoreDocumentModal } from '../features/documents/components/RestoreDocumentModal';
 import { DeletePermanentlyDialog } from '../features/documents/components/DeletePermanentlyDialog';
@@ -38,14 +40,19 @@ import { useWithdrawToDraft } from '../features/documents/hooks/useWithdrawToDra
 import { useViewerManages } from '../features/projects/hooks/useViewerManages';
 import { DocumentsToolbar } from '../features/documents/components/DocumentsToolbar';
 import { useMoveFolder } from '../features/documents/hooks/useMoveFolder';
+import { collectAncestorIds } from '../features/documents/utils/folderTree';
 
 const DOCUMENT_FORMS: PluralForms = ['dokument', 'dokumenty', 'dokumentów'];
+const DELETED_DOCUMENT_FORMS: PluralForms = [
+  'usunięty dokument',
+  'usunięte dokumenty',
+  'usuniętych dokumentów',
+];
 
 function DocumentsView({ projectId }: { projectId: string }) {
   const [folderId, setFolderId] = useState<string | null>(null);
   const {
     data: folders,
-    isPending: foldersPending,
     isError: foldersFailed,
     refetch: refetchFolders,
   } = useFolders(projectId);
@@ -53,6 +60,8 @@ function DocumentsView({ projectId }: { projectId: string }) {
     data: documents,
     isPending: documentsPending,
     isError: documentsFailed,
+    isFetching: documentsFetching,
+    refetch: refetchDocuments,
   } = useDocuments(projectId, folderId);
 
   const [showUpload, setShowUpload] = useState(false);
@@ -103,11 +112,18 @@ function DocumentsView({ projectId }: { projectId: string }) {
 
   const [renameDocumentId, setRenameDocumentId] = useState<string | null>(null);
 
-  const { data: trash } = useTrash(projectId);
+  const {
+    data: trash,
+    isPending: trashPending,
+    isError: trashFailed,
+    isFetching: trashFetching,
+    refetch: refetchTrash,
+  } = useTrash(projectId);
   const {
     data: pending,
     isPending: pendingLoading,
     isError: pendingFailed,
+    isFetching: pendingFetching,
     refetch: refetchPending,
   } = usePendingDocuments(projectId);
   const { data: pendingCount } = usePendingCount(projectId);
@@ -117,13 +133,13 @@ function DocumentsView({ projectId }: { projectId: string }) {
   const createTemplate = useCreateFolderTemplate(projectId);
   const moveFolder = useMoveFolder(projectId);
 
-  const submitForApproval = useSubmitForApproval(projectId, folderId ?? '');
+  const submitForApproval = useSubmitForApproval(projectId);
 
-  const approveDocument = useApproveDocument(projectId, folderId ?? '');
+  const approveDocument = useApproveDocument(projectId);
 
-  const revertApproval = useRevertApproval(projectId, folderId ?? '');
+  const revertApproval = useRevertApproval(projectId);
 
-  const withdrawToDraft = useWithdrawToDraft(projectId, folderId ?? '');
+  const withdrawToDraft = useWithdrawToDraft(projectId);
 
   const canManage = useViewerManages(projectId);
 
@@ -138,6 +154,10 @@ function DocumentsView({ projectId }: { projectId: string }) {
   const { download, preview } = useDocumentFile(projectId);
 
   const documentsInView = showPending ? pending : documents;
+  const viewPending = showPending ? pendingLoading : documentsPending;
+  const viewFailed = showPending ? pendingFailed : documentsFailed;
+  const viewFetching = showPending ? pendingFetching : documentsFetching;
+  const refetchView = showPending ? refetchPending : refetchDocuments;
 
   const restoreVersion = (documentId: string, versionNo: number) => {
     if (restoreVersionMutation.isPending) {
@@ -227,6 +247,14 @@ function DocumentsView({ projectId }: { projectId: string }) {
     }
   };
 
+  const revealFolder = (targetId: string | null) => {
+    if (!targetId) {
+      return;
+    }
+    const path = collectAncestorIds(folders ?? [], targetId);
+    setCollapsedIds((ids) => ids.filter((id) => !path.has(id)));
+  };
+
   const dropFolderOn = (parentId: string | null) => {
     const draggedId = draggedFolderId;
 
@@ -249,9 +277,7 @@ function DocumentsView({ projectId }: { projectId: string }) {
       {
         onSuccess: () => {
           showSuccess('Folder przeniesiony');
-          if (parentId) {
-            setCollapsedIds((ids) => ids.filter((id) => id !== parentId));
-          }
+          revealFolder(parentId);
         },
         onError: showError,
       },
@@ -359,20 +385,16 @@ function DocumentsView({ projectId }: { projectId: string }) {
     setShowUpload(true);
   };
 
-  if (foldersPending) {
-    return (
-      <p className="px-4 py-10 text-center text-xs text-gray-400">
-        Ładowanie...
-      </p>
-    );
-  }
-  if (foldersFailed || !folders) {
-    return (
-      <PageMessage
-        message="Nie udało się wczytać folderów projektu."
-        onRetry={() => void refetchFolders()}
-      />
-    );
+  if (!folders) {
+    if (foldersFailed) {
+      return (
+        <PageMessage
+          message="Nie udało się wczytać folderów projektu."
+          onRetry={() => void refetchFolders()}
+        />
+      );
+    }
+    return <PageLoading />;
   }
 
   const needle = query.trim().toLowerCase();
@@ -394,6 +416,7 @@ function DocumentsView({ projectId }: { projectId: string }) {
   const openFolder = folders.find((el) => el.id === folderId);
   const nameFolder = openFolder?.name;
   const canEditFolder = openFolder?.accessLevel === 'EDIT';
+  const draggedFolder = folders.find((el) => el.id === draggedFolderId);
   const permanentDeleteName = trash?.find(
     (el) => el.id === permanentDeleteId,
   )?.name;
@@ -431,8 +454,8 @@ function DocumentsView({ projectId }: { projectId: string }) {
         </Button>
       </div>
 
-      <div className="flex flex-col gap-6 lg:flex-row">
-        <aside className="rounded-lg border border-gray-200 bg-white p-4 lg:w-72 lg:shrink-0">
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+        <aside className="rounded-lg border border-gray-200 bg-white p-4 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:w-72 lg:shrink-0 lg:overflow-y-auto xl:w-80">
           <div className="mb-3 flex items-center justify-between">
             <p className="text-xs uppercase tracking-wide text-gray-400">
               Foldery
@@ -468,7 +491,7 @@ function DocumentsView({ projectId }: { projectId: string }) {
               onDragOverFolder={setDropTargetId}
               onDropOnFolder={dropFolderOn}
             />
-            {draggedFolderId && (
+            {draggedFolder?.parentId && (
               <div
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={(event) => {
@@ -519,33 +542,46 @@ function DocumentsView({ projectId }: { projectId: string }) {
             <div className="border-b border-gray-200 px-4 py-4 max-sm:border-0 max-sm:px-0">
               <p className="text-base font-semibold text-dark">Kosz</p>
 
-              <p className="mt-0.5 text-xs text-gray-400">
-                {trash?.length ?? 0} usuniętych dokumentów
-              </p>
+              {trash && (
+                <p className="mt-0.5 text-xs text-gray-400">
+                  {pluralizePl(trash.length, DELETED_DOCUMENT_FORMS)}
+                </p>
+              )}
             </div>
           )}
-          {showTrash && trash && (
-            <DocumentsTable
-              documents={trash}
-              projectId={projectId}
-              onDownload={download}
-              expandedIds={expandedIds}
-              onToggle={toggleExpanded}
-              onNewVersion={openNewVersion}
-              onDeleteDocument={setDeleteDocumentId}
-              onRestoreDocument={restore}
-              variant="trash"
-              onDeletePermanently={setPermanentDeleteId}
-              onPreview={preview}
-              onRestoreVersion={restoreVersion}
-              onRenameDocument={setRenameDocumentId}
-              onApprove={approve}
-              onShare={shareDocument}
-              onSubmitForApproval={sendForApproval}
-              onMarkSigned={openSigning}
-              onRevertApproval={revertApprovalOf}
-              onWithdrawToDraft={withdraw}
-            />
+          {showTrash && (
+            <InlineQueryState
+              isLoading={trashPending}
+              isError={trashFailed}
+              isFetching={trashFetching}
+              data={trash}
+              errorMessage="Nie udało się wczytać kosza."
+              onRetry={() => void refetchTrash()}
+            >
+              {(items) => (
+                <DocumentsTable
+                  documents={items}
+                  projectId={projectId}
+                  onDownload={download}
+                  expandedIds={expandedIds}
+                  onToggle={toggleExpanded}
+                  onNewVersion={openNewVersion}
+                  onDeleteDocument={setDeleteDocumentId}
+                  onRestoreDocument={restore}
+                  variant="trash"
+                  onDeletePermanently={setPermanentDeleteId}
+                  onPreview={preview}
+                  onRestoreVersion={restoreVersion}
+                  onRenameDocument={setRenameDocumentId}
+                  onApprove={approve}
+                  onShare={shareDocument}
+                  onSubmitForApproval={sendForApproval}
+                  onMarkSigned={openSigning}
+                  onRevertApproval={revertApprovalOf}
+                  onWithdrawToDraft={withdraw}
+                />
+              )}
+            </InlineQueryState>
           )}
           {!showTrash && !showPending && !folderId && (
             <p className="px-4 py-10 text-center text-xs text-gray-400">
@@ -573,75 +609,64 @@ function DocumentsView({ projectId }: { projectId: string }) {
                   onQueryChange={setQuery}
                   kind={kindFilter}
                   onKindChange={setKindFilter}
+                  searchLabel={
+                    showPending
+                      ? 'Szukaj w tej liście'
+                      : 'Szukaj w tym folderze'
+                  }
                 />
               </div>
             </div>
           )}
 
-          {showPending && pendingLoading && (
-            <p className="px-4 py-10 text-center text-xs text-gray-400">
-              Ładowanie...
-            </p>
+          {!showTrash && (folderId || showPending) && (
+            <InlineQueryState
+              isLoading={viewPending}
+              isError={viewFailed}
+              isFetching={viewFetching}
+              data={visibleDocuments}
+              errorMessage={
+                showPending
+                  ? 'Nie udało się wczytać dokumentów czekających na akceptację.'
+                  : 'Nie udało się wczytać dokumentów z tego folderu.'
+              }
+              onRetry={() => void refetchView()}
+            >
+              {(items) => (
+                <DocumentsTable
+                  documents={items}
+                  projectId={projectId}
+                  sortKey={sortKey}
+                  sortAsc={sortAsc}
+                  onSort={sortBy}
+                  emptyMessage={
+                    needle || kindFilter
+                      ? 'Nic nie pasuje do wyszukiwania'
+                      : showPending
+                        ? 'Nic nie czeka na akceptację'
+                        : undefined
+                  }
+                  onDownload={download}
+                  expandedIds={expandedIds}
+                  onToggle={toggleExpanded}
+                  onNewVersion={openNewVersion}
+                  onDeleteDocument={setDeleteDocumentId}
+                  onRestoreDocument={restore}
+                  variant="folder"
+                  onDeletePermanently={setPermanentDeleteId}
+                  onRenameDocument={setRenameDocumentId}
+                  onPreview={preview}
+                  onRestoreVersion={restoreVersion}
+                  onApprove={approve}
+                  onShare={shareDocument}
+                  onSubmitForApproval={sendForApproval}
+                  onMarkSigned={openSigning}
+                  onRevertApproval={revertApprovalOf}
+                  onWithdrawToDraft={withdraw}
+                />
+              )}
+            </InlineQueryState>
           )}
-          {showPending && pendingFailed && (
-            <div className="px-4 py-10 text-center">
-              <p className="text-xs text-darkRed">
-                Nie udało się wczytać dokumentów czekających na akceptację.
-              </p>
-              <button
-                type="button"
-                onClick={() => void refetchPending()}
-                className="mt-2 cursor-pointer text-xs font-medium text-darkGreen hover:text-darkGreenHover"
-              >
-                Spróbuj ponownie
-              </button>
-            </div>
-          )}
-          {folderId && documentsPending && !showTrash && !showPending && (
-            <p className="px-4 py-10 text-center text-xs text-gray-400">
-              Ładowanie...
-            </p>
-          )}
-          {folderId && documentsFailed && !showTrash && !showPending && (
-            <p className="px-4 py-10 text-center text-xs text-darkRed">
-              Nie udało się wczytać dokumentów z tego folderu.
-            </p>
-          )}
-          {visibleDocuments &&
-            !showTrash &&
-            !(showPending && pendingFailed) && (
-              <DocumentsTable
-                documents={visibleDocuments}
-                projectId={projectId}
-                sortKey={sortKey}
-                sortAsc={sortAsc}
-                onSort={sortBy}
-                emptyMessage={
-                  needle || kindFilter
-                    ? 'Nic nie pasuje do wyszukiwania'
-                    : showPending
-                      ? 'Nic nie czeka na akceptację'
-                      : undefined
-                }
-                onDownload={download}
-                expandedIds={expandedIds}
-                onToggle={toggleExpanded}
-                onNewVersion={openNewVersion}
-                onDeleteDocument={setDeleteDocumentId}
-                onRestoreDocument={restore}
-                variant="folder"
-                onDeletePermanently={setPermanentDeleteId}
-                onRenameDocument={setRenameDocumentId}
-                onPreview={preview}
-                onRestoreVersion={restoreVersion}
-                onApprove={approve}
-                onShare={shareDocument}
-                onSubmitForApproval={sendForApproval}
-                onMarkSigned={openSigning}
-                onRevertApproval={revertApprovalOf}
-                onWithdrawToDraft={withdraw}
-              />
-            )}
         </section>
       </div>
       <RestoreDocumentModal
@@ -681,7 +706,6 @@ function DocumentsView({ projectId }: { projectId: string }) {
 
       <RenameDocumentModal
         projectId={projectId}
-        folderId={folderId ?? ''}
         documentId={renameDocumentId}
         currentName={renameDocumentName}
         onClose={() => setRenameDocumentId(null)}
@@ -708,7 +732,6 @@ function DocumentsView({ projectId }: { projectId: string }) {
 
       <DeleteDocumentDialog
         projectId={projectId}
-        folderId={folderId ?? ''}
         documentId={deleteDocumentId}
         documentName={deleteDocumentName}
         onClose={() => setDeleteDocumentId(null)}
@@ -725,6 +748,7 @@ function DocumentsView({ projectId }: { projectId: string }) {
         projectId={projectId}
         folderId={moveFolderId}
         folders={folders}
+        onMoved={revealFolder}
         onClose={() => setMoveFolderId(null)}
       />
 

@@ -1,11 +1,16 @@
-import { useVersions } from '../hooks/useVersions';
 import type { BackendDocument } from '../../../lib/api';
 import {
   DOCUMENT_KIND_LABELS,
   DOCUMENT_STATUS_CLASSES,
   DOCUMENT_STATUS_LABELS,
 } from '../../../lib/documents';
-import { fileExtension, formatDate, formatFileSize } from '../utils/formatters';
+import {
+  canPreview,
+  fileExtension,
+  formatDate,
+  formatFileSize,
+} from '../utils/formatters';
+import { VersionHistory } from './VersionHistory';
 import { IoChevronDown, IoChevronForward } from 'react-icons/io5';
 import { ActionMenu } from '../../../components/ui/ActionMenu';
 import { useAuth } from '../../../context/useAuth';
@@ -33,11 +38,6 @@ interface Props {
   onWithdrawToDraft: (documentId: string) => void;
 }
 
-const PREVIEWABLE = ['application/pdf', 'text/plain', 'text/csv'];
-
-const canPreview = (mimeType: string) =>
-  PREVIEWABLE.includes(mimeType) || mimeType.startsWith('image/');
-
 export const DocumentRow = ({
   document,
   projectId,
@@ -60,12 +60,6 @@ export const DocumentRow = ({
   onWithdrawToDraft,
 }: Props) => {
   const version = document.versions[0];
-  const {
-    data: versions,
-    error,
-    isPending,
-  } = useVersions(projectId, isExpanded ? document.id : null);
-
   const { user } = useAuth();
 
   const isLocked =
@@ -183,92 +177,16 @@ export const DocumentRow = ({
       {isExpanded && (
         <tr className="border-b border-gray-200 bg-gray-50">
           <td colSpan={7} className="px-4 py-4">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">
-              Historia wersji
-            </p>
-            {variant === 'folder' && canEdit && (
-              <button
-                type="button"
-                onClick={() => onNewVersion(document.id)}
-                className="cursor-pointer text-xs font-medium text-darkGreen hover:text-darkGreenHover"
-              >
-                Wgraj nową wersję
-              </button>
-            )}
-
-            {error && (
-              <p className="text-xs text-red-600">
-                Nie udało się wczytać historii wersji
-              </p>
-            )}
-            {isPending && (
-              <p className="text-xs text-gray-400">Ładowanie historii...</p>
-            )}
-            <div className="flex flex-col gap-4">
-              {versions &&
-                versions.map((wersja, index) => (
-                  <div key={wersja.id} className="flex flex-col gap-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-dark">
-                        v{wersja.versionNo}
-                      </span>
-                      {index === 0 && (
-                        <span className="rounded-full bg-lightGreen px-2 py-0.5 text-xs font-medium text-darkGreen">
-                          AKTUALNA
-                        </span>
-                      )}
-                    </div>
-
-                    <p className="text-sm text-dark">
-                      {wersja.changeNote ?? 'Utworzenie dokumentu'}
-                    </p>
-
-                    <p className="text-xs text-gray-400">
-                      {wersja.uploadedBy.firstName} {wersja.uploadedBy.lastName}{' '}
-                      · {formatDate(wersja.createdAt)} ·{' '}
-                      {formatFileSize(wersja.sizeBytes)}
-                    </p>
-                    <div className="flex gap-4">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onDownload(
-                            document.id,
-                            wersja.versionNo,
-                            wersja.fileName,
-                          );
-                        }}
-                        className="w-fit cursor-pointer text-xs font-medium text-darkGreen hover:text-darkGreenHover"
-                      >
-                        Pobierz
-                      </button>
-                      {canPreview(wersja.mimeType) && (
-                        <button
-                          className="w-fit cursor-pointer text-xs font-medium text-darkGreen hover:text-darkGreenHover"
-                          onClick={() =>
-                            onPreview(document.id, wersja.versionNo)
-                          }
-                        >
-                          Podgląd
-                        </button>
-                      )}
-                      {variant === 'folder' &&
-                        canEdit &&
-                        wersja.storageKey !== versions[0]?.storageKey && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              onRestoreVersion(document.id, wersja.versionNo)
-                            }
-                            className="cursor-pointer text-xs font-medium text-darkGreen hover:text-darkGreenHover"
-                          >
-                            Przywróć jako v{(versions[0]?.versionNo ?? 0) + 1}
-                          </button>
-                        )}
-                    </div>
-                  </div>
-                ))}
-            </div>
+            <VersionHistory
+              projectId={projectId}
+              documentId={document.id}
+              variant={variant}
+              canEdit={canEdit}
+              onNewVersion={onNewVersion}
+              onDownload={onDownload}
+              onPreview={onPreview}
+              onRestoreVersion={onRestoreVersion}
+            />
           </td>
         </tr>
       )}
