@@ -21,7 +21,6 @@ import {
 } from '../features/documents/components/UploadDocumentModal';
 import { useSelectedProject } from '../context/useSelectedProject';
 import { PageMessage } from '../components/ui/PageMessage';
-import { useProject } from '../features/projects/hooks/useProjectsApi';
 import { useApproveDocument } from '../features/documents/hooks/useApproveDocument';
 import { RestoreDocumentModal } from '../features/documents/components/RestoreDocumentModal';
 import { DeletePermanentlyDialog } from '../features/documents/components/DeletePermanentlyDialog';
@@ -37,8 +36,6 @@ import { useViewerManages } from '../features/projects/hooks/useViewerManages';
 const DOCUMENT_FORMS: PluralForms = ['dokument', 'dokumenty', 'dokumentów'];
 
 function DocumentsView({ projectId }: { projectId: string }) {
-  const { data: project } = useProject(projectId);
-
   const [folderId, setFolderId] = useState<string | null>(null);
   const {
     data: folders,
@@ -284,14 +281,9 @@ function DocumentsView({ projectId }: { projectId: string }) {
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 pt-16 pb-4 min-[400px]:px-6 sm:px-8 lg:pt-4">
       <div className="flex items-start justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-wide text-gray-400">
-            {project?.name}
-          </p>
-          <h1 className="mt-1 text-base font-bold text-dark min-[500px]:text-xl lg:text-2xl">
-            Dokumenty
-          </h1>
-        </div>
+        <h1 className="text-base font-bold text-dark min-[500px]:text-xl lg:text-2xl">
+          Dokumenty
+        </h1>
         <Button
           variant="primary"
           size="small"
