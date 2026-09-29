@@ -51,7 +51,11 @@ export const FolderTree = ({
 
         return (
           <div key={folder.id}>
-            <div className="group flex items-center">
+            <div
+              className={`group flex items-center rounded ${
+                folder.id === selectedId ? 'bg-lightGreen' : 'hover:bg-gray-50'
+              }`}
+            >
               <button
                 type="button"
                 onClick={() => onToggleCollapsed(folder.id)}
@@ -72,10 +76,8 @@ export const FolderTree = ({
                 type="button"
                 title={folder.name}
                 onClick={() => onSelect(folder.id)}
-                className={`flex min-w-0 flex-1 items-center gap-2 rounded py-2 pr-3 pl-1 text-left text-sm ${
-                  folder.id === selectedId
-                    ? 'bg-lightGreen text-darkGreen'
-                    : 'text-dark hover:bg-gray-50'
+                className={`flex min-w-0 flex-1 cursor-pointer items-center gap-2 py-2 pr-3 pl-1 text-left text-sm ${
+                  folder.id === selectedId ? 'text-darkGreen' : 'text-dark'
                 }`}
               >
                 <IoFolderOutline className="h-4 w-4 shrink-0" />
