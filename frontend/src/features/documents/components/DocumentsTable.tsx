@@ -11,6 +11,7 @@ interface Props {
   onNewVersion: (documentId: string) => void;
   onDeleteDocument: (documentId: string) => void;
   variant: 'folder' | 'trash';
+  emptyMessage?: string;
   onRestoreDocument: (documentId: string) => void;
   onDeletePermanently: (documentId: string) => void;
   onRenameDocument: (documentId: string) => void;
@@ -43,6 +44,7 @@ export function DocumentsTable({
   onNewVersion,
   onDeleteDocument,
   variant,
+  emptyMessage,
   onRestoreDocument,
   onDeletePermanently,
   onRenameDocument,
@@ -94,7 +96,8 @@ export function DocumentsTable({
   if (documents.length === 0) {
     return (
       <p className="px-4 py-10 text-center text-xs text-gray-400">
-        {variant === 'trash' ? 'Kosz jest pusty' : 'Ten folder jest pusty'}
+        {emptyMessage ??
+          (variant === 'trash' ? 'Kosz jest pusty' : 'Ten folder jest pusty')}
       </p>
     );
   }

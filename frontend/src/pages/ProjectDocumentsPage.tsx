@@ -37,6 +37,7 @@ import { useRevertApproval } from '../features/documents/hooks/useRevertApproval
 import { useWithdrawToDraft } from '../features/documents/hooks/useWithdrawToDraft';
 import { useViewerManages } from '../features/projects/hooks/useViewerManages';
 import { DocumentsToolbar } from '../features/documents/components/DocumentsToolbar';
+import { useMoveFolder } from '../features/documents/hooks/useMoveFolder';
 
 const DOCUMENT_FORMS: PluralForms = ['dokument', 'dokumenty', 'dokumentów'];
 
@@ -92,6 +93,9 @@ function DocumentsView({ projectId }: { projectId: string }) {
 
   const [showTrash, setShowTrash] = useState(false);
   const [showPending, setShowPending] = useState(false);
+  const [draggedFolderId, setDraggedFolderId] = useState<string | null>(null);
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+  const [uploadFolderId, setUploadFolderId] = useState<string | null>(null);
 
   const [permanentDeleteId, setPermanentDeleteId] = useState<string | null>(
     null,
@@ -100,12 +104,18 @@ function DocumentsView({ projectId }: { projectId: string }) {
   const [renameDocumentId, setRenameDocumentId] = useState<string | null>(null);
 
   const { data: trash } = useTrash(projectId);
-  const { data: pending } = usePendingDocuments(projectId);
+  const {
+    data: pending,
+    isPending: pendingLoading,
+    isError: pendingFailed,
+    refetch: refetchPending,
+  } = usePendingDocuments(projectId);
   const { data: pendingCount } = usePendingCount(projectId);
 
   const restoreVersionMutation = useRestoreVersion(projectId);
   const restoreDocument = useRestoreDocument(projectId);
   const createTemplate = useCreateFolderTemplate(projectId);
+  const moveFolder = useMoveFolder(projectId);
 
   const submitForApproval = useSubmitForApproval(projectId, folderId ?? '');
 
@@ -126,6 +136,8 @@ function DocumentsView({ projectId }: { projectId: string }) {
   const shareDocument = (documentId: string) => setShareTarget({ documentId });
 
   const { download, preview } = useDocumentFile(projectId);
+
+  const documentsInView = showPending ? pending : documents;
 
   const restoreVersion = (documentId: string, versionNo: number) => {
     if (restoreVersionMutation.isPending) {
@@ -208,6 +220,44 @@ function DocumentsView({ projectId }: { projectId: string }) {
     );
   };
 
+  const startDraggingFolder = (folderId: string | null) => {
+    setDraggedFolderId(folderId);
+    if (folderId === null) {
+      setDropTargetId(null);
+    }
+  };
+
+  const dropFolderOn = (parentId: string | null) => {
+    const draggedId = draggedFolderId;
+
+    setDraggedFolderId(null);
+    setDropTargetId(null);
+
+    const dragged = folders?.find((el) => el.id === draggedId);
+
+    if (
+      moveFolder.isPending ||
+      !draggedId ||
+      draggedId === parentId ||
+      dragged?.parentId === parentId
+    ) {
+      return;
+    }
+
+    moveFolder.mutate(
+      { folderId: draggedId, parentId },
+      {
+        onSuccess: () => {
+          showSuccess('Folder przeniesiony');
+          if (parentId) {
+            setCollapsedIds((ids) => ids.filter((id) => id !== parentId));
+          }
+        },
+        onError: showError,
+      },
+    );
+  };
+
   const selectFolder = (folderId: string) => {
     setFolderId(folderId);
     setShowTrash(false);
@@ -219,11 +269,15 @@ function DocumentsView({ projectId }: { projectId: string }) {
   const openTrash = () => {
     setShowTrash(true);
     setShowPending(false);
+    setQuery('');
+    setKindFilter('');
   };
 
   const openPending = () => {
     setShowPending(true);
     setShowTrash(false);
+    setQuery('');
+    setKindFilter('');
   };
 
   const deleteFolderName = folders?.find(
@@ -234,14 +288,14 @@ function DocumentsView({ projectId }: { projectId: string }) {
     (el) => el.id === shareTarget.folderId,
   )?.name;
 
-  const shareDocumentName = documents?.find(
+  const shareDocumentName = documentsInView?.find(
     (el) => el.id === shareTarget.documentId,
   )?.name;
 
   const shareTargetName = shareFolderName ?? shareDocumentName;
 
   const renameDocumentName =
-    documents?.find((el) => el.id === renameDocumentId)?.name ?? '';
+    documentsInView?.find((el) => el.id === renameDocumentId)?.name ?? '';
 
   const renameFolderName =
     folders?.find((el) => el.id === renameFolderId)?.name ?? '';
@@ -257,7 +311,7 @@ function DocumentsView({ projectId }: { projectId: string }) {
     });
   };
 
-  const deleteDocumentName = documents?.find(
+  const deleteDocumentName = documentsInView?.find(
     (el) => el.id === deleteDocumentId,
   )?.name;
 
@@ -278,9 +332,13 @@ function DocumentsView({ projectId }: { projectId: string }) {
     }
   };
 
+  const folderOfDocument = (documentId: string) =>
+    documentsInView?.find((el) => el.id === documentId)?.folderId ?? folderId;
+
   const openUpload = () => {
     setUploadMode('document');
     setUploadDocumentId(null);
+    setUploadFolderId(folderId);
     setSigning(false);
     setShowUpload(true);
   };
@@ -288,6 +346,7 @@ function DocumentsView({ projectId }: { projectId: string }) {
   const openNewVersion = (documentId: string) => {
     setUploadMode('version');
     setUploadDocumentId(documentId);
+    setUploadFolderId(folderOfDocument(documentId));
     setSigning(false);
     setShowUpload(true);
   };
@@ -295,6 +354,7 @@ function DocumentsView({ projectId }: { projectId: string }) {
   const openSigning = (documentId: string) => {
     setUploadMode('version');
     setUploadDocumentId(documentId);
+    setUploadFolderId(folderOfDocument(documentId));
     setSigning(true);
     setShowUpload(true);
   };
@@ -317,9 +377,7 @@ function DocumentsView({ projectId }: { projectId: string }) {
 
   const needle = query.trim().toLowerCase();
 
-  const sourceDocuments = showPending ? pending : documents;
-
-  const visibleDocuments = sourceDocuments
+  const visibleDocuments = documentsInView
     ?.filter((doc) => {
       const matchesName = doc.name.toLowerCase().includes(needle);
       const matchesKind = kindFilter === '' || doc.kind === kindFilter;
@@ -365,7 +423,7 @@ function DocumentsView({ projectId }: { projectId: string }) {
           variant="primary"
           size="small"
           onClick={openUpload}
-          disabled={!folderId || showTrash || !canEditFolder}
+          disabled={!folderId || showTrash || showPending || !canEditFolder}
           className="shrink-0 max-lg:h-7 max-lg:gap-1.5 max-lg:px-4 max-lg:py-1 max-lg:text-xs"
         >
           <HiOutlinePlus className="h-4 w-4" aria-hidden="true" />
@@ -404,7 +462,24 @@ function DocumentsView({ projectId }: { projectId: string }) {
               onMove={setMoveFolderId}
               onShare={shareFolder}
               canManage={canManage}
+              draggedId={draggedFolderId}
+              overId={dropTargetId}
+              onDragFolder={startDraggingFolder}
+              onDragOverFolder={setDropTargetId}
+              onDropOnFolder={dropFolderOn}
             />
+            {draggedFolderId && (
+              <div
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  dropFolderOn(null);
+                }}
+                className="mt-2 rounded border border-dashed border-gray-300 px-3 py-3 text-center text-xs text-gray-400"
+              >
+                Upuść tutaj, aby przenieść na główny poziom
+              </div>
+            )}
             {canManage && folders.length === 0 && (
               <button
                 type="button"
@@ -503,6 +578,25 @@ function DocumentsView({ projectId }: { projectId: string }) {
             </div>
           )}
 
+          {showPending && pendingLoading && (
+            <p className="px-4 py-10 text-center text-xs text-gray-400">
+              Ładowanie...
+            </p>
+          )}
+          {showPending && pendingFailed && (
+            <div className="px-4 py-10 text-center">
+              <p className="text-xs text-darkRed">
+                Nie udało się wczytać dokumentów czekających na akceptację.
+              </p>
+              <button
+                type="button"
+                onClick={() => void refetchPending()}
+                className="mt-2 cursor-pointer text-xs font-medium text-darkGreen hover:text-darkGreenHover"
+              >
+                Spróbuj ponownie
+              </button>
+            </div>
+          )}
           {folderId && documentsPending && !showTrash && !showPending && (
             <p className="px-4 py-10 text-center text-xs text-gray-400">
               Ładowanie...
@@ -513,32 +607,41 @@ function DocumentsView({ projectId }: { projectId: string }) {
               Nie udało się wczytać dokumentów z tego folderu.
             </p>
           )}
-          {visibleDocuments && !showTrash && (
-            <DocumentsTable
-              documents={visibleDocuments}
-              projectId={projectId}
-              sortKey={sortKey}
-              sortAsc={sortAsc}
-              onSort={sortBy}
-              onDownload={download}
-              expandedIds={expandedIds}
-              onToggle={toggleExpanded}
-              onNewVersion={openNewVersion}
-              onDeleteDocument={setDeleteDocumentId}
-              onRestoreDocument={restore}
-              variant="folder"
-              onDeletePermanently={setPermanentDeleteId}
-              onRenameDocument={setRenameDocumentId}
-              onPreview={preview}
-              onRestoreVersion={restoreVersion}
-              onApprove={approve}
-              onShare={shareDocument}
-              onSubmitForApproval={sendForApproval}
-              onMarkSigned={openSigning}
-              onRevertApproval={revertApprovalOf}
-              onWithdrawToDraft={withdraw}
-            />
-          )}
+          {visibleDocuments &&
+            !showTrash &&
+            !(showPending && pendingFailed) && (
+              <DocumentsTable
+                documents={visibleDocuments}
+                projectId={projectId}
+                sortKey={sortKey}
+                sortAsc={sortAsc}
+                onSort={sortBy}
+                emptyMessage={
+                  needle || kindFilter
+                    ? 'Nic nie pasuje do wyszukiwania'
+                    : showPending
+                      ? 'Nic nie czeka na akceptację'
+                      : undefined
+                }
+                onDownload={download}
+                expandedIds={expandedIds}
+                onToggle={toggleExpanded}
+                onNewVersion={openNewVersion}
+                onDeleteDocument={setDeleteDocumentId}
+                onRestoreDocument={restore}
+                variant="folder"
+                onDeletePermanently={setPermanentDeleteId}
+                onRenameDocument={setRenameDocumentId}
+                onPreview={preview}
+                onRestoreVersion={restoreVersion}
+                onApprove={approve}
+                onShare={shareDocument}
+                onSubmitForApproval={sendForApproval}
+                onMarkSigned={openSigning}
+                onRevertApproval={revertApprovalOf}
+                onWithdrawToDraft={withdraw}
+              />
+            )}
         </section>
       </div>
       <RestoreDocumentModal
@@ -566,9 +669,9 @@ function DocumentsView({ projectId }: { projectId: string }) {
 
         isOpen={showUpload}
         projectId={projectId}
-        folderId={folderId ?? ''}
-        folderName={nameFolder}
-        documents={documents ?? []}
+        folderId={uploadFolderId ?? ''}
+        folderName={folders.find((el) => el.id === uploadFolderId)?.name}
+        documents={documentsInView ?? []}
         initialMode={uploadMode}
         initialDocumentId={uploadDocumentId}
         onClose={() => setShowUpload(false)}

@@ -24,6 +24,35 @@ interface Props {
   onRename: (folderId: string) => void;
   onMove: (folderId: string) => void;
   onShare: (folderId: string) => void;
+  draggedId: string | null;
+  overId: string | null;
+  onDragFolder: (folderId: string | null) => void;
+  onDragOverFolder: (folderId: string | null) => void;
+  onDropOnFolder: (parentId: string) => void;
+}
+
+const MAX_DEPTH = 50;
+
+function isInsideDragged(
+  folders: BackendFolder[],
+  folderId: string,
+  draggedId: string,
+) {
+  let current = folders.find((f) => f.id === folderId);
+  let steps = 0;
+
+  while (current) {
+    if (current.id === draggedId) {
+      return true;
+    }
+    if (steps++ > MAX_DEPTH) {
+      return true;
+    }
+    const parentId: string | null = current.parentId;
+    current = parentId ? folders.find((f) => f.id === parentId) : undefined;
+  }
+
+  return false;
 }
 
 export const FolderTree = ({
@@ -40,20 +69,55 @@ export const FolderTree = ({
   onRename,
   onMove,
   onShare,
+  draggedId,
+  overId,
+  onDragFolder,
+  onDragOverFolder,
+  onDropOnFolder,
 }: Props) => {
   const children = folders.filter((f) => f.parentId === parentId);
+  const draggedFolder = folders.find((f) => f.id === draggedId);
 
   return (
     <>
       {children.map((folder) => {
         const hasChildren = folders.some((f) => f.parentId === folder.id);
         const isCollapsed = collapsedIds.includes(folder.id);
+        const canDrop =
+          canManage &&
+          draggedId !== null &&
+          draggedFolder?.parentId !== folder.id &&
+          !isInsideDragged(folders, folder.id, draggedId);
 
         return (
           <div key={folder.id}>
             <div
+              onDragOver={(event) => {
+                if (!canDrop) {
+                  return;
+                }
+                event.preventDefault();
+                onDragOverFolder(folder.id);
+              }}
+              onDragLeave={(event) => {
+                if (event.currentTarget.contains(event.relatedTarget as Node)) {
+                  return;
+                }
+                onDragOverFolder(null);
+              }}
+              onDrop={(event) => {
+                if (!canDrop) {
+                  return;
+                }
+                event.preventDefault();
+                onDropOnFolder(folder.id);
+              }}
               className={`group flex items-center rounded ${
-                folder.id === selectedId ? 'bg-lightGreen' : 'hover:bg-gray-50'
+                overId === folder.id
+                  ? 'bg-lightGreen ring-2 ring-darkGreen ring-inset'
+                  : folder.id === selectedId
+                    ? 'bg-lightGreen'
+                    : 'hover:bg-gray-50'
               }`}
             >
               <button
@@ -75,6 +139,13 @@ export const FolderTree = ({
               <button
                 type="button"
                 title={folder.name}
+                draggable={canManage}
+                onDragStart={(event) => {
+                  event.dataTransfer.setData('text/plain', folder.id);
+                  event.dataTransfer.effectAllowed = 'move';
+                  onDragFolder(folder.id);
+                }}
+                onDragEnd={() => onDragFolder(null)}
                 onClick={() => onSelect(folder.id)}
                 className={`flex min-w-0 flex-1 cursor-pointer items-center gap-2 py-2 pr-3 pl-1 text-left text-sm ${
                   folder.id === selectedId ? 'text-darkGreen' : 'text-dark'
@@ -148,6 +219,11 @@ export const FolderTree = ({
                 onRename={onRename}
                 onMove={onMove}
                 onShare={onShare}
+                draggedId={draggedId}
+                overId={overId}
+                onDragFolder={onDragFolder}
+                onDragOverFolder={onDragOverFolder}
+                onDropOnFolder={onDropOnFolder}
               />
             )}
           </div>
