@@ -1057,6 +1057,54 @@ describe('DocumentsService', () => {
     });
   });
 
+  describe('getPendingApproval', () => {
+    it('collects documents awaiting approval from the whole project', async () => {
+      addDocument({ id: 'doc-1', status: 'PENDING_APPROVAL' });
+      addDocument({ id: 'doc-2', status: 'APPROVED' });
+      addDocument({
+        id: 'doc-3',
+        status: 'PENDING_APPROVAL',
+        folderId: 'inny-folder',
+      });
+
+      const found = await service.getPendingApproval(PROJECT, ACTOR);
+
+      expect(found.map((d) => d.id).sort()).toEqual(['doc-1', 'doc-3']);
+    });
+
+    it('leaves out documents that are in the trash', async () => {
+      addDocument({
+        id: 'doc-1',
+        status: 'PENDING_APPROVAL',
+        deletedAt: new Date(),
+      });
+
+      const found = await service.getPendingApproval(PROJECT, ACTOR);
+
+      expect(found).toHaveLength(0);
+    });
+
+    it('hides documents the caller has no access to', async () => {
+      canManage = false;
+      level = null;
+      addDocument({ id: 'doc-1', status: 'PENDING_APPROVAL' });
+
+      const found = await service.getPendingApproval(PROJECT, ACTOR);
+
+      expect(found).toHaveLength(0);
+    });
+
+    it('tells the caller what they may do with each document', async () => {
+      canManage = false;
+      level = 'VIEW';
+      addDocument({ id: 'doc-1', status: 'PENDING_APPROVAL' });
+
+      const found = await service.getPendingApproval(PROJECT, ACTOR);
+
+      expect(found[0].accessLevel).toBe('VIEW');
+    });
+  });
+
   describe('deleteDocumentPermanently', () => {
     it('removes the rows first and the files afterwards', async () => {
       addDocument({ id: 'doc-1', deletedAt: new Date() });

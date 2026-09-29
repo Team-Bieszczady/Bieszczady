@@ -86,6 +86,7 @@ export const DocumentCard = ({
               {fileExtension(version.fileName)} ·{' '}
               {formatFileSize(version.sizeBytes)} · v{version.versionNo} ·{' '}
               {version.uploadedBy.firstName} {version.uploadedBy.lastName}
+              {document.folder?.name ? ` · ${document.folder.name}` : ''}
             </p>
           )}
         </div>

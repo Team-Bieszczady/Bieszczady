@@ -17,6 +17,9 @@ export function useApproveDocument(projectId: string, folderId: string) {
       queryClient.invalidateQueries({
         queryKey: ['pending-count', projectId],
       });
+      queryClient.invalidateQueries({
+        queryKey: ['pending-documents', projectId],
+      });
       queryClient.invalidateQueries({ queryKey: ['folders', projectId] });
     },
   });

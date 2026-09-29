@@ -100,6 +100,7 @@ export const DocumentRow = ({
               {fileExtension(version.fileName)} ·{' '}
               {formatFileSize(version.sizeBytes)} ·{' '}
               {version.uploadedBy.firstName} {version.uploadedBy.lastName}
+              {document.folder?.name ? ` · ${document.folder.name}` : ''}
             </p>
           )}
         </td>

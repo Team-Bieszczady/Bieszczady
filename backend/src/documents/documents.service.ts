@@ -692,6 +692,49 @@ export class DocumentsService {
     return visible;
   }
 
+  async getPendingApproval(projectId: string, actor: AuthenticatedUser) {
+    await this.access.assertCanRead(actor, projectId);
+
+    const documents = await this.prisma.document.findMany({
+      where: {
+        projectId: projectId,
+        status: 'PENDING_APPROVAL',
+        deletedAt: null,
+      },
+      orderBy: { updatedAt: 'desc' },
+      include: {
+        versions: {
+          orderBy: { versionNo: 'desc' },
+          take: 1,
+          include: {
+            uploadedBy: { select: { firstName: true, lastName: true } },
+          },
+        },
+        folder: { select: { name: true, deletedAt: true } },
+      },
+    });
+
+    const canManage = await this.access.canManageTasks(actor, projectId);
+    if (canManage) {
+      return documents.map((document) => ({
+        ...document,
+        accessLevel: 'EDIT',
+      }));
+    }
+
+    const visible = [];
+    for (const document of documents) {
+      const level = await this.documentAccess.levelFor(actor, projectId, {
+        documentId: document.id,
+      });
+      if (level) {
+        visible.push({ ...document, accessLevel: level });
+      }
+    }
+
+    return visible;
+  }
+
   async deleteDocumentPermanently(
     projectId: string,
     documentId: string,

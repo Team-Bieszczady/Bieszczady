@@ -44,6 +44,14 @@ export class DocumentVersionsController {
     return await this.documentService.getTrash(projectId, user);
   }
 
+  @Get('/pending')
+  async getPendingApproval(
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return await this.documentService.getPendingApproval(projectId, user);
+  }
+
   @Get('/:documentId/versions/:versionNo/download')
   async downloadDocument(
     @Param('projectId', ParseUUIDPipe) projectId: string,

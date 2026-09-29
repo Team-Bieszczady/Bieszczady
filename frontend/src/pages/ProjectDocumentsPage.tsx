@@ -4,10 +4,12 @@ import { useDocuments } from '../features/documents/hooks/useDocuments';
 import { DocumentsTable } from '../features/documents/components/DocumentsTable';
 import { Button } from '../components/ui/Button';
 import { formatFileSize } from '../features/documents/utils/formatters';
-import { IoTrashOutline } from 'react-icons/io5';
+import { IoSendOutline, IoTrashOutline } from 'react-icons/io5';
 import { HiOutlinePlus } from 'react-icons/hi';
 import { FolderTree } from '../features/documents/components/FolderTree';
 import { useTrash } from '../features/documents/hooks/useTrash';
+import { usePendingDocuments } from '../features/documents/hooks/usePendingDocuments';
+import { usePendingCount } from '../features/documents/hooks/usePendingCount';
 import { useRestoreDocument } from '../features/documents/hooks/useRestoreDocument';
 import { useRestoreVersion } from '../features/documents/hooks/useRestoreVersion';
 import { DeleteDocumentDialog } from '../features/documents/components/DeleteDocumentDialog';
@@ -89,6 +91,7 @@ function DocumentsView({ projectId }: { projectId: string }) {
   );
 
   const [showTrash, setShowTrash] = useState(false);
+  const [showPending, setShowPending] = useState(false);
 
   const [permanentDeleteId, setPermanentDeleteId] = useState<string | null>(
     null,
@@ -97,6 +100,8 @@ function DocumentsView({ projectId }: { projectId: string }) {
   const [renameDocumentId, setRenameDocumentId] = useState<string | null>(null);
 
   const { data: trash } = useTrash(projectId);
+  const { data: pending } = usePendingDocuments(projectId);
+  const { data: pendingCount } = usePendingCount(projectId);
 
   const restoreVersionMutation = useRestoreVersion(projectId);
   const restoreDocument = useRestoreDocument(projectId);
@@ -206,8 +211,19 @@ function DocumentsView({ projectId }: { projectId: string }) {
   const selectFolder = (folderId: string) => {
     setFolderId(folderId);
     setShowTrash(false);
+    setShowPending(false);
     setQuery('');
     setKindFilter('');
+  };
+
+  const openTrash = () => {
+    setShowTrash(true);
+    setShowPending(false);
+  };
+
+  const openPending = () => {
+    setShowPending(true);
+    setShowTrash(false);
   };
 
   const deleteFolderName = folders?.find(
@@ -301,7 +317,9 @@ function DocumentsView({ projectId }: { projectId: string }) {
 
   const needle = query.trim().toLowerCase();
 
-  const visibleDocuments = documents
+  const sourceDocuments = showPending ? pending : documents;
+
+  const visibleDocuments = sourceDocuments
     ?.filter((doc) => {
       const matchesName = doc.name.toLowerCase().includes(needle);
       const matchesKind = kindFilter === '' || doc.kind === kindFilter;
@@ -378,7 +396,7 @@ function DocumentsView({ projectId }: { projectId: string }) {
               onToggleCollapsed={toggleCollapsed}
               parentId={null}
               level={0}
-              selectedId={showTrash ? null : folderId}
+              selectedId={showTrash || showPending ? null : folderId}
               onSelect={selectFolder}
               onAddSubfolder={openNewFolder}
               onDeleteFolder={setDeleteFolderId}
@@ -401,7 +419,20 @@ function DocumentsView({ projectId }: { projectId: string }) {
           <div className="my-2 border-t border-gray-200" />
           <button
             type="button"
-            onClick={() => setShowTrash(true)}
+            onClick={openPending}
+            className={`flex w-full items-center gap-2 rounded px-3 py-2 text-left text-sm ${showPending ? 'bg-lightGreen text-darkGreen' : 'text-dark hover:bg-gray-50'}`}
+          >
+            <IoSendOutline className="h-4 w-4 shrink-0" />
+            <span className="flex-1">Do akceptacji</span>
+            {pendingCount && pendingCount.count > 0 && (
+              <span className="shrink-0 rounded-full bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-700">
+                {pendingCount.count}
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={openTrash}
             className={`flex w-full items-center gap-2 rounded px-3 py-2 text-left text-sm ${showTrash ? 'bg-lightGreen text-darkGreen' : 'text-dark hover:bg-gray-50'}`}
           >
             <IoTrashOutline className="h-4 w-4 shrink-0" />
@@ -441,23 +472,23 @@ function DocumentsView({ projectId }: { projectId: string }) {
               onWithdrawToDraft={withdraw}
             />
           )}
-          {!showTrash && !folderId && (
+          {!showTrash && !showPending && !folderId && (
             <p className="px-4 py-10 text-center text-xs text-gray-400">
               Wybierz folder
             </p>
           )}
 
-          {!showTrash && folderId && (
+          {!showTrash && (folderId || showPending) && (
             <div className="border-b border-gray-200 px-4 py-4 max-sm:border-0 max-sm:px-0">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="text-base font-semibold text-dark">
-                    {nameFolder}
+                    {showPending ? 'Do akceptacji' : nameFolder}
                   </p>
                   {visibleDocuments && (
                     <p className="mt-0.5 text-xs text-gray-400">
-                      {pluralizePl(visibleDocuments.length, DOCUMENT_FORMS)} ·{' '}
-                      {formatFileSize(bytes)}
+                      {pluralizePl(visibleDocuments.length, DOCUMENT_FORMS)}
+                      {showPending ? '' : ` · ${formatFileSize(bytes)}`}
                     </p>
                   )}
                 </div>
@@ -472,12 +503,12 @@ function DocumentsView({ projectId }: { projectId: string }) {
             </div>
           )}
 
-          {folderId && documentsPending && !showTrash && (
+          {folderId && documentsPending && !showTrash && !showPending && (
             <p className="px-4 py-10 text-center text-xs text-gray-400">
               Ładowanie...
             </p>
           )}
-          {folderId && documentsFailed && !showTrash && (
+          {folderId && documentsFailed && !showTrash && !showPending && (
             <p className="px-4 py-10 text-center text-xs text-darkRed">
               Nie udało się wczytać dokumentów z tego folderu.
             </p>

@@ -484,6 +484,20 @@ export const api = {
     );
   },
 
+  async getPendingDocuments(
+    accessToken: string,
+    projectId: string,
+  ): Promise<BackendDocument[]> {
+    return request<BackendDocument[]>(
+      `/api/v1/projects/${projectId}/documents/pending`,
+      {
+        method: 'GET',
+        accessToken,
+        fallbackMessage: 'Nie udało się pobrać dokumentów do akceptacji',
+      },
+    );
+  },
+
   async getTrash(
     accessToken: string,
     projectId: string,
