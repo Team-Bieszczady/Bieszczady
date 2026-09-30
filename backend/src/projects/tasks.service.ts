@@ -7,6 +7,10 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { SERIALIZABLE } from '../prisma/transaction-options';
 import { PERSON_SELECT } from './prisma-selects';
+import {
+  TASK_STATUS_LABELS,
+  type TaskStatus,
+} from '../common/enums/project.enums';
 import { StageCompletionService } from './stage-completion.service';
 import { ProjectAccessService } from './project-access.service';
 import type { AuthenticatedUser } from '../auth/types/auth.types';
@@ -221,6 +225,16 @@ export class TasksService {
       });
 
       await this.completion.settle(tx, [stageId]);
+
+      await tx.projectEvent.create({
+        data: {
+          projectId,
+          actorId: actor.id,
+          source: 'AUTOMATIC',
+          content: `dodał(a) zadanie „${task.title}” w etapie „${task.activity.stage.name}”`,
+        },
+      });
+
       return task;
     }, SERIALIZABLE);
 
@@ -304,6 +318,15 @@ export class TasksService {
     await this.access.assertNotArchived(task.projectId);
 
     const updated = await this.prisma.$transaction(async (tx) => {
+      // `locateTask` does not carry the status, and the history line needs the
+      // value we are replacing — read it inside the same transaction.
+      // `status` is a validated String on SQL Server, not a native enum, so
+      // Prisma hands it back untyped.
+      const { status: before } = (await tx.task.findUniqueOrThrow({
+        where: { id },
+        select: { status: true },
+      })) as { status: TaskStatus };
+
       const row = await tx.task.update({
         where: { id },
         data: { status: dto.status },
@@ -311,6 +334,20 @@ export class TasksService {
       });
 
       await this.completion.settle(tx, [task.stageId]);
+
+      // The UI can resubmit the status a task already has; "z „Nowe” na „Nowe”"
+      // would be noise on the Decyzje page.
+      if (before !== dto.status) {
+        await tx.projectEvent.create({
+          data: {
+            projectId: task.projectId,
+            actorId: actor.id,
+            source: 'AUTOMATIC',
+            content: `zmienił(a) status zadania „${row.title}” z „${TASK_STATUS_LABELS[before]}” na „${TASK_STATUS_LABELS[dto.status]}”`,
+          },
+        });
+      }
+
       return row;
     }, SERIALIZABLE);
 

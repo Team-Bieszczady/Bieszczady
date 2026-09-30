@@ -1,5 +1,6 @@
 import { ConflictException, ForbiddenException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { StageCompletionService } from './stage-completion.service';
 import { ProjectAccessService } from './project-access.service';
@@ -8,6 +9,11 @@ import type { AuthenticatedUser } from '../auth/types/auth.types';
 
 describe('TasksService', () => {
   let service: TasksService;
+
+  const eventCreate = jest.fn<
+    Promise<unknown>,
+    [Prisma.ProjectEventCreateArgs]
+  >();
 
   const prisma = {
     project: { count: jest.fn() },
@@ -22,8 +28,13 @@ describe('TasksService', () => {
     stage: { findUnique: jest.fn() },
     subtask: { deleteMany: jest.fn() },
     projectMember: { count: jest.fn() },
+    projectEvent: { create: eventCreate },
     $transaction: jest.fn(),
   };
+
+  const eventData = () =>
+    eventCreate.mock.calls[0][0]
+      .data as Prisma.ProjectEventUncheckedCreateInput;
 
   const settle = jest.fn();
   const access = {
@@ -92,7 +103,10 @@ describe('TasksService', () => {
       ownerId: 'piotr',
     });
     prisma.stage.findUnique.mockResolvedValue({ startDate: null });
-    prisma.task.findUniqueOrThrow.mockResolvedValue({ dueDate: null });
+    prisma.task.findUniqueOrThrow.mockResolvedValue({
+      dueDate: null,
+      status: 'NEW',
+    });
   });
 
   describe('reads', () => {
@@ -193,6 +207,17 @@ describe('TasksService', () => {
       expect(prisma.projectMember.count).not.toHaveBeenCalled();
       expect(prisma.task.create).toHaveBeenCalled();
     });
+
+    it('records who added the task, naming it and its stage', async () => {
+      await service.create('a1', { title: 'Zadanie' }, director);
+
+      expect(eventData()).toEqual({
+        projectId: 'p1',
+        actorId: 'd1',
+        source: 'AUTOMATIC',
+        content: 'dodał(a) zadanie „Zadanie” w etapie „Etap”',
+      });
+    });
   });
 
   describe('update', () => {
@@ -273,6 +298,27 @@ describe('TasksService', () => {
       await service.updateStatus('t1', { status: 'NEW' }, director);
 
       expect(settle).toHaveBeenCalledWith(prisma, ['s1']);
+    });
+
+    it('records who changed the status, in Polish, with both values', async () => {
+      prisma.task.update.mockResolvedValue(row('s1'));
+
+      await service.updateStatus('t1', { status: 'DONE' }, director);
+
+      expect(eventData()).toEqual({
+        projectId: 'p1',
+        actorId: 'd1',
+        source: 'AUTOMATIC',
+        content: 'zmienił(a) status zadania „Zadanie” z „Nowe” na „Zrobione”',
+      });
+    });
+
+    it('records nothing when the status is resubmitted unchanged', async () => {
+      prisma.task.update.mockResolvedValue(row('s1'));
+
+      await service.updateStatus('t1', { status: 'NEW' }, director);
+
+      expect(eventCreate).not.toHaveBeenCalled();
     });
 
     it('authorises through the wider status rule, not the manage rule', async () => {

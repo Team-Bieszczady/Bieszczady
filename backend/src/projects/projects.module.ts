@@ -55,5 +55,8 @@ import { ProjectAccessService } from './project-access.service';
     StageCompletionService,
     ProjectAccessService,
   ],
+  // EventsModule needs the membership and archived-project rules; they must
+  // have exactly one home.
+  exports: [ProjectAccessService],
 })
 export class ProjectsModule {}

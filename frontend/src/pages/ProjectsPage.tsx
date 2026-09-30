@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { Controller, useForm, useWatch } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { HiOutlinePlus } from 'react-icons/hi';
 import { AiOutlineSearch } from 'react-icons/ai';
 import { Button } from '../components/ui/Button';
-import { Select, type SelectOption } from '../components/ui/Select';
+import { FilterBar, type FilterField } from '../components/ui/FilterBar';
+import type { SelectOption } from '../components/ui/Select';
 import { QueryState } from '../components/ui/QueryState';
-import NotificationBell from '../features/notifications/components/NotificationBell';
 import AddProjectModal from '../features/projects/components/AddProjectModal';
 import ProjectCard from '../features/projects/components/ProjectCard';
 import {
@@ -46,11 +46,7 @@ function ProjectsList({ projects, statusOptions, canEdit }: ProjectsListProps) {
     (project) => project.progress < 100,
   ).length;
 
-  const filterFields: ReadonlyArray<{
-    name: keyof ProjectFilters;
-    placeholder: string;
-    options: readonly SelectOption[];
-  }> = [
+  const filterFields: ReadonlyArray<FilterField<ProjectFilters>> = [
     { name: 'status', placeholder: 'Status', options: statusOptions },
     { name: 'sort', placeholder: 'Sortuj', options: PROJECT_SORT_OPTIONS },
   ];
@@ -68,22 +64,17 @@ function ProjectsList({ projects, statusOptions, canEdit }: ProjectsListProps) {
           </span>
         </h1>
 
-        <div className="flex items-center gap-3">
-          <div className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-end border-b border-gray-200 bg-white px-5 lg:static lg:h-auto lg:border-0 lg:bg-transparent lg:px-0">
-            <NotificationBell />
-          </div>
-          {canEdit && (
-            <Button
-              variant="primary"
-              size="small"
-              onClick={() => setIsAddOpen(true)}
-              className="flex items-center gap-2 max-lg:gap-1.5 max-lg:px-4 max-lg:text-xs"
-            >
-              <HiOutlinePlus className="h-4 w-4" />
-              Dodaj projekt
-            </Button>
-          )}
-        </div>
+        {canEdit && (
+          <Button
+            variant="primary"
+            size="small"
+            onClick={() => setIsAddOpen(true)}
+            className="flex items-center gap-2 max-lg:gap-1.5 max-lg:px-4 max-lg:text-xs"
+          >
+            <HiOutlinePlus className="h-4 w-4" />
+            Dodaj projekt
+          </Button>
+        )}
       </div>
 
       <div className="mb-3">
@@ -98,32 +89,12 @@ function ProjectsList({ projects, statusOptions, canEdit }: ProjectsListProps) {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 gap-y-2 mb-4 text-xs">
-        <span className="font-medium text-dark">Filtruj:</span>
-        {filterFields.map(({ name, placeholder, options }) => (
-          <Controller
-            key={name}
-            name={name}
-            control={control}
-            render={({ field }) => (
-              <Select
-                placeholder={placeholder}
-                options={options}
-                value={field.value}
-                onChange={field.onChange}
-                onBlur={field.onBlur}
-              />
-            )}
-          />
-        ))}
-        <button
-          className="flex items-center gap-1 text-gray-500 hover:text-dark transition-colors cursor-pointer"
-          type="button"
-          onClick={() => reset(EMPTY_PROJECT_FILTERS)}
-        >
-          ✕ Wyczyść
-        </button>
-      </div>
+      <FilterBar
+        fields={filterFields}
+        control={control}
+        onClear={() => reset(EMPTY_PROJECT_FILTERS)}
+        className="mb-4"
+      />
 
       {isFiltered && (
         <p className="mb-4 text-xs text-grayText">

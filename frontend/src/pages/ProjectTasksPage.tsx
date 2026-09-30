@@ -422,7 +422,7 @@ export default function ProjectTasksPage() {
   }
 
   return (
-    <div className="px-4 min-[400px]:px-6 sm:px-8 pt-16 pb-4 lg:pt-4 max-w-7xl mx-auto">
+    <div className="px-4 min-[400px]:px-6 sm:px-8 pt-20 pb-4 lg:pt-4 max-w-7xl mx-auto">
       <TasksView projectId={projectId} user={user} />
     </div>
   );

@@ -7,7 +7,6 @@ import AccountProfileHeader from '../features/people/components/AccountProfileHe
 import AccountProfileCard from '../features/people/components/AccountProfileCard';
 import EditAccountModal from '../features/people/components/EditAccountModal';
 import LogoutConfirmDialog from '../features/auth/components/LogoutConfirmDialog';
-import NotificationBell from '../features/notifications/components/NotificationBell';
 import { useCurrentUser } from '../features/people/hooks/useCurrentUser';
 import { useLogout } from '../features/auth/hooks/useLogout';
 
@@ -36,7 +35,6 @@ export default function ProfilePage() {
             avatar={person.avatar}
             actions={
               <>
-                <NotificationBell />
                 <Button
                   variant="outline"
                   size="compact"

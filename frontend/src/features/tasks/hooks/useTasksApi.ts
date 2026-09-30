@@ -4,6 +4,7 @@ import {
   projectKeys,
   projectLists,
 } from '../../projects/hooks/useProjectsApi';
+import { eventKeys } from '../../decisions/hooks/useEventsApi';
 import {
   subtasksApi,
   tasksApi,
@@ -29,6 +30,9 @@ function taskWriteKeys(projectId: string) {
     taskKeys.mineFor(projectId),
     projectKeys.stagesFor(projectId),
     ...projectLists,
+    // Creating a task and changing its status both leave a row on Decyzje;
+    // without this the page keeps serving the cache it had before the write.
+    eventKeys.all,
   ];
 }
 

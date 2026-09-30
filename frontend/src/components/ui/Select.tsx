@@ -187,7 +187,7 @@ export function Select({
 
               return (
                 <button
-                  key={row.value || '__clear'}
+                  key={`${listId}-${index}`}
                   id={`${listId}-${index}`}
                   type="button"
                   role="option"

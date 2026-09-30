@@ -32,6 +32,7 @@ model User {
   projectMemberships ProjectMember[] @relation("ProjectMemberUser")
   ownedTasks         Task[]          @relation("TaskOwner")
   responsibleRisks   Risk[]          @relation("RiskResponsible")
+  projectEvents      ProjectEvent[]  @relation("ProjectEventActor")
 
   @@map("users")
 }
@@ -119,6 +120,7 @@ model Project {
   goals      Goal[]                        @relation("ProjectGoals")
   stages     Stage[]                       @relation("ProjectStages")
   risks      Risk[]                        @relation("ProjectRisks")
+  events     ProjectEvent[]                @relation("ProjectEvents")
 
   @@index([statusId])
   @@map("projects")
@@ -279,4 +281,35 @@ model PasswordResetToken {
   createdAt DateTime  @default(now()) @map("created_at")
 
   @@map("password_reset_tokens")
+}
+
+/// Append-only activity + decision history. Rows are never updated or deleted,
+/// hence no `updatedAt`.
+///
+/// `content` is the finished Polish predicate — "oznaczył(a) zadanie „X" jako
+/// Zrobione" — never including the actor's name, which the page renders as its
+/// own bold span. `actorId` is whoever the line is about: the person who acted,
+/// or — for a task going overdue, which nobody performs — the owner answerable
+/// for it. It is null only when there is no such person (an overdue task with
+/// no owner), and the page prints those without a name, so their `content` has
+/// to read as a whole sentence rather than a predicate.
+///
+/// `dedupeKey` is what makes the overdue scan safe to re-run: a repeat insert
+/// hits the unique index instead of adding a duplicate row.
+model ProjectEvent {
+  id        String   @id @default(uuid())
+  projectId String   @map("project_id")
+  actorId   String?  @map("actor_id")
+  source    String   @default("AUTOMATIC")
+  content   String   @db.NVarChar(Max)
+  dedupeKey String?  @unique @map("dedupe_key")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  project Project @relation("ProjectEvents", fields: [projectId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  actor   User?   @relation("ProjectEventActor", fields: [actorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([projectId, createdAt])
+  @@index([source, createdAt])
+  @@index([actorId])
+  @@map("project_events")
 }

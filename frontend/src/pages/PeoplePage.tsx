@@ -84,7 +84,7 @@ export default function PeoplePage() {
   });
 
   return (
-    <div className="px-4 min-[400px]:px-6 sm:px-8 pt-16 pb-8 lg:pt-4 max-w-7xl mx-auto">
+    <div className="px-4 min-[400px]:px-6 sm:px-8 pt-20 pb-8 lg:pt-4 max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-base font-bold text-dark 500:text-xl lg:text-2xl">
           Ludzie

@@ -12,6 +12,7 @@ const GROUP = {
   risk: 9,
   member: 10,
   subtask: 11,
+  event: 12,
 } as const;
 
 const takenIds = new Map<string, string>();
@@ -124,6 +125,9 @@ interface SeedProject {
   stages: SeedStage[];
   activities: { key: string; stage: string; name: string }[];
   tasks: SeedTask[];
+  /** Manual decisions. `content` is the predicate only — the page prints the
+   * actor's name itself, so repeating it here would double it. */
+  events?: { key: string; actor: string; content: string; at: string }[];
 }
 
 export const PROJECTS: SeedProject[] = [
@@ -144,6 +148,15 @@ export const PROJECTS: SeedProject[] = [
       { person: 'piotr', role: 'EXECUTOR' },
       { person: 'ewa', role: 'EXECUTOR' },
       { person: 'marek', role: 'EXECUTOR' },
+    ],
+    events: [
+      {
+        key: 'przesuniecie-oznakowania',
+        actor: 'anna',
+        content:
+          'zatwierdziła przesunięcie terminu etapu „Oznakowanie szlaku” o dwa tygodnie',
+        at: '2026-09-16T14:20:00.000Z',
+      },
     ],
     goals: [
       {
@@ -554,6 +567,27 @@ export async function seedProjects(
           projectId,
           userId,
           projectRole: member.role,
+        },
+      });
+    }
+
+    for (const event of project.events ?? []) {
+      const eventId = id('event', `${project.key}:${event.key}`);
+      const eventData = {
+        actorId: userIdByKey.get(event.actor)!,
+        source: 'MANUAL',
+        content: event.content,
+        createdAt: new Date(event.at),
+      };
+      await prisma.projectEvent.upsert({
+        where: { id: eventId },
+        update: eventData,
+        create: {
+          id: eventId,
+          projectId,
+          // Stable, so re-seeding hits the unique index instead of duplicating.
+          dedupeKey: `seed:${project.key}:${event.key}`,
+          ...eventData,
         },
       });
     }

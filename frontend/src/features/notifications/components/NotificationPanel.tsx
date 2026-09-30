@@ -9,6 +9,7 @@ import type { AppNotification } from '../types';
 interface NotificationPanelProps {
   panelRef: RefObject<HTMLDivElement | null>;
   position: AnchoredPosition;
+  align: 'left' | 'right';
   notifications: AppNotification[];
   unreadCount: number;
   isLoading: boolean;
@@ -20,6 +21,7 @@ interface NotificationPanelProps {
 export default function NotificationPanel({
   panelRef,
   position,
+  align,
   notifications,
   unreadCount,
   isLoading,
@@ -31,16 +33,26 @@ export default function NotificationPanel({
     panelRef.current?.focus();
   }, [panelRef]);
 
+  const openUpward = position.placement === 'top';
+
   return createPortal(
     <div
       ref={panelRef}
       role="dialog"
       aria-label="Powiadomienia"
       tabIndex={-1}
-      style={{ top: position.top, right: position.right }}
-      className="fixed z-40 w-[min(22rem,calc(100vw-1rem))] origin-top-right rounded-lg border border-gray-200 bg-white shadow-lg outline-none"
+      style={{
+        ...(openUpward
+          ? { bottom: position.bottom }
+          : { top: position.top }),
+        ...(align === 'left'
+          ? { left: position.left }
+          : { right: position.right }),
+        maxHeight: position.maxHeight,
+      }}
+      className="fixed z-40 flex w-[min(22rem,calc(100vw-1rem))] flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg outline-none"
     >
-      <div className="flex items-center justify-between gap-2 border-b border-gray-200 px-4 py-3">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-gray-200 px-4 py-3">
         <h2 className="text-sm font-semibold text-dark">Powiadomienia</h2>
         <button
           type="button"
@@ -65,7 +77,7 @@ export default function NotificationPanel({
           Brak powiadomień
         </p>
       ) : (
-        <ul className="max-h-80 divide-y divide-gray-100 overflow-y-auto nav-scrollbar">
+        <ul className="min-h-0 flex-1 divide-y divide-gray-100 overflow-y-auto nav-scrollbar">
           {notifications.map((notification) => (
             <NotificationItem
               key={notification.id}
@@ -76,7 +88,7 @@ export default function NotificationPanel({
         </ul>
       )}
 
-      <div className="border-t border-gray-200 px-4 py-2.5 text-center">
+      <div className="shrink-0 border-t border-gray-200 px-4 py-2.5 text-center">
         <Link
           to="/notifications"
           onClick={onNavigate}

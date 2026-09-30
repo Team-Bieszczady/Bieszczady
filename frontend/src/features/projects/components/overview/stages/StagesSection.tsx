@@ -61,6 +61,9 @@ export default function StagesSection({
   canEdit,
 }: StagesSectionProps) {
   const [dialog, setDialog] = useState<StageDialog>(CLOSED);
+  const [highlightedStageId, setHighlightedStageId] = useState<string | null>(
+    null,
+  );
 
   const close = () => setDialog(CLOSED);
 
@@ -210,6 +213,7 @@ export default function StagesSection({
           views={views}
           startDate={project.startDate}
           plannedEndDate={project.plannedEndDate}
+          onStageSelect={setHighlightedStageId}
         >
           {active.length === 0 && (
             <EmptySectionState
@@ -235,6 +239,8 @@ export default function StagesSection({
                 view={views[index]}
                 index={index}
                 canEdit={canEdit}
+                isHighlighted={stage.id === highlightedStageId}
+                onHighlightEnd={() => setHighlightedStageId(null)}
                 onEdit={() => setDialog({ kind: 'edit', stage })}
                 onMoveDeadline={() =>
                   setDialog({ kind: 'move-deadline', stage })

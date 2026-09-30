@@ -8,6 +8,7 @@ import { Select, type SelectOption } from '../../../components/ui/Select';
 import {
   FIELD_LABEL_CLASSES,
   INPUT_CLASSES,
+  TEXTAREA_CLASSES,
 } from '../../../components/ui/formStyles';
 import {
   TASK_PRIORITY_OPTIONS,
@@ -40,9 +41,6 @@ interface TaskFormModalProps {
 
 const UNASSIGNED = '';
 
-const TEXTAREA_CLASSES =
-  'w-full resize-y rounded-lg border border-gray-300 px-3 py-2 text-xs leading-relaxed text-dark focus:border-transparent focus:ring-1 focus:ring-darkGreen focus:outline-none';
-
 export default function TaskFormModal({
   mode,
   task,
@@ -74,10 +72,6 @@ export default function TaskFormModal({
   const dueDateId = useId();
   const noteId = useId();
 
-  const owners: SelectOption[] = [
-    { value: UNASSIGNED, label: 'Bez przypisania' },
-    ...ownerOptions,
-  ];
   const statusOptions =
     mode === 'add'
       ? TASK_STATUS_OPTIONS.filter((option) => option.value !== 'DONE')
@@ -123,8 +117,8 @@ export default function TaskFormModal({
               render={({ field }) => (
                 <Select
                   size="md"
-                  placeholder="Wybierz"
-                  options={owners}
+                  placeholder="Bez przypisania"
+                  options={ownerOptions}
                   value={field.value}
                   onChange={field.onChange}
                   onBlur={field.onBlur}

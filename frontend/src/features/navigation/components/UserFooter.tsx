@@ -1,5 +1,6 @@
 import { Link } from 'react-router';
 import { Avatar } from '../../../components/ui/Avatar';
+import NotificationBell from '../../notifications/components/NotificationBell';
 
 interface UserFooterProps {
   initials: string;
@@ -7,6 +8,7 @@ interface UserFooterProps {
   avatarSrc?: string | null;
   isDirector?: boolean;
   onNavigate?: () => void;
+  showNotifications?: boolean;
   className?: string;
 }
 
@@ -16,11 +18,12 @@ export default function UserFooter({
   avatarSrc,
   isDirector = false,
   onNavigate,
+  showNotifications = false,
   className = '',
 }: UserFooterProps) {
   return (
     <div
-      className={`flex items-center w-full px-4 py-2 border-t border-gray-200 ${className}`}
+      className={`flex items-center gap-2 w-full px-4 py-2 border-t border-gray-200 ${className}`}
     >
       <Link
         to="/profile"
@@ -47,6 +50,7 @@ export default function UserFooter({
           />
         </svg>
       </Link>
+      {showNotifications && <NotificationBell align="left" />}
     </div>
   );
 }
