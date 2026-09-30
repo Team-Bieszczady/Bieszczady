@@ -53,7 +53,10 @@ export function TitleDescriptionForm({
     <form
       onSubmit={submit}
       onKeyDown={(event) => {
-        if (event.key === 'Escape') onCancel();
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          onCancel();
+        }
       }}
       className="w-full"
     >

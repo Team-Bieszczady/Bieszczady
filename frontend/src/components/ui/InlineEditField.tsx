@@ -39,7 +39,10 @@ function InlineEditForm({
         disabled={isSubmitting}
         aria-label={ariaLabel}
         onKeyDown={(event) => {
-          if (event.key === 'Escape') onCancel();
+          if (event.key === 'Escape') {
+            event.preventDefault();
+            onCancel();
+          }
         }}
         className={`w-full rounded-lg border border-gray-300 px-2 py-1 focus:border-transparent focus:ring-1 focus:ring-darkGreen focus:outline-none ${inputClassName}`}
       />

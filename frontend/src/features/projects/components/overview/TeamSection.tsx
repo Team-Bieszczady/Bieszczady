@@ -32,10 +32,7 @@ type TeamDialog =
 
 const CLOSED: TeamDialog = { kind: 'none' };
 
-export default function TeamSection({
-  projectId,
-  canEdit,
-}: TeamSectionProps) {
+export default function TeamSection({ projectId, canEdit }: TeamSectionProps) {
   const { team, candidates, isLoading, addMember, changeRole, removeMember } =
     useProjectTeam(projectId, canEdit);
   const [dialog, setDialog] = useState<TeamDialog>(CLOSED);
@@ -187,7 +184,9 @@ export default function TeamSection({
         description={
           <>
             {dialog.kind === 'remove' ? dialog.member.name : ''} przestanie być
-            członkiem tego projektu. Konto użytkownika pozostaje bez zmian.
+            członkiem tego projektu. Udostępnienia folderów i plików dla tej
+            osoby w tym projekcie zostaną usunięte. Konto użytkownika pozostaje
+            bez zmian.
           </>
         }
         confirmLabel="Usuń z projektu"

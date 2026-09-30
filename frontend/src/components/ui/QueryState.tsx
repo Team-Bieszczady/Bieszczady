@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { PageMessage } from './PageMessage';
-import { Spinner } from './Spinner';
+import { PageLoading } from './PageLoading';
 import { isApiError } from '../../lib/api';
 
 function defaultResolveError(error: Error | null, fallback: string): string {
@@ -34,16 +34,7 @@ export function QueryState<T>({
   children,
 }: QueryStateProps<T>) {
   if (isLoading) {
-    return (
-      <div
-        role="status"
-        aria-live="polite"
-        className="flex flex-col items-center justify-center gap-3 h-screen px-6 text-center"
-      >
-        <Spinner variant="dark" size="32" />
-        <p className="text-gray-500 text-sm">Ładowanie...</p>
-      </div>
-    );
+    return <PageLoading />;
   }
 
   if (isError) {

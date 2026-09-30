@@ -82,6 +82,10 @@ export class MembersService {
         );
       }
 
+      await tx.documentAccess.deleteMany({
+        where: { projectId, userId: dto.userId },
+      });
+
       return tx.projectMember.create({
         data: {
           projectId,
@@ -127,6 +131,9 @@ export class MembersService {
           activity: { stage: { projectId: member.projectId } },
         },
         data: { ownerId: null },
+      });
+      await tx.documentAccess.deleteMany({
+        where: { projectId: member.projectId, userId: member.userId },
       });
 
       await tx.projectMember.delete({ where: { id } });
