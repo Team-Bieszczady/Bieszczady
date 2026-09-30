@@ -6,6 +6,7 @@ import { ProjectsModule } from './projects/projects.module';
 import { EventsModule } from './events/events.module';
 import { validateEnv } from './config/env.validation';
 import { PrismaModule } from './prisma/prisma.module';
+import { DocumentsModule } from './documents/documents.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { PrismaModule } from './prisma/prisma.module';
     PrismaModule,
     AuthModule,
     UsersModule,
+    DocumentsModule,
     ProjectsModule,
     EventsModule,
   ],

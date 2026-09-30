@@ -9,6 +9,7 @@ import {
 } from '../../projects/hooks/useProjectsApi';
 import type { BackendProjectCard } from '../../../lib/projectsApi';
 import { ORG_NAV_ITEMS, PROJECT_NAV_ITEMS, type NavItem } from '../data';
+import { usePendingCount } from '../../documents/hooks/usePendingCount';
 
 interface NavData {
   initials: string;
@@ -33,6 +34,8 @@ export function useNavData(): NavData {
   const { data: archived = [] } = useArchivedProjects(
     hasModule(user, 'SETTINGS'),
   );
+  const { data: pending } = usePendingCount(projectId);
+
   const { data: me } = useCurrentUser();
 
   const counts: Record<string, number> = {
@@ -58,6 +61,7 @@ export function useNavData(): NavData {
   const orgNavItems = ORG_NAV_ITEMS.filter(canSee).map((item) =>
     item.id in counts ? { ...item, count: counts[item.id] } : item,
   );
+  const pendingCount = pending?.count ?? 0;
 
   return {
     initials: user
@@ -69,11 +73,15 @@ export function useNavData(): NavData {
     orgNavItems,
 
     projectNavItems: hasModule(user, 'PROJECTS')
-      ? PROJECT_NAV_ITEMS.filter(canSee).map((item) =>
-          item.id === 'tasks' && selectedProject && taskBadge > 0
-            ? { ...item, count: taskBadge }
-            : item,
-        )
+      ? PROJECT_NAV_ITEMS.filter(canSee).map((item) => {
+          if (item.id === 'tasks' && selectedProject && taskBadge > 0) {
+            return { ...item, count: taskBadge };
+          }
+          if (item.id === 'documents' && selectedProject && pendingCount > 0) {
+            return { ...item, count: pendingCount };
+          }
+          return item;
+        })
       : [],
     selectedProject,
   };
