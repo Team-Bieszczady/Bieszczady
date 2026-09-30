@@ -51,5 +51,3 @@ export const PROJECT_SELECT_OPTIONS: ReadonlyArray<{
   value: project.id,
   label: project.name,
 }));
-
-
