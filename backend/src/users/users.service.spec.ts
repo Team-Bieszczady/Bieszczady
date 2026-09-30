@@ -63,6 +63,8 @@ describe('UsersService', () => {
 
   const ACTOR_ID = 'director-123';
 
+  const TASK_COUNT_INCLUDE = { _count: { select: { ownedTasks: true } } };
+
   const mockUser = {
     id: 'user-123',
     firstName: 'John',
@@ -220,14 +222,19 @@ describe('UsersService', () => {
 
   describe('findById', () => {
     it('should return user excluding passwordHash', async () => {
-      prismaMock.user.findFirst.mockResolvedValue(mockUser);
+      prismaMock.user.findFirst.mockResolvedValue({
+        ...mockUser,
+        _count: { ownedTasks: 3 },
+      });
 
       const result = await service.findById('user-123');
 
       expect('passwordHash' in result).toBe(false);
       expect(result.id).toBe('user-123');
+      expect(result.taskCount).toBe(3);
       expect(prismaMock.user.findFirst).toHaveBeenCalledWith({
         where: { id: 'user-123', deletedAt: null },
+        include: TASK_COUNT_INCLUDE,
       });
     });
 
@@ -248,6 +255,7 @@ describe('UsersService', () => {
 
       expect(prismaMock.user.findFirst).toHaveBeenCalledWith({
         where: { id: 'user-123', deletedAt: null },
+        include: TASK_COUNT_INCLUDE,
       });
     });
   });

@@ -133,7 +133,7 @@ export class MembersController {
   @ApiOperation({
     summary: 'Remove a member from a project',
     description:
-      'Anything they were responsible for on this project — risks, tasks — is left unassigned rather than blocking the removal. The user account itself is untouched.',
+      'Anything they were responsible for on this project — risks, tasks — is left unassigned rather than blocking the removal. Their folder and document shares on this project are deleted in the same transaction. The user account itself is untouched.',
   })
   @ApiResponse({ status: 204, description: 'Member removed (no content)' })
   @ApiResponse({ status: 403, description: 'Director only' })

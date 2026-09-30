@@ -28,6 +28,13 @@ model User {
 
   moduleAccess        UserModuleAccess[] @relation("UserModuleAccessUser")
   grantedModuleAccess UserModuleAccess[] @relation("UserModuleAccessGrantedBy")
+  ownedDocuments      Document[]         @relation("DocumentOwner")
+  ownedFolders        Folder[]           @relation("FolderOwner")
+  uploadedVersions    DocumentVersion[]  @relation("VersionUploader")
+  documentAccesses        DocumentAccess[] @relation("DocumentAccessUser")
+  documentAccessesGranted DocumentAccess[] @relation("DocumentAccessGrantedBy")
+
+
 
   projectMemberships ProjectMember[] @relation("ProjectMemberUser")
   ownedTasks         Task[]          @relation("TaskOwner")
@@ -280,3 +287,90 @@ model PasswordResetToken {
 
   @@map("password_reset_tokens")
 }
+
+model Folder {
+  id        String    @id @default(uuid())
+  projectId String    @map("project_id")
+  parentId  String?   @map("parent_id")
+  name      String
+  ownerId   String    @map("owner_id")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  owner     User       @relation("FolderOwner", fields: [ownerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  parent    Folder?    @relation("FolderTree", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  children  Folder[]   @relation("FolderTree")
+  documents Document[]
+  accesses  DocumentAccess[]
+
+
+  @@index([projectId])
+  @@index([parentId])
+  @@map("folders")
+}
+
+model Document {
+  id        String    @id @default(uuid())
+  projectId String    @map("project_id")
+  folderId  String    @map("folder_id")
+  name      String
+  kind      String
+  status    String
+  ownerId   String    @map("owner_id")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  folder   Folder            @relation(fields: [folderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  owner    User              @relation("DocumentOwner", fields: [ownerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  versions DocumentVersion[]
+  accesses DocumentAccess[]
+
+
+  @@index([projectId])
+  @@index([folderId])
+  @@map("documents")
+}
+
+model DocumentVersion {
+  id           String   @id @default(uuid())
+  documentId   String   @map("document_id")
+  versionNo    Int      @map("version_no")
+  storageKey   String   @map("storage_key")
+  fileName     String   @map("file_name")
+  mimeType     String   @map("mime_type")
+  sizeBytes    Int      @map("size_bytes")
+  changeNote   String?  @map("change_note")
+  uploadedById String   @map("uploaded_by_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  document   Document @relation(fields: [documentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  uploadedBy User     @relation("VersionUploader", fields: [uploadedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([documentId, versionNo])
+  @@index([documentId])
+  @@map("document_versions")
+}
+
+model DocumentAccess {
+  id          String   @id @default(uuid())
+  projectId   String   @map("project_id")
+  folderId    String?  @map("folder_id")
+  documentId  String?  @map("document_id")
+  userId      String   @map("user_id")
+  level       String
+  grantedById String   @map("granted_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  folder    Folder?   @relation(fields: [folderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  document  Document? @relation(fields: [documentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user      User      @relation("DocumentAccessUser", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  grantedBy User      @relation("DocumentAccessGrantedBy", fields: [grantedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+@@index([folderId])
+@@index([documentId])
+@@index([userId])
+@@map("document_access")
+}
+
