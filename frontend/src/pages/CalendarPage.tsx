@@ -11,7 +11,6 @@ import { MonthView } from '../features/calendar/components/MonthView';
 export default function CalendarPage() {
   const [anchor, setAnchor] = useState(todayIso);
 
-
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 pt-16 pb-4 min-[400px]:px-6 sm:px-8 lg:pt-4">
       <h1 className="text-base font-bold text-dark min-[500px]:text-xl lg:text-2xl">
@@ -48,9 +47,8 @@ export default function CalendarPage() {
         <p className="text-lg font-semibold text-dark">
           {formatMonthTitle(anchor)}
         </p>
-
       </div>
-      {<MonthView anchor={anchor}/>}
+      {<MonthView anchor={anchor} />}
     </div>
   );
 }

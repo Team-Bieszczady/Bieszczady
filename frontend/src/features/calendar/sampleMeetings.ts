@@ -1,0 +1,68 @@
+import type { Meeting } from './types';
+
+export const sampleMeetings: Meeting[] = [
+  {
+    id: '1',
+    title: 'Odprawa zespołu',
+    date: '2026-10-01',
+    startTime: '09:00',
+    endTime: '10:00',
+    projectId: 'szlak',
+  },
+  {
+    id: '2',
+    title: 'Rada Gminy – konsultacje',
+    date: '2026-10-07',
+    startTime: '16:00',
+    endTime: '17:30',
+    projectId: 'szlak',
+  },
+  {
+    id: '3',
+    title: 'Warsztaty dla przewodników',
+    date: '2026-10-07',
+    startTime: '10:00',
+    endTime: '13:00',
+    projectId: 'szkolenia',
+  },
+  {
+    id: '4',
+    title: 'Przegląd budżetu',
+    date: '2026-10-14',
+    startTime: '14:00',
+    endTime: '15:00',
+    projectId: 'festiwal',
+  },
+  {
+    id: '5',
+    title: 'Spotkanie z Nadleśnictwem w sprawie przebiegu szlaku przez Zawóz',
+    date: '2026-10-14',
+    startTime: '08:30',
+    endTime: '09:30',
+    projectId: 'szlak',
+  },
+  {
+    id: '6',
+    title: 'Próba sceny',
+    date: '2026-10-14',
+    startTime: '18:00',
+    endTime: '20:00',
+    projectId: 'festiwal',
+  },
+  {
+    id: '7',
+    title: 'Szkolenie BHP',
+    date: '2026-10-14',
+    startTime: '11:00',
+    endTime: '12:00',
+    projectId: 'szkolenia',
+  },
+  {
+    id: '8',
+    title: 'Podsumowanie września',
+    date: '2026-09-30',
+    startTime: '12:00',
+    endTime: '13:00',
+    projectId: 'szlak',
+  },
+];
