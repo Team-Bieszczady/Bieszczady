@@ -6,3 +6,8 @@ export interface Meeting {
   endTime: string;
   projectId: string;
 }
+export interface CalendarProject {
+  id: string;
+  name: string;
+  color: string;
+}

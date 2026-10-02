@@ -7,6 +7,7 @@ import {
   todayIso,
 } from '../features/projects/utils/isoDate';
 import { MonthView } from '../features/calendar/components/MonthView';
+import { ProjectFilter } from '../features/calendar/components/ProjectFilter';
 
 export default function CalendarPage() {
   const [anchor, setAnchor] = useState(todayIso);
@@ -17,38 +18,47 @@ export default function CalendarPage() {
         Kalendarz
       </h1>
 
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          aria-label="Poprzedni miesiąc"
-          onClick={() =>
-            setAnchor((prev) =>
-              startOfMonthIso(addDaysIso(startOfMonthIso(prev), -1)),
-            )
-          }
-        >
-          ←
-        </button>
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            aria-label="Poprzedni miesiąc"
+            onClick={() =>
+              setAnchor((prev) =>
+                startOfMonthIso(addDaysIso(startOfMonthIso(prev), -1)),
+              )
+            }
+            className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-gray-200 bg-white hover:bg-gray-50"
+          >
+            ←
+          </button>
 
-        <button type="button" onClick={() => setAnchor(todayIso())}>
-          Dzisiaj
-        </button>
+          <button
+            type="button"
+            onClick={() => setAnchor(todayIso())}
+            className="h-8 cursor-pointer rounded-lg border border-gray-200 bg-white px-4 text-xs font-medium hover:bg-gray-50"
+          >
+            Dzisiaj
+          </button>
 
-        <button
-          type="button"
-          aria-label="Następny miesiąc"
-          onClick={() =>
-            setAnchor((prev) => addDaysIso(endOfMonthIso(prev), 1))
-          }
-        >
-          →
-        </button>
+          <button
+            type="button"
+            aria-label="Następny miesiąc"
+            onClick={() =>
+              setAnchor((prev) => addDaysIso(endOfMonthIso(prev), 1))
+            }
+            className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-gray-200 bg-white hover:bg-gray-50"
+          >
+            →
+          </button>
 
-        <p className="text-lg font-semibold text-dark">
-          {formatMonthTitle(anchor)}
-        </p>
+          <p className="text-xl font-bold text-dark">
+            {formatMonthTitle(anchor)}
+          </p>
+        </div>
+        <ProjectFilter />
       </div>
-      {<MonthView anchor={anchor} />}
+      <MonthView anchor={anchor} />
     </div>
   );
 }

@@ -23,7 +23,7 @@ export function MonthView({ anchor }: { anchor: string }) {
       {WEEK_DAYS.map((day) => (
         <div
           key={day}
-          className="bg-gray-50 px-2 py-2 text-xs font-semibold text-gray-400"
+          className="bg-gray-50 px-2 py-2 text-xs font-semibold tracking-wide text-gray-400"
         >
           {day}
         </div>
@@ -38,18 +38,10 @@ export function MonthView({ anchor }: { anchor: string }) {
         return (
           <div
             key={day}
-            className={`h-28 p-2 text-sm overflow-hidden
-            ${
-              day < firstDay || day > lastDay
-                ? 'bg-gray-50 text-gray-400'
-                : 'bg-white text-dark'
-            }`}
+            className={`h-28 overflow-hidden p-2 text-xs ${day < firstDay || day > lastDay ? 'bg-gray-50 text-gray-400' : 'bg-white text-dark'}`}
           >
             <span
-              className={`inline-flex items-center justify-center h-7 w-7 rounded-full 
-                ${
-                  day === today ? 'bg-darkGreen font-semibold text-white' : ''
-                }`}
+              className={`inline-flex h-6 w-6 items-center justify-center rounded-full ${day === today ? 'bg-darkGreen font-semibold text-white' : ''}`}
             >
               {dayNumber(day)}
             </span>
@@ -57,13 +49,13 @@ export function MonthView({ anchor }: { anchor: string }) {
               {visibleMeetings.map((meeting) => (
                 <div
                   key={meeting.id}
-                  className="text-xs py-0.5 px-2 rounded truncate bg-gray-100"
+                  className="h-5 truncate rounded border-l-2 border-gray-400 bg-gray-100 px-1.5 text-[11px] font-medium leading-5 text-dark"
                 >
                   <span>{`${meeting.startTime} ${meeting.title}`}</span>
                 </div>
               ))}
               {hiddenCount > 0 && (
-                <p className="px-1.5 text-xs text-gray-500">
+                <p className="pl-2 text-[11px] font-medium text-grayText">
                   +{hiddenCount} więcej
                 </p>
               )}
