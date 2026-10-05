@@ -26,15 +26,15 @@ model User {
   updatedAt          DateTime  @updatedAt @map("updated_at")
   deletedAt          DateTime? @map("deleted_at")
 
-  moduleAccess        UserModuleAccess[] @relation("UserModuleAccessUser")
-  grantedModuleAccess UserModuleAccess[] @relation("UserModuleAccessGrantedBy")
-  ownedDocuments      Document[]         @relation("DocumentOwner")
-  ownedFolders        Folder[]           @relation("FolderOwner")
-  uploadedVersions    DocumentVersion[]  @relation("VersionUploader")
-  documentAccesses        DocumentAccess[] @relation("DocumentAccessUser")
-  documentAccessesGranted DocumentAccess[] @relation("DocumentAccessGrantedBy")
-
-
+  moduleAccess            UserModuleAccess[] @relation("UserModuleAccessUser")
+  grantedModuleAccess     UserModuleAccess[] @relation("UserModuleAccessGrantedBy")
+  ownedDocuments          Document[]         @relation("DocumentOwner")
+  ownedFolders            Folder[]           @relation("FolderOwner")
+  uploadedVersions        DocumentVersion[]  @relation("VersionUploader")
+  documentAccesses        DocumentAccess[]   @relation("DocumentAccessUser")
+  documentAccessesGranted DocumentAccess[]   @relation("DocumentAccessGrantedBy")
+  createdMeetings         Meeting[]          @relation("MeetingCreator")
+  meetingInvitations      MeetingInvitee[]   @relation("MeetingInviteeUser")
 
   projectMemberships ProjectMember[] @relation("ProjectMemberUser")
   ownedTasks         Task[]          @relation("TaskOwner")
@@ -126,6 +126,7 @@ model Project {
   goals      Goal[]                        @relation("ProjectGoals")
   stages     Stage[]                       @relation("ProjectStages")
   risks      Risk[]                        @relation("ProjectRisks")
+  meetings   Meeting[]                     @relation("ProjectMeetings")
 
   @@index([statusId])
   @@map("projects")
@@ -298,12 +299,11 @@ model Folder {
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
 
-  owner     User       @relation("FolderOwner", fields: [ownerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  parent    Folder?    @relation("FolderTree", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  children  Folder[]   @relation("FolderTree")
+  owner     User             @relation("FolderOwner", fields: [ownerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  parent    Folder?          @relation("FolderTree", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  children  Folder[]         @relation("FolderTree")
   documents Document[]
   accesses  DocumentAccess[]
-
 
   @@index([projectId])
   @@index([parentId])
@@ -326,7 +326,6 @@ model Document {
   owner    User              @relation("DocumentOwner", fields: [ownerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   versions DocumentVersion[]
   accesses DocumentAccess[]
-
 
   @@index([projectId])
   @@index([folderId])
@@ -368,9 +367,45 @@ model DocumentAccess {
   user      User      @relation("DocumentAccessUser", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   grantedBy User      @relation("DocumentAccessGrantedBy", fields: [grantedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
-@@index([folderId])
-@@index([documentId])
-@@index([userId])
-@@map("document_access")
+  @@index([folderId])
+  @@index([documentId])
+  @@index([userId])
+  @@map("document_access")
 }
 
+model Meeting {
+  id          String    @id @default(uuid())
+  projectId   String    @map("project_id")
+  title       String
+  date        DateTime  @db.Date
+  startTime   String    @map("start_time")
+  endTime     String    @map("end_time")
+  place       String?
+  meetingUrl  String?   @map("meeting_url")
+  note        String    @default("") @db.NVarChar(Max)
+  createdById String    @map("created_by_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  project   Project          @relation("ProjectMeetings", fields: [projectId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  createdBy User             @relation("MeetingCreator", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  invitees  MeetingInvitee[] @relation("MeetingInvitees")
+
+  @@index([projectId, date])
+  @@index([createdById])
+  @@map("meetings")
+}
+
+model MeetingInvitee {
+  id        String @id @default(uuid())
+  meetingId String @map("meeting_id")
+  userId    String @map("user_id")
+
+  meeting Meeting @relation("MeetingInvitees", fields: [meetingId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user    User    @relation("MeetingInviteeUser", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([meetingId, userId])
+  @@index([userId])
+  @@map("meeting_invitees")
+}
