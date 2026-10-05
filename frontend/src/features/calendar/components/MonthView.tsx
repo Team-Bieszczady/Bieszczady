@@ -3,7 +3,7 @@ import {
   startOfMonthIso,
   todayIso,
 } from '../../projects/utils/isoDate';
-import { sampleMeetings } from '../sampleMeetings';
+import type { Meeting } from '../types';
 import {
   dayNumber,
   getMonthGridDays,
@@ -12,7 +12,12 @@ import {
 
 const WEEK_DAYS = ['PN', 'WT', 'ŚR', 'CZ', 'PT', 'SO', 'ND'];
 
-export function MonthView({ anchor }: { anchor: string }) {
+interface Props {
+  anchor: string;
+  meetings: Meeting[];
+}
+
+export function MonthView({ anchor, meetings }: Props) {
   const gridDays = getMonthGridDays(anchor);
   const today = todayIso();
   const firstDay = startOfMonthIso(anchor);
@@ -31,7 +36,7 @@ export function MonthView({ anchor }: { anchor: string }) {
 
       {gridDays.map((day) => {
         const { visibleMeetings, hiddenCount } = monthCellMeetings(
-          sampleMeetings,
+          meetings,
           day,
         );
 

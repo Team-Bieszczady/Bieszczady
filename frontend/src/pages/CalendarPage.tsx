@@ -8,9 +8,24 @@ import {
 } from '../features/projects/utils/isoDate';
 import { MonthView } from '../features/calendar/components/MonthView';
 import { ProjectFilter } from '../features/calendar/components/ProjectFilter';
+import { sampleProjects } from '../features/calendar/sampleProjects';
+import { sampleMeetings } from '../features/calendar/sampleMeetings';
 
 export default function CalendarPage() {
   const [anchor, setAnchor] = useState(todayIso);
+
+  const [hiddenProjectIds, setHiddenProjectIds] = useState<string[]>([]);
+
+  const toggleProject = (id: string) => {
+    if (hiddenProjectIds.includes(id)) {
+      setHiddenProjectIds((prev) => prev.filter((el) => el !== id));
+    } else {
+      setHiddenProjectIds((prev) => [...prev, id]);
+    }
+  };
+  const filteredMeetings = sampleMeetings.filter(
+    (meeting) => !hiddenProjectIds.includes(meeting.projectId),
+  );
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 pt-16 pb-4 min-[400px]:px-6 sm:px-8 lg:pt-4">
@@ -56,9 +71,13 @@ export default function CalendarPage() {
             {formatMonthTitle(anchor)}
           </p>
         </div>
-        <ProjectFilter />
+        <ProjectFilter
+          projects={sampleProjects}
+          hiddenProjectIds={hiddenProjectIds}
+          onToggle={toggleProject}
+        />
       </div>
-      <MonthView anchor={anchor} />
+      <MonthView anchor={anchor} meetings={filteredMeetings} />
     </div>
   );
 }
