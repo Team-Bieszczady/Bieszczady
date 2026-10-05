@@ -77,7 +77,11 @@ export default function CalendarPage() {
           onToggle={toggleProject}
         />
       </div>
-      <MonthView anchor={anchor} meetings={filteredMeetings} />
+      <MonthView
+        anchor={anchor}
+        meetings={filteredMeetings}
+        projects={sampleProjects}
+      />
     </div>
   );
 }
