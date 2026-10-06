@@ -13,6 +13,6 @@ export function nameRules(label: string) {
       message: `${label} może mieć maksymalnie ${NAME_MAX_LENGTH} znaków`,
     },
     validate: (value: string) =>
-      NAME_PATTERN.test(value.trim()) || `${label} — ${NAME_PATTERN_MESSAGE}`,
+      NAME_PATTERN.test(value.trim()) || `${label}: ${NAME_PATTERN_MESSAGE}`,
   };
 }

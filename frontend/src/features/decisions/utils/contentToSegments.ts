@@ -6,8 +6,6 @@ export interface DecisionSegment {
 const PL_MONTHS =
   'stycznia|lutego|marca|kwietnia|maja|czerwca|lipca|sierpnia|września|października|listopada|grudnia';
 
-/** Quoted names and dates get bold, so a typed decision reads like a recorded
- * one. The wire carries a flat string, so this is the only source of emphasis. */
 const EMPHASIS_PATTERN = new RegExp(
   [
     '[„"][^„”"]+[”"]',

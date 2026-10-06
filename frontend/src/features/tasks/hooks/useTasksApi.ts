@@ -29,9 +29,8 @@ function taskWriteKeys(projectId: string) {
     taskKeys.listFor(projectId),
     taskKeys.mineFor(projectId),
     projectKeys.stagesFor(projectId),
+    projectKeys.indicators(projectId),
     ...projectLists,
-    // Creating a task and changing its status both leave a row on Decyzje;
-    // without this the page keeps serving the cache it had before the write.
     eventKeys.all,
   ];
 }

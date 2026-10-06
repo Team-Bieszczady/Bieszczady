@@ -32,15 +32,10 @@ export default function DecisionsPage() {
     ...watchedFilters,
   };
 
-  // Both filters are part of the query key, so changing one starts a fresh
-  // query — there is no client-side page counter left to reset.
   const events = useEvents(filters.project, periodToFrom(filters.period));
   const listedEvents = events.data?.pages.flatMap((page) => page.items) ?? [];
   const groups = groupByDay(listedEvents);
   const isFiltered = !!filters.project || !!filters.period;
-
-  // From the project list, not from the loaded rows — with server paging the
-  // options would otherwise grow as you scroll.
   const projects = useProjects();
   const projectOptions = (projects.data ?? [])
     .map((project) => ({ value: project.id, label: project.name }))

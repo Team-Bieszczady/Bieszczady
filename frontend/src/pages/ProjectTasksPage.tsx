@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { HiOutlinePlus } from 'react-icons/hi';
 import { AiOutlineSearch } from 'react-icons/ai';
+import { IoCloseOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import { Button } from '../components/ui/Button';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
@@ -9,7 +10,7 @@ import { PageMessage } from '../components/ui/PageMessage';
 import { Select, type SelectOption } from '../components/ui/Select';
 import Pagination from '../features/people/components/Pagination';
 import { Spinner } from '../components/ui/Spinner';
-import type { TaskStatus } from '../features/projects/types';
+import { TASK_PRIORITY_OPTIONS } from '../features/projects/labels';
 import { todayIso } from '../features/projects/utils/isoDate';
 import { useProject } from '../features/projects/hooks/useProjectsApi';
 import {
@@ -24,8 +25,8 @@ import TasksTable from '../features/tasks/components/TasksTable';
 import TaskStatusTabs from '../features/tasks/components/TaskStatusTabs';
 import {
   DEADLINE_FILTER_OPTIONS,
+  NO_OPEN_ACTIONS_MESSAGE,
   PAGE_SIZE,
-  PRIORITY_SELECT_OPTIONS,
   TASK_SORT_OPTIONS,
 } from '../features/tasks/constants';
 import type { TaskRow } from '../features/tasks/data';
@@ -41,6 +42,7 @@ import {
   canManageTasks,
 } from '../features/tasks/utils/taskPermissions';
 import type { AuthenticatedUser } from '../lib/api';
+import type { TaskStatusValue } from '../lib/projectsApi';
 import { useAuth } from '../context/useAuth';
 import { useSelectedProject } from '../context/useSelectedProject';
 import { useMediaQuery } from '../hooks/useMediaQuery';
@@ -65,7 +67,7 @@ function TasksView({
   const plan = useProjectTasks(projectId, user);
   const { data: project } = useProject(projectId);
   const today = todayIso();
-  const [statusTab, setStatusTab] = useState<TaskStatus | null>(null);
+  const [statusTab, setStatusTab] = useState<TaskStatusValue | null>(null);
   const [dialog, setDialog] = useState<TaskDialog>(CLOSED);
   const [page, setPage] = useState(1);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
@@ -99,7 +101,7 @@ function TasksView({
     toast.success(success);
 
     if (result.autoClosed) {
-      toast.success('Wszystkie zadania odhaczone — etap zamknięty');
+      toast.success('Wszystkie zadania odhaczone, etap zamknięty');
     } else if (result.reopened) {
       toast.success('Etap wrócił do realizacji');
     }
@@ -159,10 +161,7 @@ function TasksView({
 
   const requestAdd = () => {
     if (actionOptions.length === 0) {
-      toast.error(
-        'Brak działań w otwartych etapach — najpierw dodaj działanie w Harmonogramie.',
-        { id: 'no-open-actions' },
-      );
+      toast.error(NO_OPEN_ACTIONS_MESSAGE, { id: 'no-open-actions' });
       return;
     }
     setDialog({ kind: 'add' });
@@ -210,7 +209,7 @@ function TasksView({
     {
       name: 'priority',
       placeholder: 'Priorytet',
-      options: PRIORITY_SELECT_OPTIONS,
+      options: TASK_PRIORITY_OPTIONS,
     },
     {
       name: 'deadline',
@@ -277,7 +276,8 @@ function TasksView({
             setStatusTab(null);
           }}
         >
-          ✕ Wyczyść
+          <IoCloseOutline aria-hidden="true" />
+          Wyczyść
         </button>
       </div>
 
@@ -370,7 +370,7 @@ function TasksView({
           task={null}
           actionOptions={actionOptions}
           ownerOptions={ownerOptions}
-          stageStartFor={plan.stageStartFor}
+          stageFor={plan.stageFor}
           onClose={close}
           onSubmit={(values) => void submitAdd(values)}
           isSubmitting={plan.isSubmitting}
@@ -383,7 +383,7 @@ function TasksView({
           task={dialog.row}
           actionOptions={optionsForRow(dialog.row)}
           ownerOptions={ownerOptions}
-          stageStartFor={plan.stageStartFor}
+          stageFor={plan.stageFor}
           onClose={close}
           onSubmit={(values) => void submitEdit(dialog.row, values)}
           isSubmitting={plan.isSubmitting}

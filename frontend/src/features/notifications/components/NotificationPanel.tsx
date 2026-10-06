@@ -1,10 +1,10 @@
 import { useEffect, type RefObject } from 'react';
-import { createPortal } from 'react-dom';
 import { Link } from 'react-router';
 import NotificationItem from './NotificationItem';
+import { PopoverPanel } from '../../../components/ui/PopoverPanel';
 import { Spinner } from '../../../components/ui/Spinner';
 import type { AnchoredPosition } from '../../../hooks/useAnchoredPosition';
-import type { AppNotification } from '../types';
+import type { AppNotification } from '../../../lib/notificationsApi';
 
 interface NotificationPanelProps {
   panelRef: RefObject<HTMLDivElement | null>;
@@ -33,34 +33,33 @@ export default function NotificationPanel({
     panelRef.current?.focus();
   }, [panelRef]);
 
-  const openUpward = position.placement === 'top';
-
-  return createPortal(
-    <div
-      ref={panelRef}
+  return (
+    <PopoverPanel
+      panelRef={panelRef}
+      position={position}
+      align={align}
+      width={352}
+      centerOnMobile
       role="dialog"
-      aria-label="Powiadomienia"
+      ariaLabel="Powiadomienia"
       tabIndex={-1}
-      style={{
-        ...(openUpward
-          ? { bottom: position.bottom }
-          : { top: position.top }),
-        ...(align === 'left'
-          ? { left: position.left }
-          : { right: position.right }),
-        maxHeight: position.maxHeight,
-      }}
-      className="fixed z-40 flex w-[min(22rem,calc(100vw-1rem))] flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg outline-none"
+      layout="sections"
     >
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-gray-200 px-4 py-3">
-        <h2 className="text-sm font-semibold text-dark">Powiadomienia</h2>
+        <h2 className="min-w-0 truncate text-sm font-semibold text-dark">
+          Powiadomienia
+        </h2>
         <button
           type="button"
           onClick={onMarkAllAsRead}
           disabled={unreadCount === 0}
-          className="text-xs font-medium text-darkGreen transition-colors hover:underline disabled:cursor-default disabled:text-gray-400 disabled:no-underline"
+          aria-label="Oznacz wszystkie jako przeczytane"
+          className="shrink-0 whitespace-nowrap text-xs font-medium text-darkGreen transition-colors hover:underline disabled:cursor-default disabled:text-gray-400 disabled:no-underline"
         >
-          Oznacz wszystkie jako przeczytane
+          <span className="sm:hidden">Oznacz jako przeczytane</span>
+          <span className="hidden sm:inline">
+            Oznacz wszystkie jako przeczytane
+          </span>
         </button>
       </div>
 
@@ -97,7 +96,6 @@ export default function NotificationPanel({
           Zobacz wszystkie
         </Link>
       </div>
-    </div>,
-    document.body,
+    </PopoverPanel>
   );
 }

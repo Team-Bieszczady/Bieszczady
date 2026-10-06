@@ -8,7 +8,6 @@ interface DecisionHistoryListProps {
   emptyMessage?: string;
 }
 
-/** Null for events nobody performed — those print without a name. */
 function actorName(actor: BackendEvent['actor']): string | null {
   return actor ? `${actor.firstName} ${actor.lastName}` : null;
 }

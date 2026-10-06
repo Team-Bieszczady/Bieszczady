@@ -57,7 +57,6 @@ describe('EventsService', () => {
     }).compile();
 
     service = module.get(EventsService);
-    // Every uncursored findAll sweeps first; nothing overdue unless a test says so.
     taskFindMany.mockResolvedValue([]);
   });
 
@@ -175,7 +174,7 @@ describe('EventsService', () => {
 
       expect(createData().actorId).toBeNull();
       expect(createData().content).toBe(
-        'Zadanie „Montaż tablicy” przekroczyło termin realizacji (termin: 15.09.2026) — brak wykonawcy',
+        'Zadanie „Montaż tablicy” przekroczyło termin realizacji (termin: 15.09.2026)',
       );
     });
 
@@ -202,6 +201,35 @@ describe('EventsService', () => {
       );
 
       await expect(service.findAll({}, viewer(true))).resolves.toBeDefined();
+    });
+
+    it('skips a task an earlier sweep already recorded, without trying the insert', async () => {
+      findMany.mockResolvedValueOnce([{ dedupeKey: 'overdue:t1:2026-09-15' }]);
+      findMany.mockResolvedValue([]);
+      taskFindMany.mockResolvedValue([overdue('piotr')]);
+
+      await service.findAll({}, viewer(true));
+
+      expect(findManyArgs().where).toEqual({
+        dedupeKey: { in: ['overdue:t1:2026-09-15'] },
+      });
+      expect(create).not.toHaveBeenCalled();
+    });
+
+    it('cuts off at the start of the day in Warsaw, not UTC', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-09-15T23:30:00Z'));
+      try {
+        findMany.mockResolvedValue([]);
+
+        await service.findAll({}, viewer(true));
+
+        const { where } = taskFindMany.mock.calls[0][0];
+        expect(where?.dueDate).toEqual({
+          lt: new Date('2026-09-16T00:00:00.000Z'),
+        });
+      } finally {
+        jest.useRealTimers();
+      }
     });
 
     it('does not sweep again on every page of an infinite scroll', async () => {

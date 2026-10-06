@@ -30,34 +30,12 @@ export class EventsService {
       source: event.source,
       content: event.content,
       createdAt: event.createdAt,
-      actor: event.actor
-        ? {
-            id: event.actor.id,
-            firstName: event.actor.firstName,
-            lastName: event.actor.lastName,
-          }
-        : null,
-      project: {
-        id: event.project.id,
-        name: event.project.name,
-        color: event.project.color,
-      },
+      actor: event.actor,
+      project: event.project,
     };
   }
 
-  /**
-   * A task passing its deadline is the one event nobody performs, so there is
-   * no request to hang it off. Rather than add a scheduler, the sweep runs when
-   * someone actually opens the history — `dedupeKey` is what makes that safe:
-   * a repeat insert hits the unique index instead of adding a second row.
-   *
-   * Skipped while paging, or every infinite-scroll page would re-run it.
-   */
   private async sweepOverdueTasks(): Promise<void> {
-    // The frontend calls a task overdue by comparing calendar days in the
-    // Polish timezone; `dueDate` is stored at UTC midnight of a bare date.
-    // Building the cutoff the same way keeps the two from disagreeing for the
-    // first hours of each day.
     const today = new Date().toLocaleDateString('sv-SE', {
       timeZone: 'Europe/Warsaw',
     });
@@ -66,8 +44,6 @@ export class EventsService {
       where: {
         status: { not: 'DONE' },
         dueDate: { lt: new Date(`${today}T00:00:00.000Z`) },
-        // An archived project is read-only for everyone, and an event is a
-        // write.
         activity: { stage: { project: { archivedAt: null } } },
       },
       select: {
@@ -79,29 +55,38 @@ export class EventsService {
       },
     });
 
+    if (overdue.length === 0) return;
+
+    const dayOf = (task: (typeof overdue)[number]) =>
+      task.dueDate!.toISOString().slice(0, 10);
+    const keyOf = (task: (typeof overdue)[number]) =>
+      `overdue:${task.id}:${dayOf(task)}`;
+    const recorded = await this.prisma.projectEvent.findMany({
+      where: { dedupeKey: { in: overdue.map(keyOf) } },
+      select: { dedupeKey: true },
+    });
+    const recordedKeys = new Set(recorded.map((event) => event.dedupeKey));
+
     for (const task of overdue) {
-      const day = task.dueDate!.toISOString().slice(0, 10);
-      const [year, month, date] = day.split('-');
+      const dedupeKey = keyOf(task);
+      if (recordedKeys.has(dedupeKey)) continue;
+
+      const [year, month, date] = dayOf(task).split('-');
       const deadline = `${date}.${month}.${year}`;
 
       try {
         await this.prisma.projectEvent.create({
           data: {
             projectId: task.activity.stage.projectId,
-            // The person answerable for the task, so the page prints their
-            // name in bold like any other row. Null only when nobody holds it.
             actorId: task.ownerId,
             source: 'AUTOMATIC',
             content: task.ownerId
               ? `nie ukończył(a) w terminie zadania „${task.title}” (termin: ${deadline})`
-              : `Zadanie „${task.title}” przekroczyło termin realizacji (termin: ${deadline}) — brak wykonawcy`,
-            dedupeKey: `overdue:${task.id}:${day}`,
+              : `Zadanie „${task.title}” przekroczyło termin realizacji (termin: ${deadline})`,
+            dedupeKey,
           },
         });
       } catch (error) {
-        // Already recorded by an earlier sweep, or by one running concurrently
-        // for another viewer. `createMany({ skipDuplicates })` is not an option
-        // here — SQL Server does not support it.
         if (!(
           error instanceof Prisma.PrismaClientKnownRequestError &&
           error.code === 'P2002'

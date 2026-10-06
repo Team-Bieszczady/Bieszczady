@@ -2,6 +2,7 @@ import { FiCheckSquare, FiSquare } from 'react-icons/fi';
 import type { ScheduleTask } from '../../../types';
 import { formatShortDate } from '../../../utils/isoDate';
 import { shortName } from '../../../utils/shortName';
+import { INHERITED_DEADLINE_TITLE } from '../../../../tasks/utils/formatDeadline';
 
 interface ScheduleTaskRowProps {
   task: ScheduleTask;
@@ -22,7 +23,7 @@ export function TaskIcon({ task }: { task: ScheduleTask }) {
   );
 }
 
-function OverdueBadge() {
+export function OverdueBadge() {
   return (
     <span className="inline-flex items-center rounded-full bg-redSoft px-2.5 py-0.5 text-[11px] font-medium text-darkRed">
       po terminie
@@ -63,7 +64,7 @@ export default function ScheduleTaskRow({
         <span
           title={
             task.dueDate === null
-              ? 'Zadanie bez własnego terminu — obowiązuje termin etapu'
+              ? INHERITED_DEADLINE_TITLE
               : undefined
           }
           className={

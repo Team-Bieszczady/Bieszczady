@@ -8,12 +8,7 @@ import {
   FIELD_LABEL_CLASSES,
   INPUT_CLASSES,
 } from '../../../../../components/ui/formStyles';
-import type { ScheduleAction } from '../../../types';
-
-export interface ActionFormInputs {
-  title: string;
-  stageId: string;
-}
+import type { ActionFormValues, ScheduleAction } from '../../../types';
 
 export type ActionFormMode = 'add' | 'edit' | 'move';
 
@@ -22,7 +17,7 @@ interface ActionFormModalProps {
   action: ScheduleAction | null;
   stageOptions: SelectOption[];
   onClose: () => void;
-  onSubmit: (values: ActionFormInputs) => void | Promise<unknown>;
+  onSubmit: (values: ActionFormValues) => void | Promise<unknown>;
 }
 
 const TITLES: Record<ActionFormMode, string> = {
@@ -49,7 +44,7 @@ export default function ActionFormModal({
     handleSubmit,
     control,
     formState: { errors, isSubmitting },
-  } = useForm<ActionFormInputs>({
+  } = useForm<ActionFormValues>({
     defaultValues: {
       title: action?.title ?? '',
       stageId: action?.stageId ?? stageOptions[0]?.value ?? '',

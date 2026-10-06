@@ -8,6 +8,7 @@ import AccountProfileCard from '../features/people/components/AccountProfileCard
 import EditAccountModal from '../features/people/components/EditAccountModal';
 import LogoutConfirmDialog from '../features/auth/components/LogoutConfirmDialog';
 import { useCurrentUser } from '../features/people/hooks/useCurrentUser';
+import { DIRECTOR_ROLE_LABEL } from '../features/people/constants';
 import { useLogout } from '../features/auth/hooks/useLogout';
 
 export default function ProfilePage() {
@@ -30,7 +31,7 @@ export default function ProfilePage() {
         <AccountPageShell>
           <AccountProfileHeader
             name={`${person.firstName} ${person.lastName}`}
-            subtitle={person.isDirector ? 'Dyrektor' : 'Użytkownik'}
+            subtitle={person.isDirector ? DIRECTOR_ROLE_LABEL : 'Użytkownik'}
             initials={person.initials}
             avatar={person.avatar}
             actions={

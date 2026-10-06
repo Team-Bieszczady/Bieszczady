@@ -20,8 +20,6 @@ interface FilterBarProps<T extends FieldValues> {
   className?: string;
 }
 
-/** The "Filtruj:" row shared by the list pages: one Select per field, plus a
- * button that resets the whole form back to its empty filters. */
 export function FilterBar<T extends FieldValues>({
   fields,
   control,

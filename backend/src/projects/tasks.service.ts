@@ -8,9 +8,11 @@ import { PrismaService } from '../prisma/prisma.service';
 import { SERIALIZABLE } from '../prisma/transaction-options';
 import { PERSON_SELECT } from './prisma-selects';
 import {
+  DEADLINE_NOTIFICATION_KINDS,
   TASK_STATUS_LABELS,
   type TaskStatus,
 } from '../common/enums/project.enums';
+import { indicatorPercent } from './indicators.service';
 import { StageCompletionService } from './stage-completion.service';
 import { ProjectAccessService } from './project-access.service';
 import type { AuthenticatedUser } from '../auth/types/auth.types';
@@ -42,7 +44,7 @@ const TASK_INCLUDE = {
 
 type TaskRow = Prisma.TaskGetPayload<{ include: typeof TASK_INCLUDE }>;
 
-const TASK_ORDER: Prisma.TaskOrderByWithRelationInput[] = [
+export const TASK_ORDER: Prisma.TaskOrderByWithRelationInput[] = [
   { dueDate: 'asc' },
   { title: 'asc' },
 ];
@@ -80,7 +82,7 @@ export class TasksService {
       subtaskProgress: {
         done,
         total,
-        percent: total === 0 ? 0 : Math.round((done / total) * 100),
+        percent: indicatorPercent(done, total),
       },
       subtasks: task.subtasks.map((subtask) => ({
         id: subtask.id,
@@ -110,13 +112,6 @@ export class TasksService {
     }
   }
 
-  /**
-   * A task cannot be due before the stage it belongs to has started.
-   *
-   * A due date AFTER the stage's deadline is deliberately allowed: that is how a
-   * slipping project is recorded, and `isStageOverdue` on the frontend depends
-   * on it. Do not tighten this into a range check.
-   */
   private async assertDueDateFitsStage(
     stageId: string,
     dueDate: string | null | undefined,
@@ -235,6 +230,17 @@ export class TasksService {
         },
       });
 
+      if (task.ownerId && task.ownerId !== actor.id) {
+        await tx.notification.create({
+          data: {
+            userId: task.ownerId,
+            kind: 'TASK_ASSIGNED',
+            taskId: task.id,
+            actorId: actor.id,
+          },
+        });
+      }
+
       return task;
     }, SERIALIZABLE);
 
@@ -292,6 +298,12 @@ export class TasksService {
         await this.assertDueDateFitsStage(stageId, dueDate, tx);
       }
 
+      const { ownerId: ownerBefore, dueDate: dueBefore } =
+        await tx.task.findUniqueOrThrow({
+          where: { id },
+          select: { ownerId: true, dueDate: true },
+        });
+
       const row = await tx.task.update({
         where: { id },
         data,
@@ -300,6 +312,35 @@ export class TasksService {
 
       if (movedFrom) {
         await this.completion.settle(tx, [movedFrom, row.activity.stage.id]);
+      }
+
+      const dueChanged =
+        dto.dueDate !== undefined &&
+        (dueBefore?.getTime() ?? null) !==
+          (dto.dueDate ? new Date(dto.dueDate).getTime() : null);
+
+      if (dueChanged) {
+        await tx.notification.deleteMany({
+          where: {
+            taskId: id,
+            kind: { in: [...DEADLINE_NOTIFICATION_KINDS] },
+          },
+        });
+      }
+
+      if (
+        row.ownerId &&
+        row.ownerId !== ownerBefore &&
+        row.ownerId !== actor.id
+      ) {
+        await tx.notification.create({
+          data: {
+            userId: row.ownerId,
+            kind: 'TASK_ASSIGNED',
+            taskId: row.id,
+            actorId: actor.id,
+          },
+        });
       }
 
       return row;
@@ -318,10 +359,6 @@ export class TasksService {
     await this.access.assertNotArchived(task.projectId);
 
     const updated = await this.prisma.$transaction(async (tx) => {
-      // `locateTask` does not carry the status, and the history line needs the
-      // value we are replacing — read it inside the same transaction.
-      // `status` is a validated String on SQL Server, not a native enum, so
-      // Prisma hands it back untyped.
       const { status: before } = (await tx.task.findUniqueOrThrow({
         where: { id },
         select: { status: true },
@@ -335,8 +372,6 @@ export class TasksService {
 
       await this.completion.settle(tx, [task.stageId]);
 
-      // The UI can resubmit the status a task already has; "z „Nowe” na „Nowe”"
-      // would be noise on the Decyzje page.
       if (before !== dto.status) {
         await tx.projectEvent.create({
           data: {
@@ -361,6 +396,11 @@ export class TasksService {
 
     await this.prisma.$transaction(async (tx) => {
       await tx.subtask.deleteMany({ where: { taskId: id } });
+      await tx.notification.deleteMany({ where: { taskId: id } });
+      await tx.indicator.updateMany({
+        where: { taskId: id },
+        data: { scope: 'PROJECT', stageId: null, taskId: null },
+      });
       await tx.task.delete({ where: { id } });
       await this.completion.settle(tx, [task.stageId]);
     }, SERIALIZABLE);

@@ -4,9 +4,6 @@ import { formatFileSize } from '../../features/documents/utils/formatters';
 import toast from 'react-hot-toast';
 
 const DROPZONE_TOAST_ID = 'file-dropzone';
-
-// Ten sam limit co w backendzie (upload.config.ts). Sprawdzamy go tutaj,
-// żeby nie wysyłać przez sieć pliku, który i tak zostanie odrzucony.
 const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024;
 
 interface Props {
@@ -78,7 +75,6 @@ export function FileDropzone({ value, onChange }: Props) {
         className="hidden"
         onChange={(e) => {
           accept(e.target.files?.[0] ?? null);
-          // Bez tego ponowny wybór tego samego pliku nie wywołuje zdarzenia.
           e.target.value = '';
         }}
       />

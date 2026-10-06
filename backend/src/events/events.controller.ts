@@ -18,6 +18,7 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ModuleAccessGuard } from '../auth/guards/module-access.guard';
 import { RequireModule } from '../auth/decorators/require-module.decorator';
+import { EVENT_SOURCES } from '../common/enums/project.enums';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/types/auth.types';
 import { EventsService } from './events.service';
@@ -38,7 +39,7 @@ export class EventsController {
       'Activity and decision history, newest first. A director sees every project; anyone else only the projects they are a member of. Cursor-paginated.',
   })
   @ApiQuery({ name: 'projectId', required: false, type: String })
-  @ApiQuery({ name: 'source', required: false, enum: ['AUTOMATIC', 'MANUAL'] })
+  @ApiQuery({ name: 'source', required: false, enum: EVENT_SOURCES })
   @ApiQuery({
     name: 'from',
     required: false,

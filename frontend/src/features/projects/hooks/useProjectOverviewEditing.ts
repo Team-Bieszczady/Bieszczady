@@ -36,11 +36,6 @@ export interface DeleteStatusResult {
   usage: number;
 }
 
-/**
- * One id for every error this hook raises, so a retry replaces the toast on
- * screen — including when it fails for a different reason — instead of stacking
- * a second one and leaving a ghost from the previous attempt.
- */
 const ERROR_TOAST_ID = 'project-overview-error';
 
 function usageFromMessage(message: string): number {

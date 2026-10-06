@@ -77,7 +77,7 @@ export default function StageCard({
 
       {view.counts.total === 0 ? (
         <p className="mt-4 text-xs text-mutedText">
-          Brak zadań w tym etapie — pozostanie otwarty, dopóki zadania nie
+          Brak zadań w tym etapie. Pozostanie otwarty, dopóki zadania nie
           zostaną dodane i ukończone.
         </p>
       ) : (

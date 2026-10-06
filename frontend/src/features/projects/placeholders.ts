@@ -1,14 +1,3 @@
-export interface Indicator {
-  id: string;
-  title: string;
-  description: string;
-  ratio: string;
-  percent: number;
-  deadline: string;
-  owner: string;
-  documentsCount: number;
-}
-
 export interface BudgetTile {
   id: 'total' | 'spent' | 'left';
   label: string;
@@ -22,20 +11,6 @@ export interface BudgetPlaceholder {
   spentLabel: string;
   totalLabel: string;
 }
-
-export const PLACEHOLDER_INDICATORS: Indicator[] = [
-  {
-    id: 'warsztaty',
-    title: 'Liczba zrealizowanych warsztatów',
-    description:
-      'Odsetek zaplanowanych warsztatów terenowych dla przewodników, które zostały już w pełni zrealizowane i rozliczone.',
-    ratio: '15/22',
-    percent: 68,
-    deadline: '06.08.2026',
-    owner: 'Anna Kowalska',
-    documentsCount: 3,
-  },
-];
 
 export const PLACEHOLDER_BUDGET: BudgetPlaceholder = {
   tiles: [

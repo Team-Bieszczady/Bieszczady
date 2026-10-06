@@ -9,12 +9,9 @@ import type { RiskLevelValue } from '../../../../lib/projectsApi';
 import { RISK_LEVEL_OPTIONS } from '../../labels';
 import type { RiskFormValues, RiskView } from '../../hooks/useProjectRisks';
 
-interface RiskFormInputs {
-  description: string;
-  probability: RiskLevelValue;
-  impact: RiskLevelValue;
+type RiskFormInputs = Omit<RiskFormValues, 'responsibleUserId'> & {
   responsibleUserId: string;
-}
+};
 
 interface RiskFormModalProps {
   mode: 'add' | 'edit';

@@ -40,6 +40,9 @@ model User {
   ownedTasks         Task[]          @relation("TaskOwner")
   responsibleRisks   Risk[]          @relation("RiskResponsible")
   projectEvents      ProjectEvent[]  @relation("ProjectEventActor")
+  notifications      Notification[]  @relation("NotificationRecipient")
+  sentNotifications  Notification[]  @relation("NotificationActor")
+  ownedIndicators    Indicator[]     @relation("IndicatorOwner")
 
   @@map("users")
 }
@@ -128,6 +131,7 @@ model Project {
   stages     Stage[]                       @relation("ProjectStages")
   risks      Risk[]                        @relation("ProjectRisks")
   events     ProjectEvent[]                @relation("ProjectEvents")
+  indicators Indicator[]                   @relation("ProjectIndicators")
 
   @@index([statusId])
   @@map("projects")
@@ -203,8 +207,9 @@ model Stage {
   createdAt        DateTime  @default(now()) @map("created_at")
   updatedAt        DateTime  @updatedAt @map("updated_at")
 
-  project    Project    @relation("ProjectStages", fields: [projectId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  activities Activity[] @relation("StageActivities")
+  project    Project     @relation("ProjectStages", fields: [projectId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  activities Activity[]  @relation("StageActivities")
+  indicators Indicator[] @relation("StageIndicators")
 
   @@index([projectId])
   @@map("stages")
@@ -239,7 +244,9 @@ model Task {
 
   activity Activity  @relation("ActivityTasks", fields: [activityId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   owner    User?     @relation("TaskOwner", fields: [ownerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  subtasks Subtask[] @relation("TaskSubtasks")
+  subtasks      Subtask[]      @relation("TaskSubtasks")
+  notifications Notification[] @relation("TaskNotifications")
+  indicators    Indicator[]    @relation("TaskIndicators")
 
   @@index([activityId])
   @@index([ownerId])
@@ -279,6 +286,45 @@ model Risk {
   @@map("risks")
 }
 
+model Indicator {
+  id           String   @id @default(uuid())
+  projectId    String   @map("project_id")
+  name         String
+  description  String   @default("") @db.NVarChar(Max)
+  targetValue  Int      @map("target_value")
+  currentValue Int      @default(0) @map("current_value")
+  scope        String
+  stageId      String?  @map("stage_id")
+  taskId       String?  @map("task_id")
+  ownerId      String?  @map("owner_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  project Project           @relation("ProjectIndicators", fields: [projectId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  stage   Stage?            @relation("StageIndicators", fields: [stageId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  task    Task?             @relation("TaskIndicators", fields: [taskId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  owner   User?             @relation("IndicatorOwner", fields: [ownerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  folders IndicatorFolder[] @relation("IndicatorFolderIndicator")
+
+  @@index([projectId])
+  @@index([stageId])
+  @@index([taskId])
+  @@index([ownerId])
+  @@map("indicators")
+}
+
+model IndicatorFolder {
+  indicatorId String @map("indicator_id")
+  folderId    String @map("folder_id")
+
+  indicator Indicator @relation("IndicatorFolderIndicator", fields: [indicatorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  folder    Folder    @relation("IndicatorFolderFolder", fields: [folderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([indicatorId, folderId])
+  @@index([folderId])
+  @@map("indicator_folders")
+}
+
 model PasswordResetToken {
   id        String    @id @default(uuid())
   userId    String    @map("user_id")
@@ -308,6 +354,25 @@ model ProjectEvent {
   @@map("project_events")
 }
 
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  kind      String
+  taskId    String    @map("task_id")
+  actorId   String?   @map("actor_id")
+  dedupeKey String?   @unique @map("dedupe_key")
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user  User  @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  actor User? @relation("NotificationActor", fields: [actorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  task  Task  @relation("TaskNotifications", fields: [taskId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([userId, createdAt])
+  @@index([taskId])
+  @@map("notifications")
+}
+
 model Folder {
   id        String    @id @default(uuid())
   projectId String    @map("project_id")
@@ -321,9 +386,9 @@ model Folder {
   owner     User       @relation("FolderOwner", fields: [ownerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   parent    Folder?    @relation("FolderTree", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   children  Folder[]   @relation("FolderTree")
-  documents Document[]
-  accesses  DocumentAccess[]
-
+  documents  Document[]
+  accesses   DocumentAccess[]
+  indicators IndicatorFolder[] @relation("IndicatorFolderFolder")
 
   @@index([projectId])
   @@index([parentId])

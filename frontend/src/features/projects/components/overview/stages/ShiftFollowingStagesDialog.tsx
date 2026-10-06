@@ -4,7 +4,7 @@ import { Modal } from '../../../../../components/ui/Modal';
 import { Button } from '../../../../../components/ui/Button';
 import { DAY_FORMS, pluralizePl } from '../../../../../lib/pluralizePl';
 import { formatStageDate } from '../../../utils/isoDate';
-import type { StageShiftSuggestion } from '../../../utils/stageRules';
+import type { StageShiftSuggestion } from '../../../../../lib/projectsApi';
 
 interface ShiftFollowingStagesDialogProps {
   stageName: string;
@@ -41,7 +41,7 @@ export default function ShiftFollowingStagesDialog({
         <p className="rounded-lg bg-amberSoft px-3 py-2.5 text-xs leading-relaxed text-amberDark">
           Termin etapu „{stageName}” przesunął się o{' '}
           {pluralizePl(Math.abs(shiftDays), DAY_FORMS)}. Kolejne etapy zachowały
-          stare terminy — sprawdź, czy nadal są realne.
+          stare terminy. Sprawdź, czy nadal są realne.
         </p>
 
         <ul className="flex flex-col gap-2">
@@ -83,7 +83,7 @@ export default function ShiftFollowingStagesDialog({
         </ul>
 
         <p className="text-[11px] leading-relaxed text-grayText">
-          Nic nie zostanie przesunięte automatycznie — zmienią się tylko
+          Nic nie zostanie przesunięte automatycznie, zmienią się tylko
           zaznaczone etapy.
         </p>
 

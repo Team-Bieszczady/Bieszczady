@@ -62,7 +62,6 @@ export function documentMenuItems(
     ];
   }
 
-  // Zamknięty dokument zmienia nazwę tylko ręką kogoś, kto go zatwierdza.
   const isLocked =
     document.status === 'APPROVED' || document.status === 'SIGNED';
 

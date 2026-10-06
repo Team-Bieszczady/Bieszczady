@@ -8,6 +8,7 @@ import { useAnchoredPopup } from '../../hooks/useAnchoredPopup';
 export interface SelectOption {
   value: string;
   label: string;
+  level?: 'group' | 'nested';
 }
 
 export interface SelectProps {
@@ -44,6 +45,15 @@ const trigger = cva(
     defaultVariants: { size: 'sm', tone: 'empty', invalid: false },
   },
 );
+
+const optionLabel = cva('truncate', {
+  variants: {
+    level: {
+      group: 'font-semibold',
+      nested: 'pl-3 text-[11px] text-grayText',
+    },
+  },
+});
 
 export function Select({
   value,
@@ -204,7 +214,9 @@ export function Select({
                     isSelected ? 'font-medium text-darkGreen' : 'text-dark'
                   } ${index === activeIndex ? 'bg-gray-50' : ''}`}
                 >
-                  <span className="truncate">{row.label}</span>
+                  <span className={optionLabel({ level: row.level })}>
+                    {row.label}
+                  </span>
                   {isSelected && (
                     <IoCheckmark
                       className="h-3.5 w-3.5 shrink-0"

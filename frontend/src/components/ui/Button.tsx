@@ -8,15 +8,12 @@ const buttonVariants = cva(
     variants: {
       variant: {
         primary: 'bg-darkGreen text-white hover:bg-darkGreenHover',
-        secondary: 'border border-lightGreen text-dark hover:bg-slate-100',
-        warning: 'bg-[#e7ffca] text-dark hover:bg-[#d9f5a8]',
         outline: 'bg-white border border-dark/30 text-dark hover:bg-gray-50',
         ghost: 'bg-transparent text-dark hover:bg-gray-100',
       },
       size: {
         small: 'h-8 px-6 py-1.5 text-sm',
         medium: 'h-10 px-4 text-base',
-        large: 'h-12 px-6 text-lg',
         compact: 'h-11 gap-2 px-3 text-sm lg:h-9 lg:px-3.5',
         icon: 'h-11 w-11 p-0 lg:h-9 lg:w-9',
       },

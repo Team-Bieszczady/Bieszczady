@@ -6,17 +6,11 @@ import UserFooter from './UserFooter';
 import { useNavData } from '../hooks/useNavData';
 
 interface SidebarContentProps {
-  /** The fixed desktop column; unset renders the drawer treatment. */
   useDesktopStyle?: boolean;
   showNotifications?: boolean;
   onNavigate?: () => void;
 }
 
-/**
- * The nav body shared by the fixed desktop sidebar and the mobile drawer:
- * Organizacja, the selected project, Szczegóły Projektu, and the user row
- * pinned below a scrolling list. Only the treatment differs between the two.
- */
 export default function SidebarContent({
   useDesktopStyle = false,
   showNotifications = false,
@@ -44,8 +38,6 @@ export default function SidebarContent({
         />
         {selectedProject && <ProjectInfoCard project={selectedProject} />}
         {projectNavItems.length > 0 && (
-          // The drawer needs the gap the project card would otherwise supply;
-          // on desktop SectionLabel's own lg:mt-0 already handles it.
           <div className={!useDesktopStyle && !selectedProject ? 'mt-4' : ''}>
             <SectionLabel label="Szczegóły Projektu" />
             <OrgNavList

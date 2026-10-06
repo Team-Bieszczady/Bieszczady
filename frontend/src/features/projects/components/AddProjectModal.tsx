@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { IoCheckmark } from 'react-icons/io5';
 import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
+import { DateInput } from '../../../components/ui/DateInput';
 import { Select } from '../../../components/ui/Select';
 import { Spinner } from '../../../components/ui/Spinner';
 import {
@@ -249,29 +250,42 @@ export default function AddProjectModal({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className={FIELD_LABEL_CLASSES}>Data rozpoczęcia</label>
-            <input
-              type="date"
-              max={endDate || undefined}
-              aria-invalid={!!errors.startDate}
-              className={INPUT_CLASSES}
-              {...register('startDate')}
+            <Controller
+              name="startDate"
+              control={control}
+              render={({ field }) => (
+                <DateInput
+                  value={field.value}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  max={endDate || undefined}
+                  invalid={!!errors.startDate}
+                />
+              )}
             />
             <FieldError message={errors.startDate?.message} />
           </div>
           <div>
             <label className={FIELD_LABEL_CLASSES}>Planowane zakończenie</label>
-            <input
-              type="date"
-              min={startDate || undefined}
-              aria-invalid={!!errors.endDate}
-              className={INPUT_CLASSES}
-              {...register('endDate', {
+            <Controller
+              name="endDate"
+              control={control}
+              rules={{
                 validate: (value) =>
                   !value ||
                   !startDate ||
                   value >= startDate ||
                   'Data zakończenia nie może być wcześniejsza niż data rozpoczęcia',
-              })}
+              }}
+              render={({ field }) => (
+                <DateInput
+                  value={field.value}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  min={startDate || undefined}
+                  invalid={!!errors.endDate}
+                />
+              )}
             />
             <FieldError message={errors.endDate?.message} />
           </div>

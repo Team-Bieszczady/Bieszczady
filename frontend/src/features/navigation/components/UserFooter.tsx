@@ -1,4 +1,5 @@
 import { Link } from 'react-router';
+import { IoChevronForward } from 'react-icons/io5';
 import { Avatar } from '../../../components/ui/Avatar';
 import NotificationBell from '../../notifications/components/NotificationBell';
 
@@ -35,20 +36,10 @@ export default function UserFooter({
           <p className="font-medium text-dark text-xs truncate">{name}</p>
           {isDirector && <p className="text-[10px] text-gray-400">Dyrektor</p>}
         </div>
-        <svg
+        <IoChevronForward
           className="w-3 h-3 text-gray-400 shrink-0"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
           aria-hidden="true"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9 5l7 7-7 7"
-          />
-        </svg>
+        />
       </Link>
       {showNotifications && <NotificationBell align="left" />}
     </div>

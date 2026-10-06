@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { HiOutlinePlus } from 'react-icons/hi';
 import { AiOutlineSearch } from 'react-icons/ai';
+import { IoCloseOutline } from 'react-icons/io5';
 import { Button } from '../components/ui/Button';
 import { Select, type SelectOption } from '../components/ui/Select';
 import PeopleTable from '../features/people/components/PeopleTable';
@@ -137,7 +138,8 @@ export default function PeoplePage() {
           type="button"
           onClick={() => reset(EMPTY_FILTERS)}
         >
-          ✕ Wyczyść
+          <IoCloseOutline aria-hidden="true" />
+          Wyczyść
         </button>
       </div>
 

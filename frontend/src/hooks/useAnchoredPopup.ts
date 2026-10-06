@@ -48,7 +48,6 @@ export function useAnchoredPopup<
       if (restoreFocus) buttonRef.current?.focus();
     },
     isOpen,
-    // Faza przechwytywania, żeby wewnętrzna lista wyprzedziła okno modalne.
     true,
   );
 

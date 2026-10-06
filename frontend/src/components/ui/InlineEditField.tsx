@@ -97,7 +97,7 @@ export function InlineEditField({
     <button
       type="button"
       onClick={onStartEdit}
-      aria-label={`${ariaLabel} — kliknij, aby edytować`}
+      aria-label={`${ariaLabel}, kliknij, aby edytować`}
       className={`-mx-1.5 -my-0.5 block w-full cursor-text truncate rounded-lg px-1.5 py-0.5 text-left transition-colors hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-darkGreen ${displayClassName}`}
     >
       {value}

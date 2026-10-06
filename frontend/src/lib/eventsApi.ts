@@ -1,23 +1,19 @@
 import { request } from './api';
+import type { NamedRef, PersonRef } from './projectsApi';
 
 const BASE = '/api/v1';
 
 export type EventSource = 'AUTOMATIC' | 'MANUAL';
 
-export interface BackendEventActor {
-  id: string;
-  firstName: string;
-  lastName: string;
-}
+export type BackendEventActor = PersonRef;
 
 export interface BackendEvent {
   id: string;
   source: EventSource;
-  /** The Polish predicate only — the actor's name is rendered separately. */
   content: string;
   createdAt: string;
   actor: BackendEventActor | null;
-  project: { id: string; name: string; color: string };
+  project: NamedRef & { color: string };
 }
 
 export interface BackendEventPage {
@@ -43,8 +39,6 @@ const send = <T>(
 ) =>
   request<T>(`${BASE}${path}`, { method, accessToken, body, fallbackMessage });
 
-/** Empty params are dropped — the backend validates `projectId` as a UUID and
- * `from` as a date, so sending a blank one is a 400 rather than "no filter". */
 function toQuery(params: ListEventsParams): string {
   const query = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {

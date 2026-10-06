@@ -9,8 +9,6 @@ export const eventKeys = {
     ['events', { projectId, from }] as const,
 };
 
-/** Cursor-paginated, so this is the one query in the app that cannot go
- * through `useApiQuery` — it wraps `useQuery`, not `useInfiniteQuery`. */
 export function useEvents(projectId: string, from: string) {
   const { hasToken, requireToken } = useAuthToken();
 
@@ -33,7 +31,6 @@ export function useCreateEvent() {
   return useApiMutation(
     (token, body: { projectId: string; content: string }) =>
       eventsApi.create(token, body),
-    // The prefix, so every filter combination refetches after a write.
     { invalidates: [eventKeys.all] },
   );
 }

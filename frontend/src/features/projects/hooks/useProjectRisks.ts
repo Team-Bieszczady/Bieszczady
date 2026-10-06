@@ -1,5 +1,5 @@
 import { failure, type ActionFailure } from '../../../lib/actionResult';
-import type { RiskLevelValue } from '../../../lib/projectsApi';
+import type { BackendRisk } from '../../../lib/projectsApi';
 import {
   useCreateRisk,
   useDeleteRisk,
@@ -7,21 +7,12 @@ import {
   useUpdateRisk,
 } from './useProjectsApi';
 
-export interface RiskView {
-  id: string;
-  description: string;
-  probability: RiskLevelValue;
-  impact: RiskLevelValue;
-  responsibleUserId: string | null;
-  owner: string | null;
-}
+export type RiskFormValues = Pick<
+  BackendRisk,
+  'description' | 'probability' | 'impact' | 'responsibleUserId'
+>;
 
-export interface RiskFormValues {
-  description: string;
-  probability: RiskLevelValue;
-  impact: RiskLevelValue;
-  responsibleUserId: string | null;
-}
+export type RiskView = RiskFormValues & { id: string; owner: string | null };
 
 export type RiskResult = { ok: true } | ActionFailure;
 
@@ -74,7 +65,6 @@ export function useProjectRisks(projectId: string) {
 
   return {
     risks,
-    isLoading: query.isLoading,
     addRisk,
     editRisk,
     deleteRisk,

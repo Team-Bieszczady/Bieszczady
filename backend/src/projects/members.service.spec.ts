@@ -23,6 +23,7 @@ describe('MembersService', () => {
     },
     risk: { updateMany: jest.fn() },
     task: { updateMany: jest.fn() },
+    indicator: { updateMany: jest.fn() },
     documentAccess: { deleteMany: jest.fn() },
   });
 

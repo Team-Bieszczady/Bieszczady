@@ -13,7 +13,10 @@ import {
   useMembers,
   useProject,
 } from '../features/projects/hooks/useProjectsApi';
-import { canChangeStatusOf } from '../features/tasks/utils/taskPermissions';
+import {
+  canChangeStatusOf,
+  canManageTasks,
+} from '../features/tasks/utils/taskPermissions';
 import type { BackendProject } from '../lib/projectsApi';
 import { PageMessage } from '../components/ui/PageMessage';
 import { QueryState } from '../components/ui/QueryState';
@@ -35,7 +38,12 @@ function ProjectSections({ project, canEdit }: ProjectSectionsProps) {
       <ProjectHeaderCard project={project} canEdit={canEdit} />
       <StagesSection plan={plan} project={project} canEdit={canEdit} />
       <GoalsSection projectId={project.id} canEdit={canEdit} />
-      <IndicatorsSection canEdit={canEdit} />
+      <IndicatorsSection
+        projectId={project.id}
+        projectEndDate={project.plannedEndDate}
+        plan={plan}
+        canEdit={project.archivedAt === null && canManageTasks(user, members)}
+      />
       <ScheduleSection
         plan={plan}
         canEdit={canEdit}

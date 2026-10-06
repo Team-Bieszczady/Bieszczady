@@ -1,8 +1,14 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { buildMockNotifications } from '../data/mockNotifications';
-import type { AppNotification } from '../types';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAuthToken } from '../../../context/useAuthToken';
+import {
+  notificationsApi,
+  type AppNotification,
+  type BackendNotificationList,
+} from '../../../lib/notificationsApi';
 
-const NOTIFICATIONS_KEY = ['notifications'] as const;
+export const notificationKeys = {
+  all: ['notifications'] as const,
+};
 
 export interface UseNotificationsResult {
   notifications: AppNotification[];
@@ -14,26 +20,60 @@ export interface UseNotificationsResult {
 
 export function useNotifications(): UseNotificationsResult {
   const queryClient = useQueryClient();
+  const { hasToken, requireToken } = useAuthToken();
 
-  const { data = [], isLoading } = useQuery({
-    queryKey: NOTIFICATIONS_KEY,
-    queryFn: async () => buildMockNotifications(),
-    staleTime: 60_000,
+  const { data, isLoading } = useQuery({
+    queryKey: notificationKeys.all,
+    queryFn: () => notificationsApi.list(requireToken()),
+    enabled: hasToken,
+    refetchInterval: 60_000,
   });
 
-  const patch = (fn: (n: AppNotification) => AppNotification) => {
-    queryClient.setQueryData<AppNotification[]>(
-      NOTIFICATIONS_KEY,
-      (prev) => prev?.map(fn) ?? [],
+  const markLocally = (isTarget: (n: AppNotification) => boolean) => {
+    const readAt = new Date().toISOString();
+    queryClient.setQueryData<BackendNotificationList>(
+      notificationKeys.all,
+      (prev) => {
+        if (!prev) return prev;
+        const items = prev.items.map((n) =>
+          !n.readAt && isTarget(n) ? { ...n, readAt } : n,
+        );
+        return {
+          items,
+          unreadCount:
+            prev.unreadCount -
+            prev.items.filter((n) => !n.readAt && isTarget(n)).length,
+        };
+      },
     );
   };
 
+  const settle = () =>
+    queryClient.invalidateQueries({ queryKey: notificationKeys.all });
+
+  const markOne = useMutation({
+    mutationFn: (id: string) => notificationsApi.markRead(requireToken(), id),
+    onMutate: (id) => markLocally((n) => n.id === id),
+    onSettled: settle,
+  });
+
+  const markAll = useMutation({
+    mutationFn: () => notificationsApi.markAllRead(requireToken()),
+    onMutate: () => markLocally(() => true),
+    onSettled: settle,
+  });
+
+  const notifications = data?.items ?? [];
+
   return {
-    notifications: data,
-    unreadCount: data.filter((n) => !n.read).length,
+    notifications,
+    unreadCount: data?.unreadCount ?? 0,
     isLoading,
-    markAllAsRead: () => patch((n) => (n.read ? n : { ...n, read: true })),
-    markAsRead: (id) =>
-      patch((n) => (n.id === id && !n.read ? { ...n, read: true } : n)),
+    markAllAsRead: () => markAll.mutate(),
+    markAsRead: (id) => {
+      if (notifications.some((n) => n.id === id && !n.readAt)) {
+        markOne.mutate(id);
+      }
+    },
   };
 }
