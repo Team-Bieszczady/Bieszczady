@@ -1,14 +1,15 @@
 import { useEffect, type RefObject } from 'react';
-import { createPortal } from 'react-dom';
 import { Link } from 'react-router';
 import NotificationItem from './NotificationItem';
+import { PopoverPanel } from '../../../components/ui/PopoverPanel';
 import { Spinner } from '../../../components/ui/Spinner';
 import type { AnchoredPosition } from '../../../hooks/useAnchoredPosition';
-import type { AppNotification } from '../types';
+import type { AppNotification } from '../../../lib/notificationsApi';
 
 interface NotificationPanelProps {
   panelRef: RefObject<HTMLDivElement | null>;
   position: AnchoredPosition;
+  align: 'left' | 'right';
   notifications: AppNotification[];
   unreadCount: number;
   isLoading: boolean;
@@ -20,6 +21,7 @@ interface NotificationPanelProps {
 export default function NotificationPanel({
   panelRef,
   position,
+  align,
   notifications,
   unreadCount,
   isLoading,
@@ -31,24 +33,33 @@ export default function NotificationPanel({
     panelRef.current?.focus();
   }, [panelRef]);
 
-  return createPortal(
-    <div
-      ref={panelRef}
+  return (
+    <PopoverPanel
+      panelRef={panelRef}
+      position={position}
+      align={align}
+      width={352}
+      centerOnMobile
       role="dialog"
-      aria-label="Powiadomienia"
+      ariaLabel="Powiadomienia"
       tabIndex={-1}
-      style={{ top: position.top, right: position.right }}
-      className="fixed z-40 w-[min(22rem,calc(100vw-1rem))] origin-top-right rounded-lg border border-gray-200 bg-white shadow-lg outline-none"
+      layout="sections"
     >
-      <div className="flex items-center justify-between gap-2 border-b border-gray-200 px-4 py-3">
-        <h2 className="text-sm font-semibold text-dark">Powiadomienia</h2>
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-gray-200 px-4 py-3">
+        <h2 className="min-w-0 truncate text-sm font-semibold text-dark">
+          Powiadomienia
+        </h2>
         <button
           type="button"
           onClick={onMarkAllAsRead}
           disabled={unreadCount === 0}
-          className="text-xs font-medium text-darkGreen transition-colors hover:underline disabled:cursor-default disabled:text-gray-400 disabled:no-underline"
+          aria-label="Oznacz wszystkie jako przeczytane"
+          className="shrink-0 whitespace-nowrap text-xs font-medium text-darkGreen transition-colors hover:underline disabled:cursor-default disabled:text-gray-400 disabled:no-underline"
         >
-          Oznacz wszystkie jako przeczytane
+          <span className="sm:hidden">Oznacz jako przeczytane</span>
+          <span className="hidden sm:inline">
+            Oznacz wszystkie jako przeczytane
+          </span>
         </button>
       </div>
 
@@ -65,7 +76,7 @@ export default function NotificationPanel({
           Brak powiadomień
         </p>
       ) : (
-        <ul className="max-h-80 divide-y divide-gray-100 overflow-y-auto nav-scrollbar">
+        <ul className="min-h-0 flex-1 divide-y divide-gray-100 overflow-y-auto nav-scrollbar">
           {notifications.map((notification) => (
             <NotificationItem
               key={notification.id}
@@ -76,7 +87,7 @@ export default function NotificationPanel({
         </ul>
       )}
 
-      <div className="border-t border-gray-200 px-4 py-2.5 text-center">
+      <div className="shrink-0 border-t border-gray-200 px-4 py-2.5 text-center">
         <Link
           to="/notifications"
           onClick={onNavigate}
@@ -85,7 +96,6 @@ export default function NotificationPanel({
           Zobacz wszystkie
         </Link>
       </div>
-    </div>,
-    document.body,
+    </PopoverPanel>
   );
 }

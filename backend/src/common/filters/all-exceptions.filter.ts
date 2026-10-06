@@ -20,11 +20,6 @@ const ERROR_CODES: Record<number, string> = {
 
 const GENERIC_MESSAGE = 'Wystąpił błąd serwera';
 
-/**
- * Reads the human-readable message out of an exception body. Returns null when
- * the body carries none, because `exception.message` is then Nest's mangled
- * class name ('Service Unavailable Exception'), which must not reach a client.
- */
 function readMessage(body: unknown): string | null {
   if (typeof body === 'string') {
     return body;

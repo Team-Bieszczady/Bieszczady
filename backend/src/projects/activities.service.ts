@@ -93,6 +93,11 @@ export class ActivitiesService {
       await this.access.assertNotArchived(activity.projectId, tx);
 
       await tx.subtask.deleteMany({ where: { task: { activityId: id } } });
+      await tx.notification.deleteMany({ where: { task: { activityId: id } } });
+      await tx.indicator.updateMany({
+        where: { task: { activityId: id } },
+        data: { scope: 'PROJECT', stageId: null, taskId: null },
+      });
       await tx.task.deleteMany({ where: { activityId: id } });
       await tx.activity.delete({ where: { id } });
       await this.completion.settle(tx, [activity.stageId]);

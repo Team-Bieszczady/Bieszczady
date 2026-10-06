@@ -7,6 +7,7 @@ import {
   useArchivedProjects,
   useProjects,
 } from '../../projects/hooks/useProjectsApi';
+import type { BackendProjectCard } from '../../../lib/projectsApi';
 import { ORG_NAV_ITEMS, PROJECT_NAV_ITEMS, type NavItem } from '../data';
 import { usePendingCount } from '../../documents/hooks/usePendingCount';
 
@@ -17,6 +18,7 @@ interface NavData {
   isDirector: boolean;
   orgNavItems: NavItem[];
   projectNavItems: NavItem[];
+  selectedProject: BackendProjectCard | undefined;
 }
 
 export function useNavData(): NavData {
@@ -81,5 +83,6 @@ export function useNavData(): NavData {
           return item;
         })
       : [],
+    selectedProject,
   };
 }

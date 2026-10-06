@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { Link, useNavigate, useParams } from 'react-router';
 import toast from 'react-hot-toast';
 import { SlTrash } from 'react-icons/sl';
+import { BsArrowLeft } from 'react-icons/bs';
 import { Button } from '../components/ui/Button';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import AccountPageShell from '../features/people/components/AccountPageShell';
@@ -13,6 +14,7 @@ import { usePerson } from '../features/people/hooks/usePerson';
 import { useSetAccountStatus } from '../features/people/hooks/useSetAccountStatus';
 import { toastAccountError } from '../features/people/utils/accountErrorMessage';
 import { isSelf } from '../features/people/utils/peoplePermissions';
+import { DIRECTOR_ROLE_LABEL } from '../features/people/constants';
 import { useAuth } from '../context/useAuth';
 import type { AccountStatus } from '../lib/api';
 import type { Person } from '../features/people/data';
@@ -106,9 +108,17 @@ function PersonDetail({ person }: { person: Person }) {
 
   return (
     <AccountPageShell>
+      <Link
+        to="/people"
+        className="mb-4 inline-flex items-center gap-1 text-xs font-medium text-darkGreen hover:underline"
+      >
+        <BsArrowLeft aria-hidden="true" />
+        Wróć do listy
+      </Link>
+
       <AccountProfileHeader
         name={fullName}
-        subtitle={person.isDirector ? 'Dyrektor' : 'Użytkownik'}
+        subtitle={person.isDirector ? DIRECTOR_ROLE_LABEL : 'Użytkownik'}
         initials={person.initials}
         avatar={person.avatar}
         actions={actions}

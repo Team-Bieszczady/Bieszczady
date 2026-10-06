@@ -1,5 +1,9 @@
-import type { BackendTaskRow } from '../../lib/projectsApi';
-import type { Subtask, TaskPriority, TaskStatus } from '../projects/types';
+import type {
+  BackendTaskRow,
+  TaskPriorityValue,
+  TaskStatusValue,
+} from '../../lib/projectsApi';
+import type { Subtask } from '../projects/types';
 
 export interface TaskRow {
   id: string;
@@ -12,8 +16,8 @@ export interface TaskRow {
   ownerId: string | null;
   dueDate: string | null;
   effectiveDueDate: string | null;
-  status: TaskStatus;
-  priority: TaskPriority;
+  status: TaskStatusValue;
+  priority: TaskPriorityValue;
   description: string;
   subtasks: Subtask[];
   createdAt: string | null;

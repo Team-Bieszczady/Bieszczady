@@ -9,6 +9,7 @@ import type { TaskRow } from '../data';
 import {
   DEADLINE_TONE_CLASSES,
   describeDeadline,
+  INHERITED_DEADLINE_TITLE,
 } from '../utils/formatDeadline';
 import { subtaskProgress } from '../utils/subtaskProgress';
 import SubtaskList from './SubtaskList';
@@ -62,7 +63,7 @@ function Deadline({ row, today }: { row: TaskRow; today: string }) {
         className={`text-sm font-medium text-dark ${view.isInherited ? 'italic' : ''}`}
         title={
           view.isInherited
-            ? 'Zadanie bez własnego terminu — obowiązuje termin etapu'
+            ? INHERITED_DEADLINE_TITLE
             : undefined
         }
       >
@@ -109,7 +110,7 @@ export default function TaskDetailModal({
       <div className="space-y-5">
         <div>
           <p className="text-[11px] font-medium tracking-wide text-mutedText uppercase">
-            Zadanie — {contextLabel}
+            Zadanie: {contextLabel}
           </p>
           <h3 className="mt-1 text-2xl font-semibold text-dark">{row.title}</h3>
         </div>
@@ -192,16 +193,19 @@ export default function TaskDetailModal({
           )}
         </div>
 
-        <div className="flex flex-wrap justify-end gap-3 border-t border-gray-200 pt-4">
+        <div className="flex flex-wrap justify-end gap-2 border-t border-gray-200 pt-4 lg:gap-3">
           {canDelete && (
             <Button
               variant="outline"
               size="small"
               type="button"
               onClick={onDelete}
-              className="flex items-center gap-2 text-darkRed!"
+              className="flex items-center gap-2 text-darkRed! max-lg:h-7 max-lg:gap-1.5 max-lg:px-3 max-lg:text-xs"
             >
-              <FiTrash2 className="h-4 w-4" aria-hidden="true" />
+              <FiTrash2
+                className="h-4 w-4 max-lg:h-3.5 max-lg:w-3.5"
+                aria-hidden="true"
+              />
               Usuń
             </Button>
           )}
@@ -211,9 +215,12 @@ export default function TaskDetailModal({
               size="small"
               type="button"
               onClick={onEdit}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 max-lg:h-7 max-lg:gap-1.5 max-lg:px-3 max-lg:text-xs"
             >
-              <HiOutlinePencil className="h-4 w-4" aria-hidden="true" />
+              <HiOutlinePencil
+                className="h-4 w-4 max-lg:h-3.5 max-lg:w-3.5"
+                aria-hidden="true"
+              />
               Edytuj
             </Button>
           )}
@@ -223,7 +230,7 @@ export default function TaskDetailModal({
               size="small"
               type="button"
               onClick={onToggleDone}
-              className="font-medium!"
+              className="font-medium! max-lg:h-7 max-lg:px-3 max-lg:text-xs"
             >
               {isDone ? 'Cofnij' : 'Zrobione'}
             </Button>

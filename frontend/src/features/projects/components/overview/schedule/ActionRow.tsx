@@ -65,7 +65,7 @@ export default function ActionRow({
         <p className="mt-1 py-2 text-xs text-mutedText">
           {isFiltered
             ? 'Brak zadań w wybranym oknie czasowym.'
-            : 'To działanie nie ma jeszcze zadań — dodasz je w zakładce Zadania.'}
+            : 'To działanie nie ma jeszcze zadań, dodasz je w zakładce Zadania.'}
         </p>
       ) : (
         <ul className="mt-1 divide-y divide-gray-100">

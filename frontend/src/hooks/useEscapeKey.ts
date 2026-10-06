@@ -16,8 +16,6 @@ export function useEscapeKey(
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
-      // Pierwszy nasłuch, który obsłuży Escape, zabiera go pozostałym —
-      // dzięki temu zamyka się tylko lista rozwijana, a nie całe okno pod nią.
       if (event.defaultPrevented) return;
 
       event.preventDefault();

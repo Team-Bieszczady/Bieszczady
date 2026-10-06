@@ -1,8 +1,5 @@
+import { PROJECT_ROLE_LABELS } from '../projects/labels';
 import type { PersonStatus } from './data';
-
-export const ROLE_OPTIONS = ['Koordynator', 'Wykonawca', 'Partner'] as const;
-
-export type RoleOption = (typeof ROLE_OPTIONS)[number];
 
 export const PROJECT_OPTIONS = [
   { id: 'bieszczady-trails', name: 'Szlaki bieszczadzkie' },
@@ -11,12 +8,16 @@ export const PROJECT_OPTIONS = [
   { id: 'wildlife-monitoring', name: 'Monitoring przyrodniczy' },
 ] as const;
 
-export const STATUS_OPTIONS: Array<{ value: PersonStatus; label: string }> = [
-  { value: 'ACTIVE', label: 'Aktywne' },
-  { value: 'PENDING', label: 'Oczekuje' },
-  { value: 'INACTIVE', label: 'Nieaktywne' },
-  { value: 'DELETED', label: 'Usunięte' },
-];
+export const PERSON_STATUS_LABELS: Record<PersonStatus, string> = {
+  ACTIVE: 'Aktywne',
+  PENDING: 'Oczekuje',
+  INACTIVE: 'Nieaktywne',
+  DELETED: 'Usunięte',
+};
+
+export const STATUS_OPTIONS = (
+  Object.keys(PERSON_STATUS_LABELS) as PersonStatus[]
+).map((status) => ({ value: status, label: PERSON_STATUS_LABELS[status] }));
 
 export const SORT_OPTIONS = [
   { value: 'role-asc', label: 'Rola (A–Z)' },
@@ -29,14 +30,14 @@ export type SortOption = (typeof SORT_OPTIONS)[number]['value'];
 
 export const DIRECTOR_ROLE_LABEL = 'Dyrektor';
 
-export const PLACEHOLDER_ROLE: RoleOption = 'Wykonawca';
+export const PLACEHOLDER_ROLE = PROJECT_ROLE_LABELS.EXECUTOR;
 
 export const PLACEHOLDER_PROJECTS: ReadonlyArray<{ id: string; name: string }> =
   [PROJECT_OPTIONS[0]];
 
 export const ROLE_FILTER_OPTIONS: ReadonlyArray<string> = [
   DIRECTOR_ROLE_LABEL,
-  ...ROLE_OPTIONS,
+  ...Object.values(PROJECT_ROLE_LABELS),
 ];
 
 export const ROLE_FILTER_SELECT_OPTIONS: ReadonlyArray<{

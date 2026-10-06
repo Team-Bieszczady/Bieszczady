@@ -1,7 +1,7 @@
 import type { ScheduleTask } from '../../../types';
 import { formatShortDate } from '../../../utils/isoDate';
 import { shortName } from '../../../utils/shortName';
-import { TaskIcon } from './ScheduleTaskRow';
+import { OverdueBadge, TaskIcon } from './ScheduleTaskRow';
 
 interface OverdueListProps {
   tasks: ScheduleTask[];
@@ -40,9 +40,7 @@ export default function OverdueList({
                   termin {task.dueDate && formatShortDate(task.dueDate)}
                   {task.owner && ` · ${shortName(task.owner)}`}
                 </span>
-                <span className="inline-flex items-center rounded-full bg-redSoft px-2.5 py-0.5 text-[11px] font-medium text-darkRed">
-                  po terminie
-                </span>
+                <OverdueBadge />
               </span>
             </>
           );

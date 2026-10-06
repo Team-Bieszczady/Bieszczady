@@ -102,9 +102,7 @@ interface ChipSelectFieldProps {
   onCreate: (value: string) => void;
   onRemove: (value: string) => void;
   canEdit: boolean;
-  addLabel?: string;
   searchPlaceholder?: string;
-  emptyLabel?: string;
 }
 
 export function ChipSelectField({
@@ -115,9 +113,7 @@ export function ChipSelectField({
   onCreate,
   onRemove,
   canEdit,
-  addLabel = '+ dodaj',
   searchPlaceholder = 'Szukaj...',
-  emptyLabel = 'Brak',
 }: ChipSelectFieldProps) {
   const { isOpen, close, toggle, buttonRef, panelRef, position } =
     useAnchoredPopup<HTMLButtonElement, HTMLDivElement>({
@@ -157,13 +153,13 @@ export function ChipSelectField({
         ))}
 
         {values.length === 0 && !canEdit && (
-          <span className="text-[11px] text-mutedText">{emptyLabel}</span>
+          <span className="text-[11px] text-mutedText">Brak</span>
         )}
 
         {canEdit && (
           <AddChipButton
             ref={buttonRef}
-            label={addLabel}
+            label="dodaj"
             onClick={toggle}
             isExpanded={isOpen}
           />

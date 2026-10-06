@@ -267,6 +267,25 @@ The responsible person must be a **member of that project** — a 409 otherwise.
 Send `responsibleUserId: null` to leave a risk unassigned. `responsible` comes
 back flattened, or `null`.
 
+## Indicators
+
+An indicator measures progress towards a target (`currentValue / targetValue`). It has
+**no deadline field**: the response's `deadline` and `deadlineSource` are derived from
+what it is assigned to, so a moved stage moves its indicators. Send `scope: 'STAGE'`
+with exactly one of `stageId` / `taskId`, or `scope: 'PROJECT'` to end with the
+project. `percent` is computed too; there is no status.
+`folders` are `{ id, name, path }` pointers into Dokumenty; open one with
+`/project/documents?folder=<id>`. A director or the project's coordinator gets all of
+them; a user with the `DOCUMENTS` module gets only the folders Dokumenty would show them,
+with only visible parents in `path`; anyone else gets `[]`.
+
+Deleting a task, an activity or a stage never deletes its indicators: they become
+`scope: 'PROJECT'` ("Cały projekt"). A stage deleted with `strategy=move` hands its stage
+indicators to the target stage. Only a project delete removes indicators.
+
+Writes are allowed for a director or that project's coordinator, like tasks. Invalidate
+the indicators key after any stage or task write, since either can change a deadline.
+
 ## Members
 
 ```
@@ -377,6 +396,11 @@ DELETE /goals/:id                        D  renumbers the rest
 GET    /projects/:projectId/risks           POST  D
 PATCH  /risks/:id                        D
 DELETE /risks/:id                        D
+
+GET    /projects/:projectId/indicators      POST  DC
+PATCH  /indicators/:id                   DC
+PATCH  /indicators/:id/progress          DC  { delta: 1 | -1 } or { value }, clamped
+DELETE /indicators/:id                   DC
 
 GET    /projects/:projectId/members
 GET    /projects/:projectId/available-members

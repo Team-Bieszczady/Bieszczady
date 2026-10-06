@@ -1,12 +1,25 @@
 import { useEffect, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
+import { cva, type VariantProps } from 'class-variance-authority';
 import type { AnchoredPosition } from '../../hooks/useAnchoredPosition';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 
-const PANEL_BASE =
-  'nav-scrollbar animate-pop-in overflow-y-auto rounded-lg border border-gray-200 bg-white p-1 shadow-lg';
+const panelVariants = cva(
+  'animate-pop-in rounded-lg border border-gray-200 bg-white shadow-lg outline-none',
+  {
+    variants: {
+      layout: {
+        list: 'nav-scrollbar overflow-y-auto p-1',
+        sections: 'flex flex-col overflow-hidden',
+      },
+    },
+    defaultVariants: {
+      layout: 'list',
+    },
+  },
+);
 
-interface PopoverPanelProps {
+interface PopoverPanelProps extends VariantProps<typeof panelVariants> {
   panelRef: RefObject<HTMLDivElement | null>;
   position: AnchoredPosition;
   align?: 'left' | 'right';
@@ -15,6 +28,7 @@ interface PopoverPanelProps {
   centerOnMobile?: boolean;
   role?: 'listbox' | 'menu' | 'dialog';
   ariaLabel?: string;
+  tabIndex?: number;
   className?: string;
   children: ReactNode;
 }
@@ -28,6 +42,8 @@ export function PopoverPanel({
   centerOnMobile = false,
   role,
   ariaLabel,
+  tabIndex,
+  layout,
   className = '',
   children,
 }: PopoverPanelProps) {
@@ -51,8 +67,12 @@ export function PopoverPanel({
           ref={panelRef}
           role={role}
           aria-label={ariaLabel}
+          tabIndex={tabIndex}
           onMouseDown={(event) => event.stopPropagation()}
-          className={`${PANEL_BASE} max-h-[70vh] w-full max-w-sm ${className}`}
+          className={panelVariants({
+            layout,
+            className: `max-h-[70vh] w-full max-w-sm ${className}`,
+          })}
         >
           {children}
         </div>
@@ -66,6 +86,7 @@ export function PopoverPanel({
       ref={panelRef}
       role={role}
       aria-label={ariaLabel}
+      tabIndex={tabIndex}
       onMouseDown={(event) => event.stopPropagation()}
       style={{
         ...(align === 'left'
@@ -78,7 +99,7 @@ export function PopoverPanel({
         width,
         maxHeight: position.maxHeight,
       }}
-      className={`${PANEL_BASE} fixed z-60 ${className}`}
+      className={panelVariants({ layout, className: `fixed z-60 ${className}` })}
     >
       {children}
     </div>,

@@ -1,21 +1,13 @@
-import {
-  TASK_PRIORITY_OPTIONS,
-  TASK_STATUS_LABELS,
-} from '../projects/labels';
-import type { TaskStatus } from '../projects/types';
+import { TASK_STATUS_OPTIONS } from '../projects/labels';
+import type { TaskStatusValue } from '../../lib/projectsApi';
 
 export const TASK_STATUS_TABS: ReadonlyArray<{
-  value: TaskStatus | null;
+  value: TaskStatusValue | null;
   label: string;
-}> = [
-  { value: null, label: 'Wszystkie' },
-  { value: 'NEW', label: TASK_STATUS_LABELS.NEW },
-  { value: 'IN_PROGRESS', label: TASK_STATUS_LABELS.IN_PROGRESS },
-  { value: 'BLOCKED', label: TASK_STATUS_LABELS.BLOCKED },
-  { value: 'DONE', label: TASK_STATUS_LABELS.DONE },
-];
+}> = [{ value: null, label: 'Wszystkie' }, ...TASK_STATUS_OPTIONS];
 
-export const PRIORITY_SELECT_OPTIONS = TASK_PRIORITY_OPTIONS;
+export const NO_OPEN_ACTIONS_MESSAGE =
+  'Brak działań w otwartych etapach, najpierw dodaj działanie w Harmonogramie.';
 
 export type DeadlineFilter = 'overdue' | 'today' | 'week' | 'month';
 

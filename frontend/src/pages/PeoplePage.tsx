@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { HiOutlinePlus } from 'react-icons/hi';
 import { AiOutlineSearch } from 'react-icons/ai';
+import { IoCloseOutline } from 'react-icons/io5';
 import { Button } from '../components/ui/Button';
 import { Select, type SelectOption } from '../components/ui/Select';
 import PeopleTable from '../features/people/components/PeopleTable';
@@ -84,7 +85,7 @@ export default function PeoplePage() {
   });
 
   return (
-    <div className="px-4 min-[400px]:px-6 sm:px-8 pt-16 pb-8 lg:pt-4 max-w-7xl mx-auto">
+    <div className="px-4 min-[400px]:px-6 sm:px-8 pt-20 pb-8 lg:pt-4 max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-base font-bold text-dark 500:text-xl lg:text-2xl">
           Ludzie
@@ -137,7 +138,8 @@ export default function PeoplePage() {
           type="button"
           onClick={() => reset(EMPTY_FILTERS)}
         >
-          ✕ Wyczyść
+          <IoCloseOutline aria-hidden="true" />
+          Wyczyść
         </button>
       </div>
 

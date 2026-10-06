@@ -1,36 +1,17 @@
 import { useState } from 'react';
 import { slide as Slide } from 'react-burger-menu';
-import Logo from './Logo';
-import SectionLabel from './SectionLabel';
-import OrgNavList from './OrgNavList';
-import UserFooter from './UserFooter';
-import { useNavData } from '../hooks/useNavData';
+import { IoCloseOutline, IoMenuOutline } from 'react-icons/io5';
+import SidebarContent from './SidebarContent';
+import { useMediaQuery } from '../../../hooks/useMediaQuery';
 
 export default function MobileNav() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { initials, name, avatarSrc, isDirector, orgNavItems } = useNavData();
+  const isTablet = useMediaQuery('(min-width: 640px)');
+  const closeMenu = () => setIsMenuOpen(false);
 
-  const customBurgerIcon = (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-      <path
-        d="M3 6h18M3 12h18M3 18h18"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
+  const customBurgerIcon = <IoMenuOutline size={24} />;
 
-  const customCrossIcon = (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-      <path
-        d="M18 6L6 18M6 6l12 12"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
+  const customCrossIcon = <IoCloseOutline size={24} />;
 
   const burgerStyles = {
     bmBurgerButton: {
@@ -83,26 +64,10 @@ export default function MobileNav() {
         customBurgerIcon={customBurgerIcon}
         customCrossIcon={customCrossIcon}
         right={false}
-        width={250}
+        width={isTablet ? 300 : 250}
       >
         <div className="w-full h-full">
-          <div className="flex flex-col h-full">
-            <Logo />
-            <SectionLabel label="Organizacja" />
-            <OrgNavList
-              items={orgNavItems}
-              onNavigate={() => setIsMenuOpen(false)}
-            />
-            <div className="mt-auto">
-              <UserFooter
-                initials={initials}
-                name={name}
-                avatarSrc={avatarSrc}
-                isDirector={isDirector}
-                onNavigate={() => setIsMenuOpen(false)}
-              />
-            </div>
-          </div>
+          <SidebarContent onNavigate={closeMenu} />
         </div>
       </Slide>
     </div>

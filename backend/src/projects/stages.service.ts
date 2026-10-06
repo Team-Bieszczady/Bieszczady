@@ -10,6 +10,7 @@ import type { AuthenticatedUser } from '../auth/types/auth.types';
 import { PERSON_SELECT } from './prisma-selects';
 import { ProjectAccessService } from './project-access.service';
 import { StageCompletionService } from './stage-completion.service';
+import { TASK_ORDER } from './tasks.service';
 import {
   shiftDays,
   suggestFollowingStageShifts,
@@ -41,11 +42,6 @@ export class StagesService {
     return stage;
   }
 
-  /**
-   * A stage lives inside its project's window. Both project dates are nullable,
-   * so each bound only applies when the project actually carries it. Bounds are
-   * inclusive — a stage may start on the project's first day and end on its last.
-   */
   private assertWithinProject(
     project: { startDate: Date | null; plannedEndDate: Date | null },
     startDate: Date | null,
@@ -65,7 +61,6 @@ export class StagesService {
     }
   }
 
-  /** `deadline` is a DATE column, `completedAt` a timestamp — compare by day. */
   private static startOfDay(value: Date): Date {
     return new Date(
       Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()),
@@ -90,7 +85,7 @@ export class StagesService {
           orderBy: { sortOrder: 'asc' },
           include: {
             tasks: {
-              orderBy: [{ dueDate: 'asc' }, { title: 'asc' }],
+              orderBy: TASK_ORDER,
               select: {
                 id: true,
                 title: true,
@@ -307,7 +302,7 @@ export class StagesService {
 
       if (activityCount > 0 && strategy === 'none') {
         throw new ConflictException(
-          `Etap ma przypisane działania (${activityCount}) — wybierz, czy przenieść je, czy usunąć`,
+          `Etap ma przypisane działania (${activityCount}). Wybierz, czy przenieść je, czy usunąć`,
         );
       }
 
@@ -328,16 +323,31 @@ export class StagesService {
           where: { stageId: id },
           data: { stageId: target.id },
         });
+        await tx.indicator.updateMany({
+          where: { stageId: id },
+          data: { stageId: target.id },
+        });
 
         await this.completion.settle(tx, [target.id]);
       } else if (strategy === 'delete') {
         await tx.subtask.deleteMany({
           where: { task: { activity: { stageId: id } } },
         });
+        await tx.notification.deleteMany({
+          where: { task: { activity: { stageId: id } } },
+        });
+        await tx.indicator.updateMany({
+          where: { task: { activity: { stageId: id } } },
+          data: { scope: 'PROJECT', stageId: null, taskId: null },
+        });
         await tx.task.deleteMany({ where: { activity: { stageId: id } } });
         await tx.activity.deleteMany({ where: { stageId: id } });
       }
 
+      await tx.indicator.updateMany({
+        where: { stageId: id },
+        data: { scope: 'PROJECT', stageId: null, taskId: null },
+      });
       await tx.stage.delete({ where: { id } });
     }, SERIALIZABLE);
   }

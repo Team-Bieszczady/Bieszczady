@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../../../lib/api';
 import { useAuthToken } from '../../../context/useAuthToken';
 
-export function useFolders(projectId: string) {
+export function useFolders(projectId: string, enabled = true) {
   const { hasToken, requireToken } = useAuthToken();
   return useQuery({
     queryKey: ['folders', projectId],
@@ -10,6 +10,6 @@ export function useFolders(projectId: string) {
       return await api.getFolders(requireToken(), projectId);
     },
 
-    enabled: hasToken,
+    enabled: hasToken && enabled,
   });
 }

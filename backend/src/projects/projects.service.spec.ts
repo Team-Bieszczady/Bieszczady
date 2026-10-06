@@ -12,7 +12,16 @@ describe('ProjectsService date order', () => {
   let service: ProjectsService;
 
   const prisma = {
-    project: { findUnique: jest.fn(), update: jest.fn() },
+    project: { findUnique: jest.fn(), update: jest.fn(), delete: jest.fn() },
+    stage: { findMany: jest.fn() },
+    risk: { deleteMany: jest.fn() },
+    goal: { deleteMany: jest.fn() },
+    projectMember: { deleteMany: jest.fn() },
+    projectTypesOnProjects: { deleteMany: jest.fn() },
+    projectRecipientsOnProjects: { deleteMany: jest.fn() },
+    projectEvent: { deleteMany: jest.fn() },
+    indicator: { deleteMany: jest.fn() },
+    indicatorFolder: { deleteMany: jest.fn() },
     $transaction: jest.fn(),
   };
 
@@ -230,6 +239,49 @@ describe('ProjectsService date order', () => {
 
       await expect(service.remove('p1')).rejects.toThrow(ConflictException);
       expect(access.assertNotArchived).not.toHaveBeenCalled();
+    });
+
+    it('clears the project history before the project, or the FK refuses the delete', async () => {
+      prisma.$transaction.mockImplementation(
+        (fn: (tx: typeof prisma) => unknown) => fn(prisma),
+      );
+      prisma.project.findUnique.mockResolvedValue({
+        id: 'p1',
+        archivedAt: new Date('2026-09-01'),
+      });
+      prisma.stage.findMany.mockResolvedValue([]);
+
+      await service.remove('p1');
+
+      expect(prisma.projectEvent.deleteMany).toHaveBeenCalledWith({
+        where: { projectId: 'p1' },
+      });
+      expect(
+        prisma.projectEvent.deleteMany.mock.invocationCallOrder[0],
+      ).toBeLessThan(prisma.project.delete.mock.invocationCallOrder[0]);
+    });
+
+    it('deletes the indicators and their folder links before the project', async () => {
+      prisma.$transaction.mockImplementation(
+        (fn: (tx: typeof prisma) => unknown) => fn(prisma),
+      );
+      prisma.project.findUnique.mockResolvedValue({
+        id: 'p1',
+        archivedAt: new Date('2026-09-01'),
+      });
+      prisma.stage.findMany.mockResolvedValue([]);
+
+      await service.remove('p1');
+
+      expect(prisma.indicator.deleteMany).toHaveBeenCalledWith({
+        where: { projectId: 'p1' },
+      });
+      expect(
+        prisma.indicatorFolder.deleteMany.mock.invocationCallOrder[0],
+      ).toBeLessThan(prisma.indicator.deleteMany.mock.invocationCallOrder[0]);
+      expect(
+        prisma.indicator.deleteMany.mock.invocationCallOrder[0],
+      ).toBeLessThan(prisma.project.delete.mock.invocationCallOrder[0]);
     });
   });
 });

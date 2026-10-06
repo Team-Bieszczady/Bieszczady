@@ -46,14 +46,12 @@ export function ActionMenu({
         type="button"
         onClick={toggle}
         onKeyDown={(event) => {
-          // Bez tego menu zostaje otwarte po przejściu dalej tabulatorem
-          // i dwie listy naraz biją się o klawisz Escape.
           if (event.key === 'Tab' && isOpen) close();
         }}
         aria-label={ariaLabel}
         aria-haspopup="menu"
         aria-expanded={isOpen}
-        className={`cursor-pointer rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-black/5 hover:text-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-darkGreen ${className}`}
+        className={`cursor-pointer rounded-lg p-1.5 text-gray-400 transition-colors hover:text-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-darkGreen ${className}`}
       >
         <PiDotsThreeOutlineFill className="h-4 w-4" aria-hidden="true" />
       </button>

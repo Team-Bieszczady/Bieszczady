@@ -40,12 +40,12 @@ export const STAGE_ISSUE_MESSAGES: Record<StageIssue, string> = {
     'Data rozpoczęcia nie może być późniejsza niż data zakończenia etapu',
   deadlineBeforeCompletion:
     'Termin nie może być wcześniejszy niż data zakończenia etapu',
-  stageCompleted: 'Etap jest zakończony — najpierw go wznów.',
-  stageArchived: 'Etap jest zarchiwizowany — najpierw go przywróć.',
-  hasContent: 'Ten etap ma zawartość — wybierz, co ma się z nią stać.',
+  stageCompleted: 'Etap jest zakończony, najpierw go wznów.',
+  stageArchived: 'Etap jest zarchiwizowany, najpierw go przywróć.',
+  hasContent: 'Ten etap ma zawartość. Wybierz, co ma się z nią stać.',
   invalidTarget: 'Wybierz etap docelowy',
   completedNeedsArchive:
-    'Zakończonego etapu nie można usunąć — najpierw go zarchiwizuj.',
+    'Zakończonego etapu nie można usunąć, najpierw go zarchiwizuj.',
 };
 
 export interface StageDateValues {
@@ -53,8 +53,6 @@ export interface StageDateValues {
   deadline: string;
 }
 
-/** The project's window. Both ends are nullable, and each bound only applies
- *  when the project actually carries it. */
 export interface ProjectDateBounds {
   startDate: string | null;
   plannedEndDate: string | null;
@@ -120,12 +118,5 @@ export function getMoveTargets(
       stage.archivedAt === null &&
       stage.completedAt === null,
   );
-}
-
-export interface StageShiftSuggestion {
-  stageId: string;
-  name: string;
-  currentDeadline: string;
-  suggestedDeadline: string;
 }
 

@@ -1,5 +1,8 @@
 import { normalizeText } from '../../../lib/normalizeText';
-import type { TaskPriority, TaskStatus } from '../../projects/types';
+import type {
+  TaskPriorityValue,
+  TaskStatusValue,
+} from '../../../lib/projectsApi';
 import { isInPeriod } from '../../projects/utils/schedulePeriod';
 import type { TaskRow } from '../data';
 import type { DeadlineFilter, TaskSortOption } from '../constants';
@@ -21,7 +24,7 @@ export const EMPTY_TASK_FILTERS: TaskFilters = {
 };
 
 
-const PRIORITY_RANK: Record<TaskPriority, number> = {
+const PRIORITY_RANK: Record<TaskPriorityValue, number> = {
   HIGH: 3,
   MEDIUM: 2,
   LOW: 1,
@@ -82,14 +85,16 @@ export function filterAndSortTasks(
   });
 }
 
-export function countByStatus(rows: TaskRow[]): Record<TaskStatus, number> {
+export function countByStatus(
+  rows: TaskRow[],
+): Record<TaskStatusValue, number> {
   return rows.reduce(
     (counts, row) => {
       counts[row.status] += 1;
       return counts;
     },
     { NEW: 0, IN_PROGRESS: 0, BLOCKED: 0, DONE: 0 } as Record<
-      TaskStatus,
+      TaskStatusValue,
       number
     >,
   );

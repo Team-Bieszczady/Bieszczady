@@ -1,15 +1,13 @@
-import type { BackendStage } from '../../../lib/projectsApi';
-import { normalizeText } from '../../../lib/normalizeText';
 import type {
-  ProjectSchedule,
-  ScheduleAction,
-  ScheduleTask,
-} from '../types';
+  BackendStage,
+  StageShiftSuggestion,
+} from '../../../lib/projectsApi';
+import { normalizeText } from '../../../lib/normalizeText';
+import type { ProjectSchedule, ScheduleAction, ScheduleTask } from '../types';
 import type { Stage } from '../types';
 import { useUpdateTaskStatus } from '../../tasks/hooks/useTasksApi';
 import { todayIso } from '../utils/isoDate';
 import {
-  SCHEDULE_ISSUE_MESSAGES,
   getActionStageTargets,
   validateActionTitle,
   validateStageAcceptsWork,
@@ -28,8 +26,8 @@ import {
   validateMoveTarget,
   validateStageDates,
   type StageIssue,
-  type StageShiftSuggestion,
 } from '../utils/stageRules';
+import { activeStages, archivedStages } from '../utils/stageState';
 import {
   useArchiveStage,
   useCreateActivity,
@@ -52,9 +50,7 @@ import type {
 } from '../types';
 
 export type PlanResult<Issue> =
-  | { ok: true }
-  | { ok: false; issue: Issue }
-  | { ok: false; message: string };
+  { ok: true } | { ok: false; issue: Issue } | { ok: false; message: string };
 
 export type StageResult = PlanResult<StageIssue>;
 export type ActionResult = PlanResult<ScheduleIssue>;
@@ -82,7 +78,6 @@ function toStage(stage: BackendStage): Stage {
     archivedAt: stage.archivedAt,
   };
 }
-
 
 function toSchedule(stages: BackendStage[]): ProjectSchedule {
   const actions: ScheduleAction[] = [];
@@ -150,8 +145,8 @@ export function useProjectPlanApi(projectId: string) {
 
   const index: ScheduleIndex = buildScheduleIndex(schedule);
 
-  const active = stages.filter((stage) => stage.archivedAt === null);
-  const archived = stages.filter((stage) => stage.archivedAt !== null);
+  const active = activeStages(stages);
+  const archived = archivedStages(stages);
 
   const find = (id: string) => stages.find((stage) => stage.id === id);
   const findAction = (id: string) => index.actionById.get(id);
@@ -345,9 +340,7 @@ export function useProjectPlanApi(projectId: string) {
     }
   };
 
-  const addAction = async (
-    values: ActionFormValues,
-  ): Promise<ActionResult> => {
+  const addAction = async (values: ActionFormValues): Promise<ActionResult> => {
     const accepts = validateStageAcceptsWork(find(values.stageId));
     if (!accepts.ok) return accepts;
 
@@ -446,9 +439,6 @@ export function useProjectPlanApi(projectId: string) {
     today,
 
     isLoading: query.isLoading,
-    isError: query.isError,
-    error: query.error,
-    refetch: () => void query.refetch(),
 
     addStage,
     editStage,
@@ -469,8 +459,6 @@ export function useProjectPlanApi(projectId: string) {
     actionStageTargets: () => getActionStageTargets(active),
     tasksForStage: (id: string) => tasksForStage(index, id),
     overdue: () => overdueTasks(schedule, today),
-    scheduleIssueMessage: (issue: keyof typeof SCHEDULE_ISSUE_MESSAGES) =>
-      SCHEDULE_ISSUE_MESSAGES[issue],
   };
 }
 

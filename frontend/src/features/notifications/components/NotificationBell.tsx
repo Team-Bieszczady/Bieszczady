@@ -3,13 +3,21 @@ import NotificationPanel from './NotificationPanel';
 import { useNotifications } from '../hooks/useNotifications';
 import { useAnchoredPopup } from '../../../hooks/useAnchoredPopup';
 
-export default function NotificationBell() {
+interface NotificationBellProps {
+  align?: 'left' | 'right';
+}
+
+export default function NotificationBell({
+  align = 'right',
+}: NotificationBellProps) {
   const { notifications, unreadCount, isLoading, markAllAsRead, markAsRead } =
     useNotifications();
   const { isOpen, close, toggle, buttonRef, panelRef, position } =
     useAnchoredPopup<HTMLButtonElement, HTMLDivElement>({
       offset: 8,
       viewportMargin: 8,
+      flip: true,
+      preferredHeight: 420,
       restoreFocus: true,
     });
 
@@ -41,6 +49,7 @@ export default function NotificationBell() {
         <NotificationPanel
           panelRef={panelRef}
           position={position}
+          align={align}
           notifications={notifications}
           unreadCount={unreadCount}
           isLoading={isLoading}

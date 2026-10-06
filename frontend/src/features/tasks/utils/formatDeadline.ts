@@ -43,6 +43,9 @@ export function describeDeadline(
   };
 }
 
+export const INHERITED_DEADLINE_TITLE =
+  'Zadanie bez własnego terminu, obowiązuje termin etapu';
+
 export const DEADLINE_TONE_CLASSES: Record<DeadlineTone, string> = {
   overdue: 'text-darkRed font-medium',
   soon: 'text-amberDark',

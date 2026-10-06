@@ -26,6 +26,8 @@ describe('ActivitiesService', () => {
     },
     task: { deleteMany: jest.fn() },
     subtask: { deleteMany: jest.fn() },
+    notification: { deleteMany: jest.fn() },
+    indicator: { updateMany: jest.fn() },
     $transaction: jest.fn(),
   };
 
@@ -164,10 +166,18 @@ describe('ActivitiesService', () => {
   });
 
   describe('remove', () => {
-    it('deletes subtasks before tasks before the activity, then settles its stage', async () => {
+    it('deletes subtasks and notifications before tasks before the activity, then settles its stage', async () => {
       const order: string[] = [];
       prisma.subtask.deleteMany.mockImplementation(() => {
         order.push('subtasks');
+        return {};
+      });
+      prisma.notification.deleteMany.mockImplementation(() => {
+        order.push('notifications');
+        return {};
+      });
+      prisma.indicator.updateMany.mockImplementation(() => {
+        order.push('indicators');
         return {};
       });
       prisma.task.deleteMany.mockImplementation(() => {
@@ -181,7 +191,17 @@ describe('ActivitiesService', () => {
 
       await service.remove('a1');
 
-      expect(order).toEqual(['subtasks', 'tasks', 'activity']);
+      expect(order).toEqual([
+        'subtasks',
+        'notifications',
+        'indicators',
+        'tasks',
+        'activity',
+      ]);
+      expect(prisma.indicator.updateMany).toHaveBeenCalledWith({
+        where: { task: { activityId: 'a1' } },
+        data: { scope: 'PROJECT', stageId: null, taskId: null },
+      });
       expect(settle).toHaveBeenCalledWith(prisma, ['s1']);
     });
 

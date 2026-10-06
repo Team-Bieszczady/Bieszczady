@@ -54,7 +54,7 @@ export default function ManageStatusesModal({
     }
     
     if (result.usage > 0) {
-      const message = `Nie można usunąć statusu — używa go ${pluralizePl(result.usage, PROJECT_FORMS)}. Najpierw przypisz im inny status.`;
+      const message = `Nie można usunąć statusu, używa go ${pluralizePl(result.usage, PROJECT_FORMS)}. Najpierw przypisz im inny status.`;
       toast.error(message, { id: message });
     }
   };

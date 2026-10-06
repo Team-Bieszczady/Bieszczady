@@ -184,7 +184,7 @@ export class DictionariesService {
   private assertUnused(usage: number): void {
     if (usage > 0) {
       throw new ConflictException(
-        `Nie można usunąć — pozycja jest używana w projektach (${usage})`,
+        `Nie można usunąć, pozycja jest używana w projektach (${usage})`,
       );
     }
   }

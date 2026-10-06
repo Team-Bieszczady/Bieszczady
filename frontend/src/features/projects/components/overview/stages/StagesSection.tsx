@@ -1,10 +1,14 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
+import { GoPlus } from 'react-icons/go';
 import { Button } from '../../../../../components/ui/Button';
 import { ConfirmDialog } from '../../../../../components/ui/ConfirmDialog';
 import type { SelectOption } from '../../../../../components/ui/Select';
 import { Spinner } from '../../../../../components/ui/Spinner';
-import type { BackendProject } from '../../../../../lib/projectsApi';
+import type {
+  BackendProject,
+  StageShiftSuggestion,
+} from '../../../../../lib/projectsApi';
 import type { Stage } from '../../../types';
 import type { DeleteStrategy } from '../../../types';
 import type {
@@ -12,10 +16,7 @@ import type {
   StageResult,
 } from '../../../hooks/useProjectPlanApi';
 import { describeStage } from '../../../utils/stageState';
-import {
-  STAGE_ISSUE_MESSAGES,
-  type StageShiftSuggestion,
-} from '../../../utils/stageRules';
+import { STAGE_ISSUE_MESSAGES } from '../../../utils/stageRules';
 import EmptySectionState from '../EmptySectionState';
 import OverviewSection from '../OverviewSection';
 import TimelineCard from '../TimelineCard';
@@ -61,6 +62,9 @@ export default function StagesSection({
   canEdit,
 }: StagesSectionProps) {
   const [dialog, setDialog] = useState<StageDialog>(CLOSED);
+  const [highlightedStageId, setHighlightedStageId] = useState<string | null>(
+    null,
+  );
 
   const close = () => setDialog(CLOSED);
 
@@ -197,9 +201,10 @@ export default function StagesSection({
             variant="primary"
             size="small"
             onClick={() => setDialog({ kind: 'add' })}
-            className="text-xs max-lg:h-7 max-lg:px-4 max-lg:py-1"
+            className="gap-1 text-xs max-lg:h-7 max-lg:px-4 max-lg:py-1"
           >
-            + Dodaj etap
+            <GoPlus className="h-3.5 w-3.5" aria-hidden="true" />
+            Dodaj etap
           </Button>
         )
       }
@@ -210,12 +215,13 @@ export default function StagesSection({
           views={views}
           startDate={project.startDate}
           plannedEndDate={project.plannedEndDate}
+          onStageSelect={setHighlightedStageId}
         >
           {active.length === 0 && (
             <EmptySectionState
               bare
               title="Utwórz etapy do realizacji projektu"
-              hint="Etapy tworzą oś czasu projektu — do nich przypiszesz działania."
+              hint="Etapy tworzą oś czasu projektu, do nich przypiszesz działania."
               canEdit={canEdit}
             />
           )}
@@ -235,6 +241,8 @@ export default function StagesSection({
                 view={views[index]}
                 index={index}
                 canEdit={canEdit}
+                isHighlighted={stage.id === highlightedStageId}
+                onHighlightEnd={() => setHighlightedStageId(null)}
                 onEdit={() => setDialog({ kind: 'edit', stage })}
                 onMoveDeadline={() =>
                   setDialog({ kind: 'move-deadline', stage })

@@ -1,11 +1,11 @@
-import type { TaskStatus } from '../../projects/types';
+import type { TaskStatusValue } from '../../../lib/projectsApi';
 import { TASK_STATUS_TABS } from '../constants';
 
 interface TaskStatusTabsProps {
-  value: TaskStatus | null;
-  counts: Record<TaskStatus, number>;
+  value: TaskStatusValue | null;
+  counts: Record<TaskStatusValue, number>;
   total: number;
-  onChange: (status: TaskStatus | null) => void;
+  onChange: (status: TaskStatusValue | null) => void;
 }
 
 export default function TaskStatusTabs({

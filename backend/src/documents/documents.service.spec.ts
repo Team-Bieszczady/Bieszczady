@@ -228,14 +228,10 @@ describe('DocumentsService', () => {
   let prisma: ReturnType<typeof createFakePrisma>;
   let storage: ReturnType<typeof createFakeStorage>;
   let service: DocumentsService;
-
-  // Set per test to steer the two permission services.
   let canManage: boolean;
   let archived: boolean;
   let level: 'VIEW' | 'EDIT' | null;
-  // Left undefined, folders answer with `level` like everything else.
   let folderLevel: 'VIEW' | 'EDIT' | null | undefined;
-  // Left undefined, every document answers with `level`.
   let documentLevels: Record<string, 'VIEW' | 'EDIT' | null> | undefined;
 
   const addFolder = (row: Partial<FolderRow> & { id: string }): FolderRow => {

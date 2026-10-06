@@ -12,6 +12,8 @@ const GROUP = {
   risk: 9,
   member: 10,
   subtask: 11,
+  event: 12,
+  indicator: 13,
 } as const;
 
 const takenIds = new Map<string, string>();
@@ -124,6 +126,16 @@ interface SeedProject {
   stages: SeedStage[];
   activities: { key: string; stage: string; name: string }[];
   tasks: SeedTask[];
+  events?: { key: string; actor: string; content: string; at: string }[];
+  indicators: {
+    key: string;
+    name: string;
+    description: string;
+    targetValue: number;
+    currentValue: number;
+    stage: string | null;
+    owner: string;
+  }[];
 }
 
 export const PROJECTS: SeedProject[] = [
@@ -144,6 +156,15 @@ export const PROJECTS: SeedProject[] = [
       { person: 'piotr', role: 'EXECUTOR' },
       { person: 'ewa', role: 'EXECUTOR' },
       { person: 'marek', role: 'EXECUTOR' },
+    ],
+    events: [
+      {
+        key: 'przesuniecie-oznakowania',
+        actor: 'anna',
+        content:
+          'zatwierdziła przesunięcie terminu etapu „Oznakowanie szlaku” o dwa tygodnie',
+        at: '2026-09-16T14:20:00.000Z',
+      },
     ],
     goals: [
       {
@@ -411,6 +432,26 @@ export const PROJECTS: SeedProject[] = [
         owner: 'piotr',
       },
     ],
+    indicators: [
+      {
+        key: 'warsztaty',
+        name: 'Liczba przeprowadzonych warsztatów',
+        description: 'Warsztaty terenowe dla lokalnych przewodników.',
+        targetValue: 5,
+        currentValue: 3,
+        stage: 'etap-sp-4',
+        owner: 'anna',
+      },
+      {
+        key: 'tablice',
+        name: 'Liczba zamontowanych tablic informacyjnych',
+        description: '',
+        targetValue: 24,
+        currentValue: 0,
+        stage: null,
+        owner: 'piotr',
+      },
+    ],
   },
 ];
 
@@ -558,6 +599,26 @@ export async function seedProjects(
       });
     }
 
+    for (const event of project.events ?? []) {
+      const eventId = id('event', `${project.key}:${event.key}`);
+      const eventData = {
+        actorId: userIdByKey.get(event.actor)!,
+        source: 'MANUAL',
+        content: event.content,
+        createdAt: new Date(event.at),
+      };
+      await prisma.projectEvent.upsert({
+        where: { id: eventId },
+        update: eventData,
+        create: {
+          id: eventId,
+          projectId,
+          dedupeKey: `seed:${project.key}:${event.key}`,
+          ...eventData,
+        },
+      });
+    }
+
     for (const [index, goal] of project.goals.entries()) {
       const goalId = id('goal', `${project.key}:${index}`);
       await prisma.goal.upsert({
@@ -648,6 +709,25 @@ export async function seedProjects(
           create: { id: subtaskId, ...subtaskData },
         });
       }
+    }
+
+    for (const indicator of project.indicators) {
+      const indicatorId = id('indicator', `${project.key}:${indicator.key}`);
+      const indicatorData = {
+        name: indicator.name,
+        description: indicator.description,
+        targetValue: indicator.targetValue,
+        currentValue: indicator.currentValue,
+        scope: indicator.stage ? 'STAGE' : 'PROJECT',
+        stageId: indicator.stage ? id('stage', indicator.stage) : null,
+        taskId: null,
+        ownerId: userIdByKey.get(indicator.owner)!,
+      };
+      await prisma.indicator.upsert({
+        where: { id: indicatorId },
+        update: indicatorData,
+        create: { id: indicatorId, projectId, ...indicatorData },
+      });
     }
   }
 }

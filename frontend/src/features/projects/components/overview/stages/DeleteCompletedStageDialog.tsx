@@ -30,8 +30,8 @@ export default function DeleteCompletedStageDialog({
     <Modal isOpen onClose={onClose} title="Usuń zakończony etap">
       <div className="space-y-5">
         <p className="text-sm text-dark/75">
-          Etap „{stage.name}” jest zakończony. Zamiast go usuwać, zarchiwizuj go
-          — zniknie z osi czasu, ale historia działań i zadań zostanie
+          Etap „{stage.name}” jest zakończony. Zamiast go usuwać, zarchiwizuj go.
+          Zniknie z osi czasu, ale historia działań i zadań zostanie
           zachowana.
         </p>
 
@@ -53,7 +53,7 @@ export default function DeleteCompletedStageDialog({
             >
               Trwałe usunięcie skasuje {pluralizePl(actionsCount, ACTION_FORMS)}{' '}
               i {pluralizePl(tasksCount, TASK_FORMS)} razem z historią etapu.
-              Najpierw zarchiwizuj etap — usuniesz go później z listy
+              Najpierw zarchiwizuj etap, usuniesz go później z listy
               zarchiwizowanych.
             </p>
           )}

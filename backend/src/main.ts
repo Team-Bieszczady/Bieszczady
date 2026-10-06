@@ -65,6 +65,7 @@ async function bootstrap() {
     .addTag('users', 'User management')
     .addTag('projects', 'Projects, stages, goals, risks and membership')
     .addTag('tasks', 'Tasks and their subtask checklists')
+    .addTag('events', 'Activity and decision history')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

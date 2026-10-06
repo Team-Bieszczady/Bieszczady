@@ -1,3 +1,4 @@
+import { PERSON_STATUS_LABELS } from '../../features/people/constants';
 import type { PersonStatus } from '../../features/people/data';
 
 interface StatusPillProps {
@@ -12,15 +13,8 @@ const TONE: Record<PersonStatus, string> = {
   DELETED: 'bg-darkRed/10 text-darkRed',
 };
 
-const LABEL: Record<PersonStatus, string> = {
-  ACTIVE: 'Aktywne',
-  PENDING: 'Oczekuje',
-  INACTIVE: 'Nieaktywne',
-  DELETED: 'Usunięte',
-};
-
 const TITLE: Partial<Record<PersonStatus, string>> = {
-  PENDING: 'Konto aktywne — użytkownik nie zalogował się jeszcze ani razu',
+  PENDING: 'Konto aktywne, użytkownik nie zalogował się jeszcze ani razu',
 };
 
 export function StatusPill({ status, size = 'md' }: StatusPillProps) {
@@ -31,7 +25,7 @@ export function StatusPill({ status, size = 'md' }: StatusPillProps) {
       } ${TONE[status]}`}
       title={TITLE[status]}
     >
-      {LABEL[status]}
+      {PERSON_STATUS_LABELS[status]}
     </span>
   );
 }
