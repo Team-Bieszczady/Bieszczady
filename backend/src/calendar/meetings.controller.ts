@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PasswordChangeGuard } from '../auth/guards/password-change.guard';
 import { ModuleAccessGuard } from '../auth/guards/module-access.guard';
@@ -7,6 +7,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { type AuthenticatedUser } from '../auth/types/auth.types';
 import { MeetingsService } from './meetings.service';
 import { ListMeetingsQueryDto } from './dto/list-meetings-query.dto';
+import { CreateMeetingDto } from './dto/create-meeting.dto';
 
 @Controller('meetings')
 @UseGuards(JwtAuthGuard, PasswordChangeGuard, ModuleAccessGuard)
@@ -20,5 +21,13 @@ export class MeetingsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.meetingsService.findInRange(query, user);
+  }
+
+  @Post()
+  create(
+    @Body() dto: CreateMeetingDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.meetingsService.create(dto, user);
   }
 }
