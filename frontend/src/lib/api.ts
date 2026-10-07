@@ -13,6 +13,14 @@ export interface AuthenticatedUser {
   mustChangePassword: boolean;
   modules: ModuleKey[];
 }
+export interface BackendMeeting {
+  id: string;
+  projectId: string;
+  title: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+}
 
 export interface BackendUser {
   id: string;
@@ -793,6 +801,17 @@ export const api = {
         fallbackMessage: 'Nie udało się odebrać dostępu',
       },
     );
+  },
+  async getMeetings(
+    accessToken: string,
+    from: string,
+    to: string,
+  ): Promise<BackendMeeting[]> {
+    return request<BackendMeeting[]>(`/api/v1/meetings?from=${from}&to=${to}`, {
+      method: 'GET',
+      accessToken,
+      fallbackMessage: 'Nie udało się pobrać spotkań',
+    });
   },
 };
 

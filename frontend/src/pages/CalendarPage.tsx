@@ -1,5 +1,8 @@
 import { useState } from 'react';
-import { formatMonthTitle } from '../features/calendar/utils/monthGrid';
+import {
+  formatMonthTitle,
+  getMonthGridDays,
+} from '../features/calendar/utils/monthGrid';
 import {
   addDaysIso,
   endOfMonthIso,
@@ -8,8 +11,8 @@ import {
 } from '../features/projects/utils/isoDate';
 import { MonthView } from '../features/calendar/components/MonthView';
 import { ProjectFilter } from '../features/calendar/components/ProjectFilter';
-import { sampleProjects } from '../features/calendar/sampleProjects';
-import { sampleMeetings } from '../features/calendar/sampleMeetings';
+import { useMeetings } from '../features/calendar/hooks/useMeetings';
+import { useProjects } from '../features/projects/hooks/useProjectsApi';
 
 export default function CalendarPage() {
   const [anchor, setAnchor] = useState(todayIso);
@@ -23,7 +26,18 @@ export default function CalendarPage() {
       setHiddenProjectIds((prev) => [...prev, id]);
     }
   };
-  const filteredMeetings = sampleMeetings.filter(
+
+  const gridDays = getMonthGridDays(anchor);
+  const firstGridDay = gridDays[0];
+  const lastGridDay = gridDays[gridDays.length - 1];
+
+  const meetingsQuery = useMeetings(firstGridDay, lastGridDay);
+  const projectsQuery = useProjects();
+
+  const meetings = meetingsQuery.data ?? [];
+  const projects = projectsQuery.data ?? [];
+
+  const filteredMeetings = meetings.filter(
     (meeting) => !hiddenProjectIds.includes(meeting.projectId),
   );
 
@@ -72,15 +86,27 @@ export default function CalendarPage() {
           </p>
         </div>
         <ProjectFilter
-          projects={sampleProjects}
+          projects={projects}
           hiddenProjectIds={hiddenProjectIds}
           onToggle={toggleProject}
         />
       </div>
+      {meetingsQuery.isError && (
+        <div role="alert" className="flex items-center gap-3">
+          <p className="text-xs text-darkRed">Nie udało się pobrać spotkań.</p>
+          <button
+            type="button"
+            onClick={() => meetingsQuery.refetch()}
+            className="cursor-pointer text-xs font-medium text-darkGreen hover:text-darkGreenHover"
+          >
+            Spróbuj ponownie
+          </button>
+        </div>
+      )}
       <MonthView
         anchor={anchor}
         meetings={filteredMeetings}
-        projects={sampleProjects}
+        projects={projects}
       />
     </div>
   );
