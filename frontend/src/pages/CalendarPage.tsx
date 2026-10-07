@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import toast from 'react-hot-toast';
 import {
   formatMonthTitle,
   getMonthGridDays,
@@ -9,15 +10,20 @@ import {
   startOfMonthIso,
   todayIso,
 } from '../features/projects/utils/isoDate';
+import { Button } from '../components/ui/Button';
 import { MonthView } from '../features/calendar/components/MonthView';
 import { ProjectFilter } from '../features/calendar/components/ProjectFilter';
+import MeetingFormModal, {
+  type MeetingFormInputs,
+} from '../features/calendar/components/MeetingFormModal';
 import { useMeetings } from '../features/calendar/hooks/useMeetings';
+import { useCreateMeeting } from '../features/calendar/hooks/useCreateMeeting';
 import { useProjects } from '../features/projects/hooks/useProjectsApi';
 
 export default function CalendarPage() {
   const [anchor, setAnchor] = useState(todayIso);
-
   const [hiddenProjectIds, setHiddenProjectIds] = useState<string[]>([]);
+  const [isFormOpen, setIsFormOpen] = useState(false);
 
   const toggleProject = (id: string) => {
     if (hiddenProjectIds.includes(id)) {
@@ -33,6 +39,7 @@ export default function CalendarPage() {
 
   const meetingsQuery = useMeetings(firstGridDay, lastGridDay);
   const projectsQuery = useProjects();
+  const createMeeting = useCreateMeeting();
 
   const meetings = meetingsQuery.data ?? [];
   const projects = projectsQuery.data ?? [];
@@ -41,11 +48,54 @@ export default function CalendarPage() {
     (meeting) => !hiddenProjectIds.includes(meeting.projectId),
   );
 
+  const projectOptions = projects.map((project) => ({
+    value: project.id,
+    label: project.name,
+  }));
+
+  const closeForm = () => {
+    setIsFormOpen(false);
+  };
+
+  const submitMeeting = (values: MeetingFormInputs) => {
+    createMeeting.mutate(
+      {
+        projectId: values.projectId,
+        title: values.title,
+        date: values.date,
+        startTime: values.startTime,
+        endTime: values.endTime,
+        place: values.place || undefined,
+        meetingUrl: values.meetingUrl || undefined,
+        note: values.note || undefined,
+      },
+      {
+        onSuccess: () => {
+          closeForm();
+          toast.success('Spotkanie dodane');
+        },
+        onError: (error) => {
+          toast.error(error.message);
+        },
+      },
+    );
+  };
+
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 pt-16 pb-4 min-[400px]:px-6 sm:px-8 lg:pt-4">
-      <h1 className="text-base font-bold text-dark min-[500px]:text-xl lg:text-2xl">
-        Kalendarz
-      </h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-base font-bold text-dark min-[500px]:text-xl lg:text-2xl">
+          Kalendarz
+        </h1>
+        <Button
+          variant="primary"
+          size="small"
+          type="button"
+          onClick={() => setIsFormOpen(true)}
+        >
+          Dodaj spotkanie
+        </Button>
+      </div>
 
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-3">
@@ -91,6 +141,7 @@ export default function CalendarPage() {
           onToggle={toggleProject}
         />
       </div>
+
       {meetingsQuery.isError && (
         <div role="alert" className="flex items-center gap-3">
           <p className="text-xs text-darkRed">Nie udało się pobrać spotkań.</p>
@@ -103,11 +154,21 @@ export default function CalendarPage() {
           </button>
         </div>
       )}
+
       <MonthView
         anchor={anchor}
         meetings={filteredMeetings}
         projects={projects}
       />
+
+      {isFormOpen && (
+        <MeetingFormModal
+          projectOptions={projectOptions}
+          onClose={closeForm}
+          onSubmit={submitMeeting}
+          isPending={createMeeting.isPending}
+        />
+      )}
     </div>
   );
 }

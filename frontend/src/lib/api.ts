@@ -39,6 +39,17 @@ export interface BackendUser {
   updatedAt: string;
   deletedAt: string | null;
 }
+export interface NewMeeting {
+  projectId: string;
+  title: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  place?: string;
+  meetingUrl?: string;
+  note?: string;
+  inviteeIds?: string[];
+}
 
 export interface BackendFolder {
   id: string;
@@ -811,6 +822,18 @@ export const api = {
       method: 'GET',
       accessToken,
       fallbackMessage: 'Nie udało się pobrać spotkań',
+    });
+  },
+
+  async createMeeting(
+    accessToken: string,
+    meeting: NewMeeting,
+  ): Promise<BackendMeeting> {
+    return request<BackendMeeting>('/api/v1/meetings', {
+      method: 'POST',
+      accessToken,
+      body: meeting,
+      fallbackMessage: 'Nie udało się dodać spotkania',
     });
   },
 };
