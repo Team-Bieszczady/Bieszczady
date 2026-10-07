@@ -1,5 +1,5 @@
 import { useId } from 'react';
-import { Controller, useForm } from 'react-hook-form';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import { Button } from '../../../components/ui/Button';
 import { FieldError } from '../../../components/ui/FieldError';
 import { Modal } from '../../../components/ui/Modal';
@@ -8,6 +8,8 @@ import {
   FIELD_LABEL_CLASSES,
   INPUT_CLASSES,
 } from '../../../components/ui/formStyles';
+import { TimeInput } from '../../../components/ui/TimeInput';
+import { InviteeCheckboxes } from './InviteeCheckboxes';
 
 export interface MeetingFormInputs {
   projectId: string;
@@ -18,6 +20,7 @@ export interface MeetingFormInputs {
   place: string;
   meetingUrl: string;
   note: string;
+  inviteeIds: string[];
 }
 
 interface MeetingFormModalProps {
@@ -26,6 +29,9 @@ interface MeetingFormModalProps {
   onSubmit: (values: MeetingFormInputs) => void;
   isPending?: boolean;
 }
+
+const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+const TIME_FORMAT_MESSAGE = 'Wpisz godzinę jak 10:30';
 
 const TEXTAREA_CLASSES =
   'w-full resize-y rounded-lg border border-gray-300 px-3 py-2 text-xs leading-relaxed text-dark focus:border-transparent focus:ring-1 focus:ring-darkGreen focus:outline-none';
@@ -48,6 +54,7 @@ export default function MeetingFormModal({
     register,
     handleSubmit,
     control,
+    setValue,
     formState: { errors },
   } = useForm<MeetingFormInputs>({
     defaultValues: {
@@ -59,8 +66,11 @@ export default function MeetingFormModal({
       place: '',
       meetingUrl: '',
       note: '',
+      inviteeIds: [],
     },
   });
+
+  const projectId = useWatch({ control, name: 'projectId' });
 
   return (
     <Modal isOpen onClose={onClose} title="Dodaj spotkanie" size="lg">
@@ -77,7 +87,10 @@ export default function MeetingFormModal({
                 placeholder="Wybierz"
                 options={projectOptions}
                 value={field.value}
-                onChange={field.onChange}
+                onChange={(value) => {
+                  field.onChange(value);
+                  setValue('inviteeIds', []);
+                }}
                 onBlur={field.onBlur}
                 invalid={!!errors.projectId}
               />
@@ -122,12 +135,23 @@ export default function MeetingFormModal({
             <label className={FIELD_LABEL_CLASSES} htmlFor={startId}>
               Od
             </label>
-            <input
-              {...register('startTime', { required: 'Podaj godzinę' })}
-              id={startId}
-              type="time"
-              aria-invalid={!!errors.startTime}
-              className={INPUT_CLASSES}
+            <Controller
+              name="startTime"
+              control={control}
+              rules={{
+                required: 'Podaj godzinę',
+                validate: (value) =>
+                  TIME_PATTERN.test(value) || TIME_FORMAT_MESSAGE,
+              }}
+              render={({ field }) => (
+                <TimeInput
+                  id={startId}
+                  value={field.value}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  invalid={!!errors.startTime}
+                />
+              )}
             />
             <FieldError message={errors.startTime?.message} />
           </div>
@@ -135,17 +159,28 @@ export default function MeetingFormModal({
             <label className={FIELD_LABEL_CLASSES} htmlFor={endId}>
               Do
             </label>
-            <input
-              {...register('endTime', {
+            <Controller
+              name="endTime"
+              control={control}
+              rules={{
                 required: 'Podaj godzinę',
-                validate: (_value, values) =>
-                  values.endTime > values.startTime ||
-                  'Koniec musi być później niż początek',
-              })}
-              id={endId}
-              type="time"
-              aria-invalid={!!errors.endTime}
-              className={INPUT_CLASSES}
+                validate: {
+                  format: (value) =>
+                    TIME_PATTERN.test(value) || TIME_FORMAT_MESSAGE,
+                  afterStart: (value, values) =>
+                    value > values.startTime ||
+                    'Koniec musi być później niż początek',
+                },
+              }}
+              render={({ field }) => (
+                <TimeInput
+                  id={endId}
+                  value={field.value}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  invalid={!!errors.endTime}
+                />
+              )}
             />
             <FieldError message={errors.endTime?.message} />
           </div>
@@ -177,6 +212,13 @@ export default function MeetingFormModal({
             />
           </div>
         </div>
+
+        {projectId && (
+          <InviteeCheckboxes
+            projectId={projectId}
+            registration={register('inviteeIds')}
+          />
+        )}
 
         <div>
           <label className={FIELD_LABEL_CLASSES} htmlFor={noteId}>

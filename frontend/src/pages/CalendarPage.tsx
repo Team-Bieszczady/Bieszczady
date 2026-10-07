@@ -68,6 +68,7 @@ export default function CalendarPage() {
         place: values.place || undefined,
         meetingUrl: values.meetingUrl || undefined,
         note: values.note || undefined,
+        inviteeIds: values.inviteeIds,
       },
       {
         onSuccess: () => {
