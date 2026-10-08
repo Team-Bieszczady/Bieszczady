@@ -33,8 +33,9 @@ export function MeetingParticipantsSection({
   const [isAddingNew, setIsAddingNew] = useState(false);
   const searchedText = useDebouncedValue(search.trim(), SEARCH_DELAY_MS);
 
+  const isSearching = searchedText !== '';
   const attendeesQuery = useMeetingParticipants(meetingId);
-  const matchesQuery = useParticipants(searchedText);
+  const matchesQuery = useParticipants(searchedText, { enabled: isSearching });
   const addParticipant = useAddMeetingParticipant(meetingId);
   const removeParticipant = useRemoveMeetingParticipant(meetingId);
   const createParticipant = useCreateParticipant();
@@ -43,7 +44,7 @@ export function MeetingParticipantsSection({
   const attendeeIds = attendees.map((attendee) => attendee.id);
 
   let matches: BackendParticipant[] = [];
-  if (searchedText !== '') {
+  if (isSearching) {
     matches = (matchesQuery.data || [])
       .filter((participant) => !attendeeIds.includes(participant.id))
       .slice(0, MAX_MATCHES);
@@ -62,6 +63,8 @@ export function MeetingParticipantsSection({
 
   const removeFromMeeting = (attendee: MeetingParticipant) => {
     removeParticipant.mutate(attendee.id, {
+      onSuccess: () =>
+        toast.success(`Usunięto ze spotkania: ${fullName(attendee)}`),
       onError: (error) => toast.error(error.message),
     });
   };
@@ -99,8 +102,9 @@ export function MeetingParticipantsSection({
               <button
                 type="button"
                 onClick={() => removeFromMeeting(attendee)}
+                disabled={removeParticipant.isPending}
                 aria-label={`Usuń ze spotkania: ${fullName(attendee)}`}
-                className="cursor-pointer rounded-full p-0.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-darkRed"
+                className="cursor-pointer rounded-full p-0.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-darkRed disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <LuX size={12} aria-hidden="true" />
               </button>
@@ -125,7 +129,7 @@ export function MeetingParticipantsSection({
         />
       </div>
 
-      {searchedText !== '' && !isAddingNew && (
+      {isSearching && !isAddingNew && (
         <ul className="divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200">
           {matches.map((match) => (
             <li key={match.id}>

@@ -6,6 +6,17 @@ import {
   UpdateParticipantDto,
 } from './dto/participant.dto';
 
+const SAVED_FIELDS = {
+  id: true,
+  firstName: true,
+  lastName: true,
+  email: true,
+  phone: true,
+  address: true,
+  note: true,
+  consentAt: true,
+};
+
 @Injectable()
 export class ParticipantsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -57,6 +68,7 @@ export class ParticipantsService {
         consentAt: this.consentDate(dto.hasConsent, null),
         createdById: creatorId,
       },
+      select: SAVED_FIELDS,
     });
   }
 
@@ -74,6 +86,7 @@ export class ParticipantsService {
         note: dto.note || '',
         consentAt: this.consentDate(dto.hasConsent, existing.consentAt),
       },
+      select: SAVED_FIELDS,
     });
   }
 
