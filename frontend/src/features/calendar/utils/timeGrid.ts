@@ -1,6 +1,6 @@
 import type { Meeting } from '../types';
 
-export const HOUR_HEIGHT = 48;
+export const HOUR_HEIGHT = 60;
 
 const DEFAULT_FIRST_HOUR = 8;
 const DEFAULT_LAST_HOUR = 18;

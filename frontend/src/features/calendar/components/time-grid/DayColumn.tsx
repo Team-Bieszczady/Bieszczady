@@ -1,4 +1,3 @@
-import { Fragment } from 'react';
 import type { CalendarProject, Meeting } from '../../types';
 import { minutesToTop, placeSideBySide } from '../../utils/timeGrid';
 import { MeetingBlock } from './MeetingBlock';
@@ -22,20 +21,15 @@ function HourLines({
   hours: number[];
   firstHour: number;
 }) {
-  return hours.map((hour, index) => (
-    <Fragment key={hour}>
-      {index > 0 && (
-        <div
-          className="absolute inset-x-0 border-t border-gray-200"
-          style={{ top: minutesToTop(hour * 60, firstHour) }}
-        />
-      )}
+  return hours
+    .slice(1)
+    .map((hour) => (
       <div
-        className="absolute inset-x-0 border-t border-gray-100"
-        style={{ top: minutesToTop(hour * 60 + 30, firstHour) }}
+        key={hour}
+        className="absolute inset-x-0 border-t border-gray-200"
+        style={{ top: minutesToTop(hour * 60, firstHour) }}
       />
-    </Fragment>
-  ));
+    ));
 }
 
 function NowLine({ top }: { top: number }) {

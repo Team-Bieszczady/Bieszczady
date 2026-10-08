@@ -10,29 +10,30 @@ import {
   type PlacedMeeting,
 } from '../../utils/timeGrid';
 
-const MIN_BLOCK_HEIGHT = 20;
-const DAY_EDGE_GAP = 8;
-const WEEK_EDGE_GAP = 3;
+const MIN_BLOCK_HEIGHT = 22;
 
 const BLOCK_CLASSES =
-  'absolute flex cursor-pointer flex-col items-start justify-start overflow-hidden rounded-r-md text-left text-dark transition hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-darkGreen';
+  'absolute flex cursor-pointer flex-col items-start justify-start overflow-hidden rounded-r-lg text-left text-dark transition hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-darkGreen';
 
-const DAY_PADDING: Record<MeetingSize, string> = {
+const PADDING: Record<MeetingSize, string> = {
   short: 'py-0.5 pr-2 pl-3',
-  medium: 'py-1 pr-3 pl-3.5',
-  long: 'py-1.5 pr-3 pl-3.5',
+  medium: 'py-1.5 pr-2 pl-3',
+  long: 'py-2 pr-2 pl-3',
 };
 
-const WEEK_PADDING: Record<MeetingSize, string> = {
-  short: 'py-0.5 pr-1.5 pl-2',
-  medium: 'py-1 pr-1.5 pl-2.5',
-  long: 'py-1.5 pr-1.5 pl-2.5',
+const DAY_STYLE = {
+  title: 'text-sm',
+  detail: 'text-xs',
+  edgeGap: 8,
 };
 
-const DAY_TEXT = { title: 'text-[13px]', detail: 'text-xs' };
-const WEEK_TEXT = { title: 'text-xs', detail: 'text-[11px]' };
+const WEEK_STYLE = {
+  title: 'text-xs',
+  detail: 'text-[11px]',
+  edgeGap: 4,
+};
 
-type TextSizes = typeof DAY_TEXT;
+type BlockStyle = typeof DAY_STYLE;
 
 const STATUS_DESCRIPTIONS: Record<MeetingStatus, string> = {
   PLANNED: '',
@@ -61,53 +62,43 @@ function timeText(meeting: Meeting, withPlace: boolean) {
   return withPlace && meeting.place ? `${time}, ${meeting.place}` : time;
 }
 
-interface ShortContentProps {
+interface ContentProps {
   meeting: Meeting;
-  text: TextSizes;
+  project: CalendarProject | undefined;
+  detailed: boolean;
+  style: BlockStyle;
 }
 
-function ShortContent({ meeting, text }: ShortContentProps) {
+function ShortContent({ meeting, style }: ContentProps) {
   return (
-    <p className="w-full truncate leading-4">
-      <span className={`font-semibold ${text.title}`}>
+    <p className="w-full truncate leading-5">
+      <span className={`font-semibold ${style.title}`}>
         {titleText(meeting)}
       </span>{' '}
-      <span className={`text-gray-500 ${text.detail}`}>
+      <span className={`text-gray-500 ${style.detail}`}>
         {meeting.startTime}
       </span>
     </p>
   );
 }
 
-interface FullContentProps {
-  meeting: Meeting;
-  project: CalendarProject | undefined;
-  size: MeetingSize;
-  detailed: boolean;
-  text: TextSizes;
-}
-
-function FullContent({
-  meeting,
-  project,
-  size,
-  detailed,
-  text,
-}: FullContentProps) {
-  const titleClamp = size === 'long' && !detailed ? 'line-clamp-2' : 'truncate';
-
+function FullContent({ meeting, project, detailed, style }: ContentProps) {
   return (
     <>
       <p
-        className={`w-full leading-4 font-semibold ${text.title} ${titleClamp}`}
+        className={`w-full leading-snug font-semibold ${style.title} ${detailed ? 'truncate' : 'line-clamp-2'}`}
       >
         {titleText(meeting)}
       </p>
-      <p className={`w-full truncate leading-4 text-gray-500 ${text.detail}`}>
+      <p
+        className={`mt-1 w-full truncate leading-4 text-gray-500 ${style.detail}`}
+      >
         {timeText(meeting, detailed)}
       </p>
-      {detailed && size === 'long' && project && (
-        <p className={`w-full truncate leading-4 text-gray-400 ${text.detail}`}>
+      {detailed && project && (
+        <p
+          className={`w-full truncate leading-4 text-gray-400 ${style.detail}`}
+        >
           {project.name}
         </p>
       )}
@@ -124,17 +115,15 @@ export function MeetingBlock({
 }: MeetingBlockProps) {
   const { meeting } = placed;
   const size = meetingSize(meeting);
-  const padding = detailed ? DAY_PADDING[size] : WEEK_PADDING[size];
-  const text = detailed ? DAY_TEXT : WEEK_TEXT;
+  const style = detailed ? DAY_STYLE : WEEK_STYLE;
   const colors = meetingColors(project?.color);
   const isCancelled = meeting.status === 'CANCELLED';
 
   const top = minutesToTop(toMinutes(meeting.startTime), firstHour);
   const bottom = minutesToTop(toMinutes(meeting.endTime), firstHour);
-  const { left, width } = horizontalPlacement(
-    placed,
-    detailed ? DAY_EDGE_GAP : WEEK_EDGE_GAP,
-  );
+  const { left, width } = horizontalPlacement(placed, style.edgeGap);
+
+  const Content = size === 'short' ? ShortContent : FullContent;
 
   return (
     <button
@@ -148,23 +137,18 @@ export function MeetingBlock({
         left,
         width,
       }}
-      className={`${BLOCK_CLASSES} ${padding} ${colors.tint} ${isCancelled ? 'line-through opacity-60' : ''}`}
+      className={`${BLOCK_CLASSES} ${PADDING[size]} ${colors.tint} ${isCancelled ? 'line-through opacity-60' : ''}`}
     >
       <span
         aria-hidden="true"
-        className={`absolute inset-y-0 left-0 w-0.75 rounded-full ${colors.accent}`}
+        className={`absolute inset-y-0 left-0 w-1 rounded-full ${colors.accent}`}
       />
-      {size === 'short' ? (
-        <ShortContent meeting={meeting} text={text} />
-      ) : (
-        <FullContent
-          meeting={meeting}
-          project={project}
-          size={size}
-          detailed={detailed}
-          text={text}
-        />
-      )}
+      <Content
+        meeting={meeting}
+        project={project}
+        detailed={detailed}
+        style={style}
+      />
     </button>
   );
 }

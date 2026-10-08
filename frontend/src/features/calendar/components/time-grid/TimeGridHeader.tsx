@@ -46,13 +46,13 @@ export function TimeGridHeader({
       {days.map((day, index) => (
         <div
           key={day}
-          className="flex flex-1 justify-center border-l border-gray-200 py-3"
+          className={`flex flex-1 justify-center border-l border-gray-200 py-3 ${day === today ? 'bg-gray-50' : ''}`}
         >
           <button
             type="button"
             onClick={() => onDayClick(day)}
             aria-label={`Pokaż dzień: ${formatFullDay(day)}`}
-            className={`cursor-pointer rounded-full px-3 py-0.5 text-[13px] transition-colors ${dayButtonClasses(day === today, index >= 5)}`}
+            className={`cursor-pointer rounded-full px-3.5 py-1 text-[13px] transition-colors ${dayButtonClasses(day === today, index >= 5)}`}
           >
             {WEEKDAY_SHORT_NAMES[index]} {dayNumber(day)}
           </button>

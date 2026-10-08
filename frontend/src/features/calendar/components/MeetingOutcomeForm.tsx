@@ -10,6 +10,13 @@ import { AttendanceFilesSection } from './AttendanceFilesSection';
 
 export const MEETING_OUTCOME_FORM_ID = 'meeting-outcome-form';
 
+const LABEL_CLASSES = 'mb-2 block text-sm text-dark/80';
+
+const OUTCOME_OPTIONS = [
+  { value: 'HELD', label: '✓ Odbyło się' },
+  { value: 'CANCELLED', label: '✕ Odwołane' },
+];
+
 interface OutcomeInputs {
   status: '' | MeetingOutcome['status'];
   attendeeCount: string;
@@ -20,10 +27,32 @@ interface MeetingOutcomeFormProps {
   onSubmit: (outcome: MeetingOutcome) => void;
 }
 
-const OUTCOME_OPTIONS = [
-  { value: 'HELD', label: '✓ Odbyło się' },
-  { value: 'CANCELLED', label: '✕ Odwołane' },
-];
+function AttendanceScans({
+  meeting,
+  hasStarted,
+}: {
+  meeting: BackendMeetingDetails;
+  hasStarted: boolean;
+}) {
+  if (!hasStarted) {
+    return (
+      <div>
+        <p className={LABEL_CLASSES}>Skany listy obecności</p>
+        <p className="text-xs text-grayText">
+          Skany dodasz w dniu spotkania albo później.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <AttendanceFilesSection
+      meetingId={meeting.id}
+      files={meeting.attendanceFiles}
+      editable
+    />
+  );
+}
 
 export function MeetingOutcomeForm({
   meeting,
@@ -45,6 +74,7 @@ export function MeetingOutcomeForm({
   });
 
   const status = useWatch({ control, name: 'status' });
+  const isCancelled = status === 'CANCELLED';
 
   const submit = ({ status, attendeeCount }: OutcomeInputs) => {
     if (status === 'HELD') {
@@ -63,6 +93,7 @@ export function MeetingOutcomeForm({
       <div>
         <RadioPillGroup
           legend="Potwierdzenie realizacji"
+          legendClassName={LABEL_CLASSES}
           options={OUTCOME_OPTIONS}
           value={status}
           registration={register('status', {
@@ -78,9 +109,9 @@ export function MeetingOutcomeForm({
         <FieldError message={errors.status?.message} />
       </div>
 
-      {status === 'HELD' && (
+      {!isCancelled && (
         <div>
-          <label htmlFor={countId} className="mb-2 block text-sm text-dark/80">
+          <label htmlFor={countId} className={LABEL_CLASSES}>
             Rzeczywista liczba uczestników
           </label>
           <input
@@ -102,12 +133,8 @@ export function MeetingOutcomeForm({
         </div>
       )}
 
-      {status === 'HELD' && hasStarted && (
-        <AttendanceFilesSection
-          meetingId={meeting.id}
-          files={meeting.attendanceFiles}
-          editable
-        />
+      {!isCancelled && (
+        <AttendanceScans meeting={meeting} hasStarted={hasStarted} />
       )}
 
       {meeting.confirmedBy && meeting.confirmedAt && (
