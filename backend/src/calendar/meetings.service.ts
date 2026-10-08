@@ -11,6 +11,8 @@ import { ListMeetingsQueryDto } from './dto/list-meetings-query.dto';
 import { CreateMeetingDto } from './dto/create-meeting.dto';
 import { UpdateMeetingDto } from './dto/update-meeting.dto';
 import { MeetingOutcomeDto } from './dto/meeting-outcome.dto';
+import { isoDay, todayInPoland } from './dates';
+import { ATTENDANCE_FILE_FIELDS, toAttendanceFile } from './attendance-files';
 
 type Viewer = { id: string; isDirector: boolean };
 
@@ -28,12 +30,6 @@ const SAVED_MEETING_FIELDS = {
   attendeeCount: true,
   confirmedAt: true,
 } satisfies Prisma.MeetingSelect;
-
-function todayInPoland() {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Warsaw' }).format(
-    new Date(),
-  );
-}
 
 @Injectable()
 export class MeetingsService {
@@ -79,6 +75,10 @@ export class MeetingsService {
             user: { select: { id: true, firstName: true, lastName: true } },
           },
         },
+        attendanceFiles: {
+          where: { document: { deletedAt: null } },
+          select: ATTENDANCE_FILE_FIELDS,
+        },
       },
     });
 
@@ -86,14 +86,18 @@ export class MeetingsService {
       throw new NotFoundException('Nie znaleziono spotkania');
     }
 
-    const canManage =
-      !meeting.project.archivedAt &&
-      (await this.canManage(
-        { projectId: meeting.projectId, createdById: meeting.createdBy.id },
-        viewer,
-      ));
+    const isManager = await this.canManage(
+      { projectId: meeting.projectId, createdById: meeting.createdBy.id },
+      viewer,
+    );
 
-    return { ...meeting, canManage };
+    return {
+      ...meeting,
+      attendanceFiles: isManager
+        ? meeting.attendanceFiles.map(toAttendanceFile)
+        : [],
+      canManage: isManager && !meeting.project.archivedAt,
+    };
   }
 
   async create(dto: CreateMeetingDto, creator: Viewer) {
@@ -170,7 +174,7 @@ export class MeetingsService {
     const meeting = await this.findManageable(id, editor);
     const held = dto.status === 'HELD';
 
-    if (held && meeting.date.toISOString().slice(0, 10) > todayInPoland()) {
+    if (held && isoDay(meeting.date) > todayInPoland()) {
       throw new BadRequestException(
         'Spotkanie można oznaczyć jako odbyte dopiero w dniu, w którym się odbywa',
       );
@@ -200,18 +204,24 @@ export class MeetingsService {
     });
   }
 
-  private async findManageable(id: string, viewer: Viewer) {
+  async findManageable(
+    id: string,
+    viewer: Viewer,
+    { readOnly = false }: { readOnly?: boolean } = {},
+  ) {
     const meeting = await this.prisma.meeting.findFirst({
       where: { id, deletedAt: null, ...this.visibleTo(viewer) },
       select: {
         projectId: true,
+        title: true,
         date: true,
+        status: true,
         createdById: true,
         project: { select: { archivedAt: true } },
       },
     });
     if (!meeting) throw new NotFoundException('Nie znaleziono spotkania');
-    if (meeting.project.archivedAt)
+    if (meeting.project.archivedAt && !readOnly)
       throw new ForbiddenException('Projekt jest zarchiwizowany');
 
     if (!(await this.canManage(meeting, viewer))) {

@@ -24,5 +24,6 @@ import { DocumentAccessController } from './document-access.controller';
     DocumentAccessService,
   ],
   imports: [UsersModule, ProjectsModule],
+  exports: [StorageService],
 })
 export class DocumentsModule {}
