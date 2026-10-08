@@ -19,12 +19,29 @@ import MeetingFormModal, {
 import MeetingDetailsModal from '../features/calendar/components/MeetingDetailsModal';
 import { useMeetings } from '../features/calendar/hooks/useMeetings';
 import { useCreateMeeting } from '../features/calendar/hooks/useCreateMeeting';
+import { useUpdateMeeting } from '../features/calendar/hooks/useUpdateMeeting';
 import { useProjects } from '../features/projects/hooks/useProjectsApi';
+import type { BackendMeetingDetails, MeetingChanges } from '../lib/api';
+
+function toMeetingChanges(values: MeetingFormInputs): MeetingChanges {
+  return {
+    title: values.title,
+    date: values.date,
+    startTime: values.startTime,
+    endTime: values.endTime,
+    place: values.place || undefined,
+    meetingUrl: values.meetingUrl || undefined,
+    note: values.note || undefined,
+    inviteeIds: values.inviteeIds,
+  };
+}
 
 export default function CalendarPage() {
   const [anchor, setAnchor] = useState(todayIso);
   const [hiddenProjectIds, setHiddenProjectIds] = useState<string[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editedMeeting, setEditedMeeting] =
+    useState<BackendMeetingDetails | null>(null);
   const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(
     null,
   );
@@ -44,6 +61,7 @@ export default function CalendarPage() {
   const meetingsQuery = useMeetings(firstGridDay, lastGridDay);
   const projectsQuery = useProjects();
   const createMeeting = useCreateMeeting();
+  const updateMeeting = useUpdateMeeting();
 
   const meetings = meetingsQuery.data ?? [];
   const projects = projectsQuery.data ?? [];
@@ -57,32 +75,44 @@ export default function CalendarPage() {
     label: project.name,
   }));
 
-  const closeForm = () => {
-    setIsFormOpen(false);
+  const openAddForm = () => {
+    setEditedMeeting(null);
+    setIsFormOpen(true);
   };
 
+  const openEditForm = (meeting: BackendMeetingDetails) => {
+    setSelectedMeetingId(null);
+    setEditedMeeting(meeting);
+    setIsFormOpen(true);
+  };
+
+  const closeForm = () => {
+    setIsFormOpen(false);
+    setEditedMeeting(null);
+  };
+
+  const afterSave = (message: string) => ({
+    onSuccess: () => {
+      closeForm();
+      toast.success(message);
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+
   const submitMeeting = (values: MeetingFormInputs) => {
+    if (editedMeeting) {
+      updateMeeting.mutate(
+        { id: editedMeeting.id, changes: toMeetingChanges(values) },
+        afterSave('Zmiany zapisane'),
+      );
+      return;
+    }
+
     createMeeting.mutate(
-      {
-        projectId: values.projectId,
-        title: values.title,
-        date: values.date,
-        startTime: values.startTime,
-        endTime: values.endTime,
-        place: values.place || undefined,
-        meetingUrl: values.meetingUrl || undefined,
-        note: values.note || undefined,
-        inviteeIds: values.inviteeIds,
-      },
-      {
-        onSuccess: () => {
-          closeForm();
-          toast.success('Spotkanie dodane');
-        },
-        onError: (error) => {
-          toast.error(error.message);
-        },
-      },
+      { projectId: values.projectId, ...toMeetingChanges(values) },
+      afterSave('Spotkanie dodane'),
     );
   };
 
@@ -96,7 +126,7 @@ export default function CalendarPage() {
           variant="primary"
           size="small"
           type="button"
-          onClick={() => setIsFormOpen(true)}
+          onClick={openAddForm}
         >
           Dodaj spotkanie
         </Button>
@@ -171,15 +201,17 @@ export default function CalendarPage() {
         <MeetingDetailsModal
           meetingId={selectedMeetingId}
           onClose={() => setSelectedMeetingId(null)}
+          onEdit={openEditForm}
         />
       )}
 
       {isFormOpen && (
         <MeetingFormModal
+          meeting={editedMeeting ?? undefined}
           projectOptions={projectOptions}
           onClose={closeForm}
           onSubmit={submitMeeting}
-          isPending={createMeeting.isPending}
+          isPending={createMeeting.isPending || updateMeeting.isPending}
         />
       )}
     </div>

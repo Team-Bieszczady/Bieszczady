@@ -51,6 +51,8 @@ export interface NewMeeting {
   inviteeIds?: string[];
 }
 
+export type MeetingChanges = Omit<NewMeeting, 'projectId'>;
+
 export interface MeetingPerson {
   id: string;
   firstName: string;
@@ -65,6 +67,7 @@ export interface BackendMeetingDetails extends BackendMeeting {
   project: { name: string };
   createdBy: MeetingPerson;
   invitees: { user: MeetingPerson }[];
+  canManage: boolean;
 }
 
 export interface BackendFolder {
@@ -860,6 +863,18 @@ export const api = {
       method: 'GET',
       accessToken,
       fallbackMessage: 'Nie udało się pobrać spotkania',
+    });
+  },
+  async updateMeeting(
+    accessToken: string,
+    id: string,
+    changes: MeetingChanges,
+  ): Promise<BackendMeeting> {
+    return request<BackendMeeting>(`/api/v1/meetings/${id}`, {
+      method: 'PATCH',
+      accessToken,
+      body: changes,
+      fallbackMessage: 'Nie udało się zapisać spotkania',
     });
   },
 };

@@ -1,11 +1,21 @@
-import { LuClock, LuFileText, LuLink, LuMapPin, LuUsers } from 'react-icons/lu';
+import {
+  LuClock,
+  LuFileText,
+  LuLink,
+  LuMapPin,
+  LuPencil,
+  LuUsers,
+} from 'react-icons/lu';
+import { Button } from '../../../components/ui/Button';
 import { Modal } from '../../../components/ui/Modal';
+import type { BackendMeetingDetails } from '../../../lib/api';
 import { formatStageDate } from '../../projects/utils/isoDate';
 import { useMeeting } from '../hooks/useMeeting';
 
 interface MeetingDetailsModalProps {
   meetingId: string;
   onClose: () => void;
+  onEdit: (meeting: BackendMeetingDetails) => void;
 }
 
 const ROW_CLASSES = 'flex items-start gap-3 text-sm text-dark';
@@ -28,6 +38,7 @@ function formatCreatedAt(iso: string) {
 export default function MeetingDetailsModal({
   meetingId,
   onClose,
+  onEdit,
 }: MeetingDetailsModalProps) {
   const meetingQuery = useMeeting(meetingId);
   const meeting = meetingQuery.data;
@@ -125,6 +136,21 @@ export default function MeetingDetailsModal({
             Utworzył(a): {meeting.createdBy.firstName}{' '}
             {meeting.createdBy.lastName}, {formatCreatedAt(meeting.createdAt)}
           </p>
+        </div>
+      )}
+
+      {meeting?.canManage && (
+        <div className="mt-6 flex justify-end border-t border-gray-200 pt-4">
+          <Button
+            variant="outline"
+            size="small"
+            type="button"
+            onClick={() => onEdit(meeting)}
+            className="gap-1.5"
+          >
+            <LuPencil size={14} aria-hidden="true" />
+            Edytuj
+          </Button>
         </div>
       )}
     </Modal>

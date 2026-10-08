@@ -7,6 +7,7 @@ import { Modal } from '../../../components/ui/Modal';
 import { Select, type SelectOption } from '../../../components/ui/Select';
 import { TimeInput } from '../../../components/ui/TimeInput';
 import { INPUT_CLASSES } from '../../../components/ui/formStyles';
+import type { BackendMeetingDetails } from '../../../lib/api';
 import { InviteeCheckboxes } from './InviteeCheckboxes';
 
 export interface MeetingFormInputs {
@@ -22,6 +23,7 @@ export interface MeetingFormInputs {
 }
 
 interface MeetingFormModalProps {
+  meeting?: BackendMeetingDetails;
   projectOptions: SelectOption[];
   onClose: () => void;
   onSubmit: (values: MeetingFormInputs) => void;
@@ -36,6 +38,7 @@ const TEXTAREA_CLASSES =
   'w-full resize-y rounded-lg border border-gray-300 px-3 py-2 text-xs leading-relaxed text-dark focus:border-transparent focus:ring-1 focus:ring-darkGreen focus:outline-none';
 
 export default function MeetingFormModal({
+  meeting,
   projectOptions,
   onClose,
   onSubmit,
@@ -54,15 +57,15 @@ export default function MeetingFormModal({
     formState: { errors },
   } = useForm<MeetingFormInputs>({
     defaultValues: {
-      projectId: '',
-      title: '',
-      date: '',
-      startTime: '',
-      endTime: '',
-      place: '',
-      meetingUrl: '',
-      note: '',
-      inviteeIds: [],
+      projectId: meeting?.projectId ?? '',
+      title: meeting?.title ?? '',
+      date: meeting?.date ?? '',
+      startTime: meeting?.startTime ?? '',
+      endTime: meeting?.endTime ?? '',
+      place: meeting?.place ?? '',
+      meetingUrl: meeting?.meetingUrl ?? '',
+      note: meeting?.note ?? '',
+      inviteeIds: meeting?.invitees.map(({ user }) => user.id) ?? [],
     },
   });
 
@@ -73,7 +76,12 @@ export default function MeetingFormModal({
     errors.endTime?.message;
 
   return (
-    <Modal isOpen onClose={onClose} title="Dodaj spotkanie" size="lg">
+    <Modal
+      isOpen
+      onClose={onClose}
+      title={meeting ? 'Edytuj spotkanie' : 'Dodaj spotkanie'}
+      size="lg"
+    >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div>
           <label className={LABEL_CLASSES} htmlFor={titleId}>
@@ -96,26 +104,34 @@ export default function MeetingFormModal({
 
         <div>
           <p className={LABEL_CLASSES}>Projekt</p>
-          <Controller
-            name="projectId"
-            control={control}
-            rules={{ validate: (value) => !!value || 'Wybierz projekt' }}
-            render={({ field }) => (
-              <Select
-                size="md"
-                placeholder="Wybierz projekt"
-                options={projectOptions}
-                value={field.value}
-                onChange={(value) => {
-                  field.onChange(value);
-                  setValue('inviteeIds', []);
-                }}
-                onBlur={field.onBlur}
-                invalid={!!errors.projectId}
+          {meeting ? (
+            <p className="flex h-8 items-center rounded-lg border border-gray-200 bg-gray-50 px-3 text-xs text-dark/75">
+              {meeting.project.name}
+            </p>
+          ) : (
+            <>
+              <Controller
+                name="projectId"
+                control={control}
+                rules={{ validate: (value) => !!value || 'Wybierz projekt' }}
+                render={({ field }) => (
+                  <Select
+                    size="md"
+                    placeholder="Wybierz projekt"
+                    options={projectOptions}
+                    value={field.value}
+                    onChange={(value) => {
+                      field.onChange(value);
+                      setValue('inviteeIds', []);
+                    }}
+                    onBlur={field.onBlur}
+                    invalid={!!errors.projectId}
+                  />
+                )}
               />
-            )}
-          />
-          <FieldError message={errors.projectId?.message} />
+              <FieldError message={errors.projectId?.message} />
+            </>
+          )}
         </div>
 
         <fieldset>

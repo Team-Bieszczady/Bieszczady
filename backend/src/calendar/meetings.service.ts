@@ -9,40 +9,27 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ListMeetingsQueryDto } from './dto/list-meetings-query.dto';
 import { CreateMeetingDto } from './dto/create-meeting.dto';
+import { UpdateMeetingDto } from './dto/update-meeting.dto';
+
+type Viewer = { id: string; isDirector: boolean };
+
+const SAVED_MEETING_FIELDS = {
+  id: true,
+  projectId: true,
+  title: true,
+  date: true,
+  startTime: true,
+  endTime: true,
+  place: true,
+  meetingUrl: true,
+  note: true,
+} satisfies Prisma.MeetingSelect;
 
 @Injectable()
 export class MeetingsService {
   constructor(private readonly prisma: PrismaService) {}
-  private visibleTo(viewer: {
-    id: string;
-    isDirector: boolean;
-  }): Prisma.MeetingWhereInput {
-    if (viewer.isDirector) return {};
 
-    return {
-      OR: [
-        {
-          project: {
-            members: {
-              some: {
-                userId: viewer.id,
-                projectRole: { in: ['COORDINATOR', 'EXECUTOR'] },
-              },
-            },
-          },
-        },
-        {
-          invitees: { some: { userId: viewer.id } },
-          project: { members: { some: { userId: viewer.id } } },
-        },
-      ],
-    };
-  }
-
-  async findInRange(
-    query: ListMeetingsQueryDto,
-    viewer: { id: string; isDirector: boolean },
-  ) {
+  async findInRange(query: ListMeetingsQueryDto, viewer: Viewer) {
     if (query.from > query.to) {
       throw new BadRequestException(
         'Data początkowa nie może być późniejsza niż końcowa',
@@ -66,21 +53,14 @@ export class MeetingsService {
       },
     });
   }
-  async findOne(id: string, viewer: { id: string; isDirector: boolean }) {
+
+  async findOne(id: string, viewer: Viewer) {
     const meeting = await this.prisma.meeting.findFirst({
       where: { id, deletedAt: null, ...this.visibleTo(viewer) },
       select: {
-        id: true,
-        projectId: true,
-        title: true,
-        date: true,
-        startTime: true,
-        endTime: true,
-        place: true,
-        meetingUrl: true,
-        note: true,
+        ...SAVED_MEETING_FIELDS,
         createdAt: true,
-        project: { select: { name: true } },
+        project: { select: { name: true, archivedAt: true } },
         createdBy: { select: { id: true, firstName: true, lastName: true } },
         invitees: {
           select: {
@@ -94,13 +74,17 @@ export class MeetingsService {
       throw new NotFoundException('Nie znaleziono spotkania');
     }
 
-    return meeting;
+    const canManage =
+      !meeting.project.archivedAt &&
+      (await this.canManage(
+        { projectId: meeting.projectId, createdById: meeting.createdBy.id },
+        viewer,
+      ));
+
+    return { ...meeting, canManage };
   }
 
-  async create(
-    dto: CreateMeetingDto,
-    creator: { id: string; isDirector: boolean },
-  ) {
+  async create(dto: CreateMeetingDto, creator: Viewer) {
     const project = await this.prisma.project.findUnique({
       where: { id: dto.projectId },
       select: { id: true, archivedAt: true },
@@ -121,24 +105,10 @@ export class MeetingsService {
       }
     }
 
-    if (dto.startTime >= dto.endTime) {
-      throw new BadRequestException(
-        'Godzina zakończenia musi być późniejsza niż rozpoczęcia',
-      );
-    }
+    this.assertEndsAfterStart(dto);
 
     const inviteeIds = dto.inviteeIds ?? [];
-    if (inviteeIds.length > 0) {
-      const members = await this.prisma.projectMember.findMany({
-        where: { projectId: dto.projectId, userId: { in: inviteeIds } },
-        select: { userId: true },
-      });
-      if (members.length !== inviteeIds.length) {
-        throw new BadRequestException(
-          'Niektórzy zaproszeni nie są członkami projektu',
-        );
-      }
-    }
+    await this.assertInviteesOnTeam(dto.projectId, inviteeIds);
 
     return this.prisma.meeting.create({
       data: {
@@ -151,22 +121,117 @@ export class MeetingsService {
         meetingUrl: dto.meetingUrl,
         note: dto.note,
         createdById: creator.id,
-        invitees:
-          inviteeIds.length > 0
-            ? { create: inviteeIds.map((userId) => ({ userId })) }
-            : undefined,
+        invitees: { create: inviteeIds.map((userId) => ({ userId })) },
       },
+      select: SAVED_MEETING_FIELDS,
+    });
+  }
+
+  async update(id: string, dto: UpdateMeetingDto, editor: Viewer) {
+    const meeting = await this.prisma.meeting.findFirst({
+      where: { id, deletedAt: null, ...this.visibleTo(editor) },
       select: {
-        id: true,
         projectId: true,
-        title: true,
-        date: true,
-        startTime: true,
-        endTime: true,
-        place: true,
-        meetingUrl: true,
-        note: true,
+        createdById: true,
+        project: { select: { archivedAt: true } },
       },
     });
+    if (!meeting) throw new NotFoundException('Nie znaleziono spotkania');
+    if (meeting.project.archivedAt)
+      throw new ForbiddenException('Projekt jest zarchiwizowany');
+
+    if (!(await this.canManage(meeting, editor))) {
+      throw new ForbiddenException(
+        'Spotkanie może zmienić dyrektor, koordynator projektu albo osoba, która je dodała',
+      );
+    }
+
+    this.assertEndsAfterStart(dto);
+
+    const inviteeIds = dto.inviteeIds ?? [];
+    await this.assertInviteesOnTeam(meeting.projectId, inviteeIds);
+
+    return this.prisma.meeting.update({
+      where: { id },
+      data: {
+        title: dto.title,
+        date: new Date(dto.date),
+        startTime: dto.startTime,
+        endTime: dto.endTime,
+        place: dto.place || null,
+        meetingUrl: dto.meetingUrl || null,
+        note: dto.note ?? '',
+        invitees: {
+          deleteMany: {},
+          create: inviteeIds.map((userId) => ({ userId })),
+        },
+      },
+      select: SAVED_MEETING_FIELDS,
+    });
+  }
+
+  private visibleTo(viewer: Viewer): Prisma.MeetingWhereInput {
+    if (viewer.isDirector) return {};
+
+    return {
+      OR: [
+        {
+          project: {
+            members: {
+              some: {
+                userId: viewer.id,
+                projectRole: { in: ['COORDINATOR', 'EXECUTOR'] },
+              },
+            },
+          },
+        },
+        {
+          invitees: { some: { userId: viewer.id } },
+          project: { members: { some: { userId: viewer.id } } },
+        },
+      ],
+    };
+  }
+
+  private async canManage(
+    meeting: { projectId: string; createdById: string },
+    viewer: Viewer,
+  ) {
+    if (viewer.isDirector) return true;
+
+    const membership = await this.prisma.projectMember.findUnique({
+      where: {
+        projectId_userId: { projectId: meeting.projectId, userId: viewer.id },
+      },
+      select: { projectRole: true },
+    });
+
+    if (membership?.projectRole === 'COORDINATOR') return true;
+    return (
+      membership?.projectRole === 'EXECUTOR' &&
+      meeting.createdById === viewer.id
+    );
+  }
+
+  private assertEndsAfterStart(times: { startTime: string; endTime: string }) {
+    if (times.startTime >= times.endTime) {
+      throw new BadRequestException(
+        'Godzina zakończenia musi być późniejsza niż rozpoczęcia',
+      );
+    }
+  }
+
+  private async assertInviteesOnTeam(projectId: string, inviteeIds: string[]) {
+    if (inviteeIds.length === 0) return;
+
+    const members = await this.prisma.projectMember.findMany({
+      where: { projectId, userId: { in: inviteeIds } },
+      select: { userId: true },
+    });
+    if (members.length !== inviteeIds.length) {
+      throw new BadRequestException(
+        'Niektórzy zaproszeni nie są członkami projektu',
+      );
+    }
   }
 }

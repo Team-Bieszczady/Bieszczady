@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -17,6 +18,7 @@ import { type AuthenticatedUser } from '../auth/types/auth.types';
 import { MeetingsService } from './meetings.service';
 import { ListMeetingsQueryDto } from './dto/list-meetings-query.dto';
 import { CreateMeetingDto } from './dto/create-meeting.dto';
+import { UpdateMeetingDto } from './dto/update-meeting.dto';
 
 @Controller('meetings')
 @UseGuards(JwtAuthGuard, PasswordChangeGuard, ModuleAccessGuard)
@@ -46,5 +48,14 @@ export class MeetingsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.meetingsService.create(dto, user);
+  }
+
+  @Patch(':id')
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateMeetingDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.meetingsService.update(id, dto, user);
   }
 }
