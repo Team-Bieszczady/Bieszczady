@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PasswordChangeGuard } from '../auth/guards/password-change.guard';
 import { ModuleAccessGuard } from '../auth/guards/module-access.guard';
@@ -21,6 +30,14 @@ export class MeetingsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.meetingsService.findInRange(query, user);
+  }
+
+  @Get(':id')
+  findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.meetingsService.findOne(id, user);
   }
 
   @Post()

@@ -13,6 +13,31 @@ import { CreateMeetingDto } from './dto/create-meeting.dto';
 @Injectable()
 export class MeetingsService {
   constructor(private readonly prisma: PrismaService) {}
+  private visibleTo(viewer: {
+    id: string;
+    isDirector: boolean;
+  }): Prisma.MeetingWhereInput {
+    if (viewer.isDirector) return {};
+
+    return {
+      OR: [
+        {
+          project: {
+            members: {
+              some: {
+                userId: viewer.id,
+                projectRole: { in: ['COORDINATOR', 'EXECUTOR'] },
+              },
+            },
+          },
+        },
+        {
+          invitees: { some: { userId: viewer.id } },
+          project: { members: { some: { userId: viewer.id } } },
+        },
+      ],
+    };
+  }
 
   async findInRange(
     query: ListMeetingsQueryDto,
@@ -24,32 +49,11 @@ export class MeetingsService {
       );
     }
 
-    const visibility: Prisma.MeetingWhereInput = viewer.isDirector
-      ? {}
-      : {
-          OR: [
-            {
-              project: {
-                members: {
-                  some: {
-                    userId: viewer.id,
-                    projectRole: { in: ['COORDINATOR', 'EXECUTOR'] },
-                  },
-                },
-              },
-            },
-            {
-              invitees: { some: { userId: viewer.id } },
-              project: { members: { some: { userId: viewer.id } } },
-            },
-          ],
-        };
-
     return this.prisma.meeting.findMany({
       where: {
         deletedAt: null,
         date: { gte: new Date(query.from), lte: new Date(query.to) },
-        ...visibility,
+        ...this.visibleTo(viewer),
       },
       orderBy: [{ date: 'asc' }, { startTime: 'asc' }],
       select: {
@@ -62,6 +66,36 @@ export class MeetingsService {
       },
     });
   }
+  async findOne(id: string, viewer: { id: string; isDirector: boolean }) {
+    const meeting = await this.prisma.meeting.findFirst({
+      where: { id, deletedAt: null, ...this.visibleTo(viewer) },
+      select: {
+        id: true,
+        projectId: true,
+        title: true,
+        date: true,
+        startTime: true,
+        endTime: true,
+        place: true,
+        meetingUrl: true,
+        note: true,
+        project: { select: { name: true } },
+        createdBy: { select: { id: true, firstName: true, lastName: true } },
+        invitees: {
+          select: {
+            user: { select: { id: true, firstName: true, lastName: true } },
+          },
+        },
+      },
+    });
+
+    if (!meeting) {
+      throw new NotFoundException('Nie znaleziono spotkania');
+    }
+
+    return meeting;
+  }
+
   async create(
     dto: CreateMeetingDto,
     creator: { id: string; isDirector: boolean },
