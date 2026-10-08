@@ -6,6 +6,7 @@ import {
   LuMapPin,
   LuPencil,
   LuTrash2,
+  LuStickyNote,
   LuUsers,
 } from 'react-icons/lu';
 import { Button } from '../../../components/ui/Button';
@@ -319,9 +320,17 @@ export default function MeetingDetailsModal({
             </div>
 
             {meeting.note && (
-              <p className="rounded-lg bg-gray-100 px-4 py-3 text-xs leading-relaxed wrap-break-word whitespace-pre-line text-grayText">
-                {meeting.note}
-              </p>
+              <div className={ROW_CLASSES}>
+                <LuStickyNote
+                  size={18}
+                  className={ICON_CLASSES}
+                  aria-hidden="true"
+                />
+                <p className="min-w-0 flex-1 rounded-lg bg-gray-100 px-4 py-3 text-xs leading-relaxed wrap-break-word whitespace-pre-line text-grayText">
+                  <span className="sr-only">Notatka: </span>
+                  {meeting.note}
+                </p>
+              </div>
             )}
 
             <p className="mt-auto text-xs text-grayText">
