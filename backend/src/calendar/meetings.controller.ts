@@ -38,6 +38,11 @@ export class MeetingsController {
     return this.meetingsService.findInRange(query, user);
   }
 
+  @Get('project-options')
+  projectOptions(@CurrentUser() user: AuthenticatedUser) {
+    return this.meetingsService.projectOptions(user);
+  }
+
   @Get(':id')
   findOne(
     @Param('id', ParseUUIDPipe) id: string,

@@ -25,6 +25,11 @@ export interface BackendMeeting {
   status: MeetingStatus;
 }
 
+export interface MeetingProjectOption {
+  id: string;
+  name: string;
+}
+
 export interface MeetingOutcome {
   status: Exclude<MeetingStatus, 'PLANNED'>;
   attendeeCount?: number;
@@ -902,6 +907,15 @@ export const api = {
       method: 'DELETE',
       accessToken,
       fallbackMessage: 'Nie udało się usunąć spotkania',
+    });
+  },
+  async getMeetingProjectOptions(
+    accessToken: string,
+  ): Promise<MeetingProjectOption[]> {
+    return request<MeetingProjectOption[]>('/api/v1/meetings/project-options', {
+      method: 'GET',
+      accessToken,
+      fallbackMessage: 'Nie udało się pobrać projektów',
     });
   },
   async setMeetingOutcome(

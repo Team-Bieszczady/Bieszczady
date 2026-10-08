@@ -13,6 +13,7 @@ describe('MeetingsService', () => {
   const prisma = {
     meeting: { findMany: jest.fn(), findFirst: jest.fn(), update: jest.fn() },
     projectMember: { findUnique: jest.fn(), findMany: jest.fn() },
+    project: { findMany: jest.fn() },
   };
 
   const october = { from: '2026-10-01', to: '2026-10-31' };
@@ -50,6 +51,38 @@ describe('MeetingsService', () => {
     prisma.meeting.findFirst.mockResolvedValue(storedMeeting);
     prisma.meeting.update.mockResolvedValue({});
     prisma.projectMember.findMany.mockResolvedValue([{ userId: 'member-1' }]);
+  });
+
+  describe('projectOptions', () => {
+    it('offers a director every active project', async () => {
+      prisma.project.findMany.mockResolvedValue([]);
+
+      await service.projectOptions({ id: 'director-1', isDirector: true });
+
+      expect(prisma.project.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { archivedAt: null } }),
+      );
+    });
+
+    it('offers anyone else only active projects they coordinate or carry out', async () => {
+      prisma.project.findMany.mockResolvedValue([]);
+
+      await service.projectOptions(executor);
+
+      expect(prisma.project.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            archivedAt: null,
+            members: {
+              some: {
+                userId: 'executor-1',
+                projectRole: { in: ['COORDINATOR', 'EXECUTOR'] },
+              },
+            },
+          },
+        }),
+      );
+    });
   });
 
   describe('findInRange', () => {

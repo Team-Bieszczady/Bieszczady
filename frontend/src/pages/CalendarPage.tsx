@@ -22,6 +22,7 @@ import { useMeetings } from '../features/calendar/hooks/useMeetings';
 import { useCreateMeeting } from '../features/calendar/hooks/useCreateMeeting';
 import { useUpdateMeeting } from '../features/calendar/hooks/useUpdateMeeting';
 import { useDeleteMeeting } from '../features/calendar/hooks/useDeleteMeeting';
+import { useMeetingProjectOptions } from '../features/calendar/hooks/useMeetingProjectOptions';
 import { useProjects } from '../features/projects/hooks/useProjectsApi';
 import type { BackendMeetingDetails, MeetingChanges } from '../lib/api';
 
@@ -64,6 +65,7 @@ export default function CalendarPage() {
 
   const meetingsQuery = useMeetings(firstGridDay, lastGridDay);
   const projectsQuery = useProjects();
+  const projectOptionsQuery = useMeetingProjectOptions();
   const createMeeting = useCreateMeeting();
   const updateMeeting = useUpdateMeeting();
   const deleteMeeting = useDeleteMeeting();
@@ -75,10 +77,11 @@ export default function CalendarPage() {
     (meeting) => !hiddenProjectIds.includes(meeting.projectId),
   );
 
-  const projectOptions = projects.map((project) => ({
+  const projectOptions = (projectOptionsQuery.data ?? []).map((project) => ({
     value: project.id,
     label: project.name,
   }));
+  const canAddMeetings = projectOptions.length > 0;
 
   const openAddForm = () => {
     setEditedMeeting(null);
@@ -151,14 +154,16 @@ export default function CalendarPage() {
         <h1 className="text-base font-bold text-dark min-[500px]:text-xl lg:text-2xl">
           Kalendarz
         </h1>
-        <Button
-          variant="primary"
-          size="small"
-          type="button"
-          onClick={openAddForm}
-        >
-          Dodaj spotkanie
-        </Button>
+        {canAddMeetings && (
+          <Button
+            variant="primary"
+            size="small"
+            type="button"
+            onClick={openAddForm}
+          >
+            Dodaj spotkanie
+          </Button>
+        )}
       </div>
 
       <div className="flex flex-col gap-3">

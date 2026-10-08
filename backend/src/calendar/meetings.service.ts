@@ -16,6 +16,8 @@ import { ATTENDANCE_FILE_FIELDS, toAttendanceFile } from './attendance-files';
 
 type Viewer = { id: string; isDirector: boolean };
 
+const ORGANIZER_ROLES = ['COORDINATOR', 'EXECUTOR'];
+
 const SAVED_MEETING_FIELDS = {
   id: true,
   projectId: true,
@@ -58,6 +60,26 @@ export class MeetingsService {
         endTime: true,
         status: true,
       },
+    });
+  }
+
+  async projectOptions(viewer: Viewer) {
+    return this.prisma.project.findMany({
+      where: {
+        archivedAt: null,
+        ...(viewer.isDirector
+          ? {}
+          : {
+              members: {
+                some: {
+                  userId: viewer.id,
+                  projectRole: { in: ORGANIZER_ROLES },
+                },
+              },
+            }),
+      },
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true },
     });
   }
 
@@ -116,7 +138,7 @@ export class MeetingsService {
         },
         select: { projectRole: true },
       });
-      if (!membership || membership.projectRole === 'PARTNER') {
+      if (!membership || !ORGANIZER_ROLES.includes(membership.projectRole)) {
         throw new ForbiddenException('Nie masz uprawnień do dodawania spotkań');
       }
     }
@@ -243,7 +265,7 @@ export class MeetingsService {
             members: {
               some: {
                 userId: viewer.id,
-                projectRole: { in: ['COORDINATOR', 'EXECUTOR'] },
+                projectRole: { in: ORGANIZER_ROLES },
               },
             },
           },
