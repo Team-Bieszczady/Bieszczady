@@ -25,6 +25,7 @@ import {
   MeetingOutcomeForm,
 } from './MeetingOutcomeForm';
 import { ProjectName } from './ProjectName';
+import { MeetingParticipantsSection } from '../../participants/components/MeetingParticipantsSection';
 
 interface MeetingDetailsModalProps {
   meetingId: string;
@@ -105,9 +106,15 @@ interface OutcomePanelProps {
   meeting: BackendMeetingDetails;
   onSubmit: (outcome: MeetingOutcome) => void;
   isPending: boolean;
+  canListParticipants: boolean;
 }
 
-function OutcomePanel({ meeting, onSubmit, isPending }: OutcomePanelProps) {
+function OutcomePanel({
+  meeting,
+  onSubmit,
+  isPending,
+  canListParticipants,
+}: OutcomePanelProps) {
   if (!meeting.canManage) return <OutcomeSummary meeting={meeting} />;
 
   if (isUpcoming(meeting)) {
@@ -132,7 +139,19 @@ function OutcomePanel({ meeting, onSubmit, isPending }: OutcomePanelProps) {
     );
   }
 
-  return <MeetingOutcomeForm meeting={meeting} onSubmit={onSubmit} />;
+  const showParticipants =
+    canListParticipants && meeting.status !== 'CANCELLED';
+
+  return (
+    <>
+      <MeetingOutcomeForm meeting={meeting} onSubmit={onSubmit} />
+      {showParticipants && (
+        <div className="mt-6 border-t border-gray-200 pt-6">
+          <MeetingParticipantsSection meetingId={meeting.id} />
+        </div>
+      )}
+    </>
+  );
 }
 
 export default function MeetingDetailsModal({
@@ -289,6 +308,7 @@ export default function MeetingDetailsModal({
                 meeting={meeting}
                 onSubmit={submitOutcome}
                 isPending={setOutcome.isPending}
+                canListParticipants={hasModule(user, 'PARTICIPANTS')}
               />
             </div>
           )}

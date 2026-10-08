@@ -7,6 +7,7 @@ import { Modal } from '../../../components/ui/Modal';
 import { INPUT_CLASSES } from '../../../components/ui/formStyles';
 import type { BackendParticipant, ParticipantChanges } from '../../../lib/api';
 import { NAME_MAX_LENGTH, nameRules } from '../../../lib/nameValidation';
+import { emailOrEmpty, PHONE_PATTERN } from '../validation';
 
 interface ParticipantFormModalProps {
   participant?: BackendParticipant;
@@ -15,9 +16,6 @@ interface ParticipantFormModalProps {
   onDelete?: () => void;
   isPending: boolean;
 }
-
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PHONE_PATTERN = /^[\d +()-]*$/;
 
 const LABEL_CLASSES = 'mb-2 block text-sm text-dark/80';
 const TEXTAREA_CLASSES =
@@ -129,10 +127,7 @@ export default function ParticipantFormModal({
             </label>
             <input
               {...register('email', {
-                validate: (value) =>
-                  value.trim() === '' ||
-                  EMAIL_PATTERN.test(value.trim()) ||
-                  'Podaj poprawny adres e-mail',
+                validate: emailOrEmpty,
               })}
               id={emailId}
               type="email"

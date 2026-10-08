@@ -28,6 +28,14 @@ export interface BackendParticipant {
   meetingCount: number;
 }
 
+export interface MeetingParticipant {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  consentAt: string | null;
+}
+
 export interface ParticipantChanges {
   firstName: string;
   lastName: string;
@@ -372,8 +380,8 @@ export const api = {
   async createParticipant(
     accessToken: string,
     participant: ParticipantChanges,
-  ): Promise<void> {
-    await request('/api/v1/participants', {
+  ): Promise<{ id: string }> {
+    return request<{ id: string }>('/api/v1/participants', {
       method: 'POST',
       accessToken,
       body: participant,
@@ -400,6 +408,48 @@ export const api = {
       accessToken,
       fallbackMessage: 'Nie udało się usunąć uczestnika',
     });
+  },
+
+  async getMeetingParticipants(
+    accessToken: string,
+    meetingId: string,
+  ): Promise<MeetingParticipant[]> {
+    return request<MeetingParticipant[]>(
+      `/api/v1/meetings/${meetingId}/participants`,
+      {
+        method: 'GET',
+        accessToken,
+        fallbackMessage: 'Nie udało się pobrać uczestników spotkania',
+      },
+    );
+  },
+
+  async addMeetingParticipant(
+    accessToken: string,
+    meetingId: string,
+    participantId: string,
+  ): Promise<void> {
+    await request(`/api/v1/meetings/${meetingId}/participants`, {
+      method: 'POST',
+      accessToken,
+      body: { participantId },
+      fallbackMessage: 'Nie udało się dopisać uczestnika',
+    });
+  },
+
+  async removeMeetingParticipant(
+    accessToken: string,
+    meetingId: string,
+    participantId: string,
+  ): Promise<void> {
+    await request(
+      `/api/v1/meetings/${meetingId}/participants/${participantId}`,
+      {
+        method: 'DELETE',
+        accessToken,
+        fallbackMessage: 'Nie udało się usunąć uczestnika ze spotkania',
+      },
+    );
   },
 
   async getUserById(accessToken: string, id: string): Promise<BackendUser> {
