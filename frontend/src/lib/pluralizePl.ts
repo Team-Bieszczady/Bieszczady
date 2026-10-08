@@ -20,3 +20,5 @@ export const ACTION_FORMS: PluralForms = ['działanie', 'działania', 'działań
 export const DAY_FORMS: PluralForms = ['dzień', 'dni', 'dni'];
 export const STAGE_FORMS: PluralForms = ['etap', 'etapy', 'etapów'];
 export const PROJECT_FORMS: PluralForms = ['projekt', 'projekty', 'projektów'];
+export const MEETING_FORMS: PluralForms = ['spotkanie', 'spotkania', 'spotkań'];
+export const PERSON_FORMS: PluralForms = ['osoba', 'osoby', 'osób'];

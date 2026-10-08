@@ -16,6 +16,16 @@ export interface AuthenticatedUser {
 }
 export type MeetingStatus = 'PLANNED' | 'HELD' | 'CANCELLED';
 
+export interface BackendParticipant {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  phone: string | null;
+  consentAt: string | null;
+  meetingCount: number;
+}
+
 export interface BackendMeeting {
   id: string;
   projectId: string;
@@ -332,6 +342,18 @@ export const api = {
       method: 'GET',
       accessToken,
       fallbackMessage: 'Nie udało się pobrać listy użytkowników',
+    });
+  },
+
+  async getParticipants(
+    accessToken: string,
+    search: string,
+  ): Promise<BackendParticipant[]> {
+    const query = search ? `?search=${encodeURIComponent(search)}` : '';
+    return request<BackendParticipant[]>(`/api/v1/participants${query}`, {
+      method: 'GET',
+      accessToken,
+      fallbackMessage: 'Nie udało się pobrać listy uczestników',
     });
   },
 
