@@ -60,7 +60,6 @@ export function MeetingOutcomeForm({
 }: MeetingOutcomeFormProps) {
   const countId = useId();
   const hasStarted = meeting.date <= todayIso();
-  const suggestedStatus = hasStarted ? 'HELD' : '';
 
   const {
     register,
@@ -69,7 +68,7 @@ export function MeetingOutcomeForm({
     formState: { errors },
   } = useForm<OutcomeInputs>({
     defaultValues: {
-      status: meeting.status === 'PLANNED' ? suggestedStatus : meeting.status,
+      status: meeting.status === 'PLANNED' ? '' : meeting.status,
       attendeeCount: meeting.attendeeCount?.toString() ?? '',
     },
   });

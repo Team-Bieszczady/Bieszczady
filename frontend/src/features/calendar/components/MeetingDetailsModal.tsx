@@ -13,7 +13,7 @@ import { Modal } from '../../../components/ui/Modal';
 import { useAuth } from '../../../context/useAuth';
 import type { BackendMeetingDetails, MeetingOutcome } from '../../../lib/api';
 import { hasModule } from '../../../lib/modules';
-import { formatStageDate } from '../../projects/utils/isoDate';
+import { formatStageDate, todayIso } from '../../projects/utils/isoDate';
 import { useMeeting } from '../hooks/useMeeting';
 import { useOpenProjectPage } from '../hooks/useOpenProjectPage';
 import { useSetMeetingOutcome } from '../hooks/useSetMeetingOutcome';
@@ -35,6 +35,36 @@ interface MeetingDetailsModalProps {
 
 const ROW_CLASSES = 'flex items-start gap-3 text-sm text-dark';
 const ICON_CLASSES = 'mt-0.5 shrink-0 text-grayText';
+
+const STATUS_BADGES = {
+  planned: { label: 'Zaplanowane', classes: 'bg-gray-100 text-gray-600' },
+  waiting: {
+    label: 'Czeka na zatwierdzenie',
+    classes: 'bg-amber-100 text-amber-800',
+  },
+  held: { label: '✓ Odbyło się', classes: 'bg-darkGreen text-white' },
+  cancelled: { label: '✕ Odwołane', classes: 'bg-gray-100 text-dark' },
+};
+
+function isUpcoming(meeting: BackendMeetingDetails) {
+  return meeting.status === 'PLANNED' && meeting.date > todayIso();
+}
+
+function statusBadgeOf(meeting: BackendMeetingDetails) {
+  if (meeting.status === 'HELD') return STATUS_BADGES.held;
+  if (meeting.status === 'CANCELLED') return STATUS_BADGES.cancelled;
+  return isUpcoming(meeting) ? STATUS_BADGES.planned : STATUS_BADGES.waiting;
+}
+
+function StatusBadge({ meeting }: { meeting: BackendMeetingDetails }) {
+  const { label, classes } = statusBadgeOf(meeting);
+
+  return (
+    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${classes}`}>
+      {label}
+    </span>
+  );
+}
 
 function OutcomeSummary({ meeting }: { meeting: BackendMeetingDetails }) {
   const held = meeting.status === 'HELD';
@@ -71,6 +101,40 @@ function OutcomeSummary({ meeting }: { meeting: BackendMeetingDetails }) {
   );
 }
 
+interface OutcomePanelProps {
+  meeting: BackendMeetingDetails;
+  onSubmit: (outcome: MeetingOutcome) => void;
+  isPending: boolean;
+}
+
+function OutcomePanel({ meeting, onSubmit, isPending }: OutcomePanelProps) {
+  if (!meeting.canManage) return <OutcomeSummary meeting={meeting} />;
+
+  if (isUpcoming(meeting)) {
+    return (
+      <div className="space-y-3">
+        <p className="text-sm text-dark/80">Potwierdzenie realizacji</p>
+        <p className="text-xs leading-relaxed text-grayText">
+          Spotkanie zatwierdzisz w dniu, w którym się odbędzie. Wtedy wpiszesz
+          też liczbę uczestników i dodasz skany listy obecności.
+        </p>
+        <Button
+          variant="outline"
+          size="small"
+          type="button"
+          onClick={() => onSubmit({ status: 'CANCELLED' })}
+          isPending={isPending}
+          className="font-medium!"
+        >
+          ✕ Odwołaj spotkanie
+        </Button>
+      </div>
+    );
+  }
+
+  return <MeetingOutcomeForm meeting={meeting} onSubmit={onSubmit} />;
+}
+
 export default function MeetingDetailsModal({
   meetingId,
   onClose,
@@ -105,9 +169,12 @@ export default function MeetingDetailsModal({
 
   const header = (
     <div className="flex flex-col items-start gap-3">
-      <span className="rounded-full bg-lightGreen px-3 py-1 text-xs font-semibold text-darkGreen">
-        Spotkanie
-      </span>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="rounded-full bg-lightGreen px-3 py-1 text-xs font-semibold text-darkGreen">
+          Spotkanie
+        </span>
+        {meeting && <StatusBadge meeting={meeting} />}
+      </div>
       <h2 className="text-xl font-semibold text-dark">
         {meeting?.title ?? (meetingQuery.isError ? 'Spotkanie' : 'Ładowanie…')}
       </h2>
@@ -218,14 +285,11 @@ export default function MeetingDetailsModal({
 
           {showOutcome && (
             <div className="border-t border-gray-200 pt-6 md:border-t-0 md:border-l md:pt-0 md:pl-8">
-              {meeting.canManage ? (
-                <MeetingOutcomeForm
-                  meeting={meeting}
-                  onSubmit={submitOutcome}
-                />
-              ) : (
-                <OutcomeSummary meeting={meeting} />
-              )}
+              <OutcomePanel
+                meeting={meeting}
+                onSubmit={submitOutcome}
+                isPending={setOutcome.isPending}
+              />
             </div>
           )}
         </div>
@@ -254,16 +318,20 @@ export default function MeetingDetailsModal({
               <LuPencil size={14} aria-hidden="true" />
               Edytuj
             </Button>
-            <Button
-              variant="primary"
-              size="small"
-              type="submit"
-              form={MEETING_OUTCOME_FORM_ID}
-              isPending={setOutcome.isPending}
-              className="col-span-2 font-medium!"
-            >
-              Zatwierdź spotkanie
-            </Button>
+            {!isUpcoming(meeting) && (
+              <Button
+                variant="primary"
+                size="small"
+                type="submit"
+                form={MEETING_OUTCOME_FORM_ID}
+                isPending={setOutcome.isPending}
+                className="col-span-2 font-medium!"
+              >
+                {meeting.status === 'PLANNED'
+                  ? 'Zatwierdź spotkanie'
+                  : 'Zapisz zmiany'}
+              </Button>
+            )}
           </div>
         </div>
       )}
