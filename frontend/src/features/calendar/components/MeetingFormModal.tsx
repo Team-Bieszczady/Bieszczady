@@ -145,57 +145,59 @@ export default function MeetingFormModal({
               type="date"
               aria-label="Data"
               aria-invalid={!!errors.date}
-              className={`${INPUT_CLASSES} w-36!`}
+              className={`${INPUT_CLASSES} sm:w-36!`}
             />
-            <div className="w-24">
-              <Controller
-                name="startTime"
-                control={control}
-                rules={{
-                  required: 'Podaj godzinę rozpoczęcia',
-                  validate: (value) =>
-                    TIME_PATTERN.test(value) || TIME_FORMAT_MESSAGE,
-                }}
-                render={({ field }) => (
-                  <TimeInput
-                    ariaLabel="Godzina rozpoczęcia"
-                    placeholder="9:00"
-                    value={field.value}
-                    onChange={field.onChange}
-                    onBlur={field.onBlur}
-                    invalid={!!errors.startTime}
-                  />
-                )}
-              />
-            </div>
-            <span className="text-dark" aria-hidden="true">
-              –
-            </span>
-            <div className="w-24">
-              <Controller
-                name="endTime"
-                control={control}
-                rules={{
-                  required: 'Podaj godzinę zakończenia',
-                  validate: {
-                    format: (value) =>
+            <div className="flex items-center gap-2">
+              <div className="w-24">
+                <Controller
+                  name="startTime"
+                  control={control}
+                  rules={{
+                    required: 'Podaj godzinę rozpoczęcia',
+                    validate: (value) =>
                       TIME_PATTERN.test(value) || TIME_FORMAT_MESSAGE,
-                    afterStart: (value, values) =>
-                      value > values.startTime ||
-                      'Koniec musi być później niż początek',
-                  },
-                }}
-                render={({ field }) => (
-                  <TimeInput
-                    ariaLabel="Godzina zakończenia"
-                    placeholder="10:00"
-                    value={field.value}
-                    onChange={field.onChange}
-                    onBlur={field.onBlur}
-                    invalid={!!errors.endTime}
-                  />
-                )}
-              />
+                  }}
+                  render={({ field }) => (
+                    <TimeInput
+                      ariaLabel="Godzina rozpoczęcia"
+                      placeholder="9:00"
+                      value={field.value}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      invalid={!!errors.startTime}
+                    />
+                  )}
+                />
+              </div>
+              <span className="text-dark" aria-hidden="true">
+                –
+              </span>
+              <div className="w-24">
+                <Controller
+                  name="endTime"
+                  control={control}
+                  rules={{
+                    required: 'Podaj godzinę zakończenia',
+                    validate: {
+                      format: (value) =>
+                        TIME_PATTERN.test(value) || TIME_FORMAT_MESSAGE,
+                      afterStart: (value, values) =>
+                        value > values.startTime ||
+                        'Koniec musi być później niż początek',
+                    },
+                  }}
+                  render={({ field }) => (
+                    <TimeInput
+                      ariaLabel="Godzina zakończenia"
+                      placeholder="10:00"
+                      value={field.value}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      invalid={!!errors.endTime}
+                    />
+                  )}
+                />
+              </div>
             </div>
           </div>
           <FieldError message={whenError} />

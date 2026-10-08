@@ -9,14 +9,19 @@ const VIEWS: { value: CalendarView; label: string }[] = [
 interface ViewSwitcherProps {
   value: CalendarView;
   onChange: (view: CalendarView) => void;
+  stretch?: boolean;
 }
 
-export function ViewSwitcher({ value, onChange }: ViewSwitcherProps) {
+export function ViewSwitcher({
+  value,
+  onChange,
+  stretch = false,
+}: ViewSwitcherProps) {
   return (
     <div
       role="group"
       aria-label="Widok kalendarza"
-      className="inline-flex rounded-lg bg-gray-100 p-1"
+      className={`rounded-lg bg-gray-100 p-1 ${stretch ? 'grid flex-1 grid-cols-3' : 'inline-flex'}`}
     >
       {VIEWS.map((view) => {
         const isActive = view.value === value;

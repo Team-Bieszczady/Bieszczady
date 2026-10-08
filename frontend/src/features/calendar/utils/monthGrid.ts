@@ -37,6 +37,12 @@ export const dayNumber = (date: string) => {
   }
 };
 
+export function dayNumberClasses(isToday: boolean, isMuted: boolean) {
+  if (isToday) return 'bg-dark font-semibold text-white';
+  if (isMuted) return 'text-gray-400 hover:bg-gray-100';
+  return 'text-dark hover:bg-gray-100';
+}
+
 export const meetingsOnDay = (meetings: Meeting[], day: string): Meeting[] => {
   const dayMeetings = meetings
     .filter((el) => el.date === day)

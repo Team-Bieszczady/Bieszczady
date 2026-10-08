@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
-import { LuChevronLeft, LuChevronRight, LuPlus } from 'react-icons/lu';
+import { LuPlus } from 'react-icons/lu';
 import {
-  formatViewTitle,
   shiftAnchor,
   visibleDays,
   type CalendarView,
@@ -10,9 +9,11 @@ import {
 import { todayIso } from '../features/projects/utils/isoDate';
 import { Button } from '../components/ui/Button';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { useMediaQuery } from '../hooks/useMediaQuery';
+import { CalendarToolbar } from '../features/calendar/components/CalendarToolbar';
 import { MonthView } from '../features/calendar/components/MonthView';
+import { WeekAgenda } from '../features/calendar/components/WeekAgenda';
 import { TimeGridView } from '../features/calendar/components/time-grid/TimeGridView';
-import { ViewSwitcher } from '../features/calendar/components/ViewSwitcher';
 import { ProjectFilter } from '../features/calendar/components/ProjectFilter';
 import MeetingFormModal, {
   type MeetingFormInputs,
@@ -28,21 +29,6 @@ import { useMeetingProjectOptions } from '../features/calendar/hooks/useMeetingP
 import { useProjects } from '../features/projects/hooks/useProjectsApi';
 import type { Deadline } from '../features/calendar/types';
 import type { BackendMeetingDetails, MeetingChanges } from '../lib/api';
-
-const PREVIOUS_LABELS: Record<CalendarView, string> = {
-  day: 'Poprzedni dzień',
-  week: 'Poprzedni tydzień',
-  month: 'Poprzedni miesiąc',
-};
-
-const NEXT_LABELS: Record<CalendarView, string> = {
-  day: 'Następny dzień',
-  week: 'Następny tydzień',
-  month: 'Następny miesiąc',
-};
-
-const NAV_BUTTON_CLASSES =
-  'inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-gray-200 bg-white hover:bg-gray-50';
 
 function toMeetingChanges(values: MeetingFormInputs): MeetingChanges {
   return {
@@ -72,6 +58,7 @@ export default function CalendarPage() {
   const [selectedDeadline, setSelectedDeadline] = useState<Deadline | null>(
     null,
   );
+  const isPhone = !useMediaQuery('(min-width: 640px)');
 
   const toggleProject = (id: string) => {
     if (hiddenProjectIds.includes(id)) {
@@ -100,6 +87,7 @@ export default function CalendarPage() {
     (deadline) => !hiddenProjectIds.includes(deadline.projectId),
   );
   const loadFailed = meetingsQuery.isError || deadlinesQuery.isError;
+  const showAgenda = isPhone && view === 'week';
 
   const retryLoading = () => {
     if (meetingsQuery.isError) void meetingsQuery.refetch();
@@ -115,6 +103,15 @@ export default function CalendarPage() {
   const openDay = (day: string) => {
     setView('day');
     setAnchor(day);
+  };
+
+  const entryProps = {
+    meetings: filteredMeetings,
+    deadlines: filteredDeadlines,
+    projects,
+    onMeetingClick: setSelectedMeetingId,
+    onDeadlineClick: setSelectedDeadline,
+    onDayClick: openDay,
   };
 
   const openAddForm = () => {
@@ -203,41 +200,14 @@ export default function CalendarPage() {
       </div>
 
       <div className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              aria-label={PREVIOUS_LABELS[view]}
-              onClick={() => setAnchor((prev) => shiftAnchor(view, prev, -1))}
-              className={NAV_BUTTON_CLASSES}
-            >
-              <LuChevronLeft size={16} />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setAnchor(todayIso())}
-              className="h-8 cursor-pointer rounded-lg border border-gray-200 bg-white px-4 text-xs font-medium hover:bg-gray-50"
-            >
-              Dzisiaj
-            </button>
-
-            <button
-              type="button"
-              aria-label={NEXT_LABELS[view]}
-              onClick={() => setAnchor((prev) => shiftAnchor(view, prev, 1))}
-              className={NAV_BUTTON_CLASSES}
-            >
-              <LuChevronRight size={16} />
-            </button>
-
-            <p className="text-lg font-bold text-dark sm:text-xl">
-              {formatViewTitle(view, anchor)}
-            </p>
-          </div>
-
-          <ViewSwitcher value={view} onChange={setView} />
-        </div>
+        <CalendarToolbar
+          view={view}
+          anchor={anchor}
+          compact={isPhone}
+          onShift={(step) => setAnchor((prev) => shiftAnchor(view, prev, step))}
+          onToday={() => setAnchor(todayIso())}
+          onViewChange={setView}
+        />
         <ProjectFilter
           projects={projects}
           hiddenProjectIds={hiddenProjectIds}
@@ -262,26 +232,14 @@ export default function CalendarPage() {
         </div>
       )}
 
-      {view === 'month' ? (
-        <MonthView
-          anchor={anchor}
-          meetings={filteredMeetings}
-          deadlines={filteredDeadlines}
-          projects={projects}
-          onMeetingClick={setSelectedMeetingId}
-          onDeadlineClick={setSelectedDeadline}
-          onDayClick={openDay}
-        />
-      ) : (
-        <TimeGridView
-          days={days}
-          meetings={filteredMeetings}
-          deadlines={filteredDeadlines}
-          projects={projects}
-          onMeetingClick={setSelectedMeetingId}
-          onDeadlineClick={setSelectedDeadline}
-          onDayClick={openDay}
-        />
+      {view === 'month' && (
+        <MonthView anchor={anchor} compact={isPhone} {...entryProps} />
+      )}
+      {view !== 'month' && showAgenda && (
+        <WeekAgenda days={days} {...entryProps} />
+      )}
+      {view !== 'month' && !showAgenda && (
+        <TimeGridView days={days} {...entryProps} />
       )}
 
       {selectedDeadline && (

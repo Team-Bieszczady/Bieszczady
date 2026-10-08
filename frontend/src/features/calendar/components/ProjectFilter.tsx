@@ -9,7 +9,7 @@ type Props = {
 
 export function ProjectFilter({ projects, hiddenProjectIds, onToggle }: Props) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex items-center gap-2 overflow-x-auto scrollbar-none sm:flex-wrap sm:overflow-visible">
       {projects.map((project) => {
         const isHidden = hiddenProjectIds.includes(project.id);
         const dotColor = isHidden
@@ -23,7 +23,7 @@ export function ProjectFilter({ projects, hiddenProjectIds, onToggle }: Props) {
             key={project.id}
             aria-pressed={!isHidden}
             onClick={() => onToggle(project.id)}
-            className={`inline-flex h-8 cursor-pointer items-center gap-2 rounded-full border border-gray-200 bg-white px-3 text-xs font-medium ${isHidden ? 'text-gray-400' : 'text-dark'}`}
+            className={`inline-flex h-8 shrink-0 cursor-pointer items-center gap-2 rounded-full border border-gray-200 bg-white px-3 text-xs font-medium ${isHidden ? 'text-gray-400' : 'text-dark'}`}
           >
             <span
               className={`h-2.5 w-2.5 shrink-0 rounded-full ${dotColor}`}
@@ -32,7 +32,9 @@ export function ProjectFilter({ projects, hiddenProjectIds, onToggle }: Props) {
           </button>
         );
       })}
-      <span className="ml-auto text-xs text-darkGreen">Kolory projektów</span>
+      <span className="ml-auto hidden text-xs text-darkGreen sm:inline">
+        Kolory projektów
+      </span>
     </div>
   );
 }

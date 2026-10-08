@@ -232,7 +232,7 @@ export default function MeetingDetailsModal({
       )}
 
       {meeting?.canManage && (
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 pt-4">
+        <div className="mt-6 grid grid-cols-2 gap-3 border-t border-gray-200 pt-4 sm:flex sm:items-center sm:justify-between">
           <Button
             variant="outline"
             size="small"
@@ -243,7 +243,7 @@ export default function MeetingDetailsModal({
             <LuTrash2 size={14} aria-hidden="true" />
             Usuń
           </Button>
-          <div className="flex flex-wrap gap-3">
+          <div className="contents sm:flex sm:gap-3">
             <Button
               variant="outline"
               size="small"
@@ -260,7 +260,7 @@ export default function MeetingDetailsModal({
               type="submit"
               form={MEETING_OUTCOME_FORM_ID}
               isPending={setOutcome.isPending}
-              className="font-medium!"
+              className="col-span-2 font-medium!"
             >
               Zatwierdź spotkanie
             </Button>

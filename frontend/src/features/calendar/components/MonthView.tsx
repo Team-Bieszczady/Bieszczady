@@ -8,9 +8,11 @@ import type { CalendarProject, Deadline, Meeting } from '../types';
 import { WEEKDAY_SHORT_NAMES } from '../utils/calendarView';
 import {
   dayNumber,
+  dayNumberClasses,
   getMonthGridDays,
   monthCellEntries,
 } from '../utils/monthGrid';
+import { CompactMonthCell } from './CompactMonthCell';
 import { DeadlineChip } from './DeadlineChip';
 
 interface Props {
@@ -18,15 +20,10 @@ interface Props {
   meetings: Meeting[];
   deadlines: Deadline[];
   projects: CalendarProject[];
+  compact: boolean;
   onMeetingClick: (meetingId: string) => void;
   onDeadlineClick: (deadline: Deadline) => void;
   onDayClick: (day: string) => void;
-}
-
-function dayNumberClasses(isToday: boolean, isMuted: boolean) {
-  if (isToday) return 'bg-dark font-semibold text-white';
-  if (isMuted) return 'text-gray-400 hover:bg-gray-100';
-  return 'text-dark hover:bg-gray-100';
 }
 
 interface MeetingChipProps {
@@ -63,6 +60,7 @@ export function MonthView({
   meetings,
   deadlines,
   projects,
+  compact,
   onMeetingClick,
   onDeadlineClick,
   onDayClick,
@@ -80,7 +78,7 @@ export function MonthView({
       {WEEKDAY_SHORT_NAMES.map((day, index) => (
         <div
           key={day}
-          className={`bg-white py-2.5 text-center text-[13px] ${
+          className={`bg-white py-2.5 text-center ${compact ? 'text-[11px]' : 'text-[13px]'} ${
             index >= 5 ? 'text-gray-400' : 'text-gray-500'
           }`}
         >
@@ -89,11 +87,27 @@ export function MonthView({
       ))}
 
       {gridDays.map((day, index) => {
-        const { visibleDeadlines, visibleMeetings, hiddenCount } =
-          monthCellEntries(meetings, deadlines, day);
         const isToday = day === today;
         const isOutsideMonth = day < firstDay || day > lastDay;
         const isWeekend = index % 7 === 5 || index % 7 === 6;
+
+        if (compact) {
+          return (
+            <CompactMonthCell
+              key={day}
+              day={day}
+              meetings={meetings}
+              deadlines={deadlines}
+              projects={projects}
+              isToday={isToday}
+              isMuted={isOutsideMonth || isWeekend}
+              onDayClick={onDayClick}
+            />
+          );
+        }
+
+        const { visibleDeadlines, visibleMeetings, hiddenCount } =
+          monthCellEntries(meetings, deadlines, day);
 
         return (
           <div
