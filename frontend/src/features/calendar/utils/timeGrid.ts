@@ -13,6 +13,7 @@ export type MeetingSize = 'short' | 'medium' | 'long';
 export interface PlacedMeeting {
   meeting: Meeting;
   column: number;
+  span: number;
   columns: number;
 }
 
@@ -62,17 +63,23 @@ export function meetingSize(meeting: Meeting): MeetingSize {
 }
 
 export function horizontalPlacement(
-  { column, columns }: PlacedMeeting,
+  { column, span, columns }: PlacedMeeting,
   edgeGap: number,
 ) {
   const share = 100 / columns;
+  const lastColumn = column + span - 1;
   const leftGap = column === 0 ? edgeGap : GAP_BETWEEN_MEETINGS / 2;
-  const rightGap = column === columns - 1 ? edgeGap : GAP_BETWEEN_MEETINGS / 2;
+  const rightGap =
+    lastColumn === columns - 1 ? edgeGap : GAP_BETWEEN_MEETINGS / 2;
 
   return {
     left: `calc(${column * share}% + ${leftGap}px)`,
-    width: `calc(${share}% - ${leftGap + rightGap}px)`,
+    width: `calc(${span * share}% - ${leftGap + rightGap}px)`,
   };
+}
+
+function overlaps(a: Meeting, b: Meeting) {
+  return a.startTime < b.endTime && b.startTime < a.endTime;
 }
 
 export function nowMarker(
@@ -101,9 +108,21 @@ export function placeSideBySide(meetings: Meeting[]): PlacedMeeting[] {
   let columnEnds: string[] = [];
   let groupEnd = '';
 
+  const isFree = (column: number, meeting: Meeting) =>
+    !group.some(
+      (other) => other.column === column && overlaps(other.meeting, meeting),
+    );
+
   const closeGroup = () => {
     for (const item of group) {
-      placed.push({ ...item, columns: columnEnds.length });
+      let span = 1;
+      while (
+        item.column + span < columnEnds.length &&
+        isFree(item.column + span, item.meeting)
+      ) {
+        span += 1;
+      }
+      placed.push({ ...item, span, columns: columnEnds.length });
     }
     group = [];
     columnEnds = [];

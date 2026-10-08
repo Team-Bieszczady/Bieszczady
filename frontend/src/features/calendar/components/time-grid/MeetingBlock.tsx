@@ -65,6 +65,7 @@ function timeText(meeting: Meeting, withPlace: boolean) {
 interface ContentProps {
   meeting: Meeting;
   project: CalendarProject | undefined;
+  size: MeetingSize;
   detailed: boolean;
   style: BlockStyle;
 }
@@ -82,11 +83,19 @@ function ShortContent({ meeting, style }: ContentProps) {
   );
 }
 
-function FullContent({ meeting, project, detailed, style }: ContentProps) {
+function FullContent({
+  meeting,
+  project,
+  size,
+  detailed,
+  style,
+}: ContentProps) {
+  const wrapsTitle = size === 'long' && !detailed;
+
   return (
     <>
       <p
-        className={`w-full leading-snug font-semibold ${style.title} ${detailed ? 'truncate' : 'line-clamp-2'}`}
+        className={`w-full leading-snug font-semibold ${style.title} ${wrapsTitle ? 'line-clamp-2' : 'truncate'}`}
       >
         {titleText(meeting)}
       </p>
@@ -146,6 +155,7 @@ export function MeetingBlock({
       <Content
         meeting={meeting}
         project={project}
+        size={size}
         detailed={detailed}
         style={style}
       />
