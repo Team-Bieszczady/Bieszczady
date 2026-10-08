@@ -237,7 +237,7 @@ export default function MeetingDetailsModal({
 
       {meeting && (
         <div className={showOutcome ? 'grid gap-8 md:grid-cols-2' : ''}>
-          <div className="space-y-5 pb-2">
+          <div className="flex flex-col gap-5 pb-2 md:pb-0">
             <div className={ROW_CLASSES}>
               <LuClock size={18} className={ICON_CLASSES} aria-hidden="true" />
               <div>
@@ -317,7 +317,7 @@ export default function MeetingDetailsModal({
               </p>
             )}
 
-            <p className="text-xs text-grayText">
+            <p className="mt-auto text-xs text-grayText">
               Utworzył(a): {meeting.createdBy.firstName}{' '}
               {meeting.createdBy.lastName}, {formatLongDate(meeting.createdAt)}
             </p>
