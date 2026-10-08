@@ -89,7 +89,7 @@ export class AuthService {
   private async issueTokens(user: AuthenticatedUser): Promise<LoginResult> {
     const payload: JwtPayload = { sub: user.id };
     const accessToken = await this.jwtService.signAsync(payload);
-    const refreshToken = this.refreshTokens.issue(user.id);
+    const refreshToken = await this.refreshTokens.issue(user.id);
 
     return { accessToken, refreshToken, user };
   }
@@ -109,7 +109,7 @@ export class AuthService {
   }
 
   async refresh(refreshToken: string): Promise<LoginResult> {
-    const userId = this.refreshTokens.consume(refreshToken);
+    const userId = await this.refreshTokens.consume(refreshToken);
     if (!userId) {
       throw new UnauthorizedException('Sesja wygasła. Zaloguj się ponownie');
     }
@@ -122,8 +122,8 @@ export class AuthService {
     return this.issueTokens(user);
   }
 
-  logout(refreshToken: string): void {
-    this.refreshTokens.revoke(refreshToken);
+  async logout(refreshToken: string): Promise<void> {
+    await this.refreshTokens.revoke(refreshToken);
   }
 
   async requestPasswordReset(email: string): Promise<void> {
@@ -154,7 +154,7 @@ export class AuthService {
     }
 
     await this.usersService.setPassword(userId, dto.newPassword);
-    this.refreshTokens.revokeAllForUser(userId);
+    await this.refreshTokens.revokeAllForUser(userId);
   }
   async setInitialPassword(
     user: AuthenticatedUser,
@@ -167,6 +167,6 @@ export class AuthService {
       throw new BadRequestException('Hasła nie są takie same');
     }
     await this.usersService.setPassword(user.id, dto.newPassword);
-    this.refreshTokens.revokeAllForUser(user.id);
+    await this.refreshTokens.revokeAllForUser(user.id);
   }
 }

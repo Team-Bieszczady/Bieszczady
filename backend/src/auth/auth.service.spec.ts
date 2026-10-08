@@ -61,6 +61,9 @@ describe('AuthService', () => {
   let consumeResetToken: jest.Mock;
   let sendPasswordReset: jest.Mock;
   let setPassword: jest.Mock;
+  let issueRefreshToken: jest.Mock;
+  let consumeRefreshToken: jest.Mock;
+  let revokeAllRefreshTokens: jest.Mock;
 
   beforeEach(async () => {
     recordLogin = jest.fn();
@@ -68,11 +71,21 @@ describe('AuthService', () => {
     consumeResetToken = jest.fn();
     sendPasswordReset = jest.fn();
     setPassword = jest.fn();
+    issueRefreshToken = jest.fn().mockResolvedValue('refresh-token');
+    consumeRefreshToken = jest.fn().mockResolvedValue(null);
+    revokeAllRefreshTokens = jest.fn();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
-        RefreshTokenService,
+        {
+          provide: RefreshTokenService,
+          useValue: {
+            issue: issueRefreshToken,
+            consume: consumeRefreshToken,
+            revokeAllForUser: revokeAllRefreshTokens,
+          },
+        },
         {
           provide: JwtService,
           useValue: {
@@ -126,7 +139,8 @@ describe('AuthService', () => {
       const result = await service.login(ACTIVE_EMAIL, PASSWORD);
 
       expect(result.accessToken).toBe('access-token');
-      expect(result.refreshToken).toHaveLength(64);
+      expect(result.refreshToken).toBe('refresh-token');
+      expect(issueRefreshToken).toHaveBeenCalledWith('1');
       expect(result.user.email).toBe(ACTIVE_EMAIL);
     });
 
@@ -176,18 +190,27 @@ describe('AuthService', () => {
   });
 
   describe('refresh', () => {
-    it('issues a new pair and invalidates the old refresh token', async () => {
-      const first = await service.login(ACTIVE_EMAIL, PASSWORD);
-      const second = await service.refresh(first.refreshToken);
+    it('issues a new pair for a token the store accepts', async () => {
+      consumeRefreshToken.mockResolvedValue('1');
 
-      expect(second.refreshToken).not.toBe(first.refreshToken);
-      await expect(service.refresh(first.refreshToken)).rejects.toThrow(
+      const result = await service.refresh('old-token');
+
+      expect(consumeRefreshToken).toHaveBeenCalledWith('old-token');
+      expect(result.accessToken).toBe('access-token');
+      expect(result.refreshToken).toBe('refresh-token');
+      expect(result.user.email).toBe(ACTIVE_EMAIL);
+    });
+
+    it('rejects a token the store refuses', async () => {
+      await expect(service.refresh('not-a-real-token')).rejects.toThrow(
         UnauthorizedException,
       );
     });
 
-    it('rejects an unknown token', async () => {
-      await expect(service.refresh('not-a-real-token')).rejects.toThrow(
+    it('rejects the token of an account that was deactivated', async () => {
+      consumeRefreshToken.mockResolvedValue('2');
+
+      await expect(service.refresh('old-token')).rejects.toThrow(
         UnauthorizedException,
       );
     });
@@ -270,6 +293,14 @@ describe('AuthService', () => {
       await service.confirmPasswordReset(VALID);
 
       expect(setPassword).toHaveBeenCalledWith('1', 'NoweHaslo1!');
+    });
+
+    it('revokes existing sessions', async () => {
+      consumeResetToken.mockResolvedValue('1');
+
+      await service.confirmPasswordReset(VALID);
+
+      expect(revokeAllRefreshTokens).toHaveBeenCalledWith('1');
     });
 
     it('rejects mismatched passwords', async () => {
@@ -360,12 +391,9 @@ describe('AuthService', () => {
     });
 
     it('revokes existing sessions', async () => {
-      const { refreshToken } = await service.login(ACTIVE_EMAIL, PASSWORD);
-
       await service.setInitialPassword(flagged, VALID);
-      await expect(service.refresh(refreshToken)).rejects.toThrow(
-        UnauthorizedException,
-      );
+
+      expect(revokeAllRefreshTokens).toHaveBeenCalledWith('1');
     });
   });
 });

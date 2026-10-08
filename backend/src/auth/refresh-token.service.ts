@@ -1,57 +1,69 @@
 import { Injectable } from '@nestjs/common';
 import { createHash, randomBytes } from 'node:crypto';
+import { PrismaService } from '../prisma/prisma.service';
 
 export const REFRESH_TOKEN_TTL_DAYS = 7;
-
-interface StoredToken {
-  userId: string;
-  expiresAt: Date;
-  usedAt: Date | null;
-}
+export const REUSE_GRACE_SECONDS = 30;
 
 @Injectable()
 export class RefreshTokenService {
-  private readonly store = new Map<string, StoredToken>();
+  constructor(private readonly prisma: PrismaService) {}
 
-  issue(userId: string): string {
+  async issue(userId: string): Promise<string> {
+    await this.prisma.refreshToken.deleteMany({
+      where: { userId, expiresAt: { lt: new Date() } },
+    });
+
     const token = randomBytes(32).toString('hex');
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + REFRESH_TOKEN_TTL_DAYS);
-    this.store.set(this.hash(token), { userId, expiresAt, usedAt: null });
+    await this.prisma.refreshToken.create({
+      data: { tokenHash: this.hash(token), userId, expiresAt },
+    });
+
     return token;
   }
 
-  consume(token: string): string | null {
-    const key = this.hash(token);
-    const record = this.store.get(key);
+  async consume(token: string): Promise<string | null> {
+    const record = await this.prisma.refreshToken.findUnique({
+      where: { tokenHash: this.hash(token) },
+    });
     if (!record) {
       return null;
     }
 
     if (record.expiresAt < new Date()) {
-      this.store.delete(key);
+      await this.prisma.refreshToken.delete({ where: { id: record.id } });
       return null;
     }
 
     if (record.usedAt) {
-      this.revokeAllForUser(record.userId);
+      if (this.isWithinGracePeriod(record.usedAt)) {
+        return record.userId;
+      }
+      await this.revokeAllForUser(record.userId);
       return null;
     }
 
-    record.usedAt = new Date();
+    await this.prisma.refreshToken.update({
+      where: { id: record.id },
+      data: { usedAt: new Date() },
+    });
     return record.userId;
   }
 
-  revoke(token: string): void {
-    this.store.delete(this.hash(token));
+  async revoke(token: string): Promise<void> {
+    await this.prisma.refreshToken.deleteMany({
+      where: { tokenHash: this.hash(token) },
+    });
   }
 
-  revokeAllForUser(userId: string): void {
-    for (const [hash, record] of this.store.entries()) {
-      if (record.userId === userId) {
-        this.store.delete(hash);
-      }
-    }
+  async revokeAllForUser(userId: string): Promise<void> {
+    await this.prisma.refreshToken.deleteMany({ where: { userId } });
+  }
+
+  private isWithinGracePeriod(usedAt: Date): boolean {
+    return Date.now() - usedAt.getTime() < REUSE_GRACE_SECONDS * 1000;
   }
 
   private hash(token: string): string {
