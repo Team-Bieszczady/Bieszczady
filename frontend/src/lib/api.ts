@@ -22,6 +22,7 @@ export interface BackendMeeting {
   date: string;
   startTime: string;
   endTime: string;
+  place: string | null;
   status: MeetingStatus;
 }
 
@@ -81,7 +82,6 @@ export interface MeetingPerson {
 }
 
 export interface BackendMeetingDetails extends BackendMeeting {
-  place: string | null;
   meetingUrl: string | null;
   note: string;
   createdAt: string;

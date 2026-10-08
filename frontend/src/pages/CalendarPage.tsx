@@ -1,18 +1,18 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
+import { LuChevronLeft, LuChevronRight, LuPlus } from 'react-icons/lu';
 import {
-  formatMonthTitle,
-  getMonthGridDays,
-} from '../features/calendar/utils/monthGrid';
-import {
-  addDaysIso,
-  endOfMonthIso,
-  startOfMonthIso,
-  todayIso,
-} from '../features/projects/utils/isoDate';
+  formatViewTitle,
+  shiftAnchor,
+  visibleDays,
+  type CalendarView,
+} from '../features/calendar/utils/calendarView';
+import { todayIso } from '../features/projects/utils/isoDate';
 import { Button } from '../components/ui/Button';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { MonthView } from '../features/calendar/components/MonthView';
+import { TimeGridView } from '../features/calendar/components/time-grid/TimeGridView';
+import { ViewSwitcher } from '../features/calendar/components/ViewSwitcher';
 import { ProjectFilter } from '../features/calendar/components/ProjectFilter';
 import MeetingFormModal, {
   type MeetingFormInputs,
@@ -25,6 +25,21 @@ import { useDeleteMeeting } from '../features/calendar/hooks/useDeleteMeeting';
 import { useMeetingProjectOptions } from '../features/calendar/hooks/useMeetingProjectOptions';
 import { useProjects } from '../features/projects/hooks/useProjectsApi';
 import type { BackendMeetingDetails, MeetingChanges } from '../lib/api';
+
+const PREVIOUS_LABELS: Record<CalendarView, string> = {
+  day: 'Poprzedni dzień',
+  week: 'Poprzedni tydzień',
+  month: 'Poprzedni miesiąc',
+};
+
+const NEXT_LABELS: Record<CalendarView, string> = {
+  day: 'Następny dzień',
+  week: 'Następny tydzień',
+  month: 'Następny miesiąc',
+};
+
+const NAV_BUTTON_CLASSES =
+  'inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-gray-200 bg-white hover:bg-gray-50';
 
 function toMeetingChanges(values: MeetingFormInputs): MeetingChanges {
   return {
@@ -40,6 +55,7 @@ function toMeetingChanges(values: MeetingFormInputs): MeetingChanges {
 }
 
 export default function CalendarPage() {
+  const [view, setView] = useState<CalendarView>('month');
   const [anchor, setAnchor] = useState(todayIso);
   const [hiddenProjectIds, setHiddenProjectIds] = useState<string[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -59,11 +75,8 @@ export default function CalendarPage() {
     }
   };
 
-  const gridDays = getMonthGridDays(anchor);
-  const firstGridDay = gridDays[0];
-  const lastGridDay = gridDays[gridDays.length - 1];
-
-  const meetingsQuery = useMeetings(firstGridDay, lastGridDay);
+  const days = visibleDays(view, anchor);
+  const meetingsQuery = useMeetings(days[0], days[days.length - 1]);
   const projectsQuery = useProjects();
   const projectOptionsQuery = useMeetingProjectOptions();
   const createMeeting = useCreateMeeting();
@@ -82,6 +95,11 @@ export default function CalendarPage() {
     label: project.name,
   }));
   const canAddMeetings = projectOptions.length > 0;
+
+  const openDay = (day: string) => {
+    setView('day');
+    setAnchor(day);
+  };
 
   const openAddForm = () => {
     setEditedMeeting(null);
@@ -160,49 +178,49 @@ export default function CalendarPage() {
             size="small"
             type="button"
             onClick={openAddForm}
+            className="gap-1.5"
           >
+            <LuPlus size={16} aria-hidden="true" />
             Dodaj spotkanie
           </Button>
         )}
       </div>
 
       <div className="flex flex-col gap-3">
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            aria-label="Poprzedni miesiąc"
-            onClick={() =>
-              setAnchor((prev) =>
-                startOfMonthIso(addDaysIso(startOfMonthIso(prev), -1)),
-              )
-            }
-            className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-gray-200 bg-white hover:bg-gray-50"
-          >
-            ←
-          </button>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              aria-label={PREVIOUS_LABELS[view]}
+              onClick={() => setAnchor((prev) => shiftAnchor(view, prev, -1))}
+              className={NAV_BUTTON_CLASSES}
+            >
+              <LuChevronLeft size={16} />
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setAnchor(todayIso())}
-            className="h-8 cursor-pointer rounded-lg border border-gray-200 bg-white px-4 text-xs font-medium hover:bg-gray-50"
-          >
-            Dzisiaj
-          </button>
+            <button
+              type="button"
+              onClick={() => setAnchor(todayIso())}
+              className="h-8 cursor-pointer rounded-lg border border-gray-200 bg-white px-4 text-xs font-medium hover:bg-gray-50"
+            >
+              Dzisiaj
+            </button>
 
-          <button
-            type="button"
-            aria-label="Następny miesiąc"
-            onClick={() =>
-              setAnchor((prev) => addDaysIso(endOfMonthIso(prev), 1))
-            }
-            className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-gray-200 bg-white hover:bg-gray-50"
-          >
-            →
-          </button>
+            <button
+              type="button"
+              aria-label={NEXT_LABELS[view]}
+              onClick={() => setAnchor((prev) => shiftAnchor(view, prev, 1))}
+              className={NAV_BUTTON_CLASSES}
+            >
+              <LuChevronRight size={16} />
+            </button>
 
-          <p className="text-xl font-bold text-dark">
-            {formatMonthTitle(anchor)}
-          </p>
+            <p className="text-lg font-bold text-dark sm:text-xl">
+              {formatViewTitle(view, anchor)}
+            </p>
+          </div>
+
+          <ViewSwitcher value={view} onChange={setView} />
         </div>
         <ProjectFilter
           projects={projects}
@@ -224,12 +242,23 @@ export default function CalendarPage() {
         </div>
       )}
 
-      <MonthView
-        anchor={anchor}
-        meetings={filteredMeetings}
-        projects={projects}
-        onMeetingClick={setSelectedMeetingId}
-      />
+      {view === 'month' ? (
+        <MonthView
+          anchor={anchor}
+          meetings={filteredMeetings}
+          projects={projects}
+          onMeetingClick={setSelectedMeetingId}
+          onDayClick={openDay}
+        />
+      ) : (
+        <TimeGridView
+          days={days}
+          meetings={filteredMeetings}
+          projects={projects}
+          onMeetingClick={setSelectedMeetingId}
+          onDayClick={openDay}
+        />
+      )}
 
       {selectedMeetingId && (
         <MeetingDetailsModal

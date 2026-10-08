@@ -23,13 +23,10 @@ export const formatMonthTitle = (date: string) => {
   const year = date.slice(0, 4);
   const month = date.slice(5, 7);
 
-  const monthName = new Date(
-    Number(year),
-    Number(month) - 1,
-    1,
-  ).toLocaleDateString('pl-PL', { month: 'long', year: 'numeric' });
-  const title = `${monthName[0].toUpperCase()}${monthName.slice(1)}`;
-  return title;
+  return new Date(Number(year), Number(month) - 1, 1).toLocaleDateString(
+    'pl-PL',
+    { month: 'long', year: 'numeric' },
+  );
 };
 export const dayNumber = (date: string) => {
   const day = date.slice(-2);

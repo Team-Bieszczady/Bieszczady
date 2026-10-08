@@ -7,6 +7,7 @@ export interface Meeting {
   startTime: string;
   endTime: string;
   projectId: string;
+  place: string | null;
   status: MeetingStatus;
 }
 export interface CalendarProject {

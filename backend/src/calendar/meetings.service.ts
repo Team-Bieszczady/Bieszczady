@@ -58,6 +58,7 @@ export class MeetingsService {
         date: true,
         startTime: true,
         endTime: true,
+        place: true,
         status: true,
       },
     });
