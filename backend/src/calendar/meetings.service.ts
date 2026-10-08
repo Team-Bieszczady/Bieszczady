@@ -10,6 +10,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ListMeetingsQueryDto } from './dto/list-meetings-query.dto';
 import { CreateMeetingDto } from './dto/create-meeting.dto';
 import { UpdateMeetingDto } from './dto/update-meeting.dto';
+import { MeetingOutcomeDto } from './dto/meeting-outcome.dto';
 
 type Viewer = { id: string; isDirector: boolean };
 
@@ -23,7 +24,16 @@ const SAVED_MEETING_FIELDS = {
   place: true,
   meetingUrl: true,
   note: true,
+  status: true,
+  attendeeCount: true,
+  confirmedAt: true,
 } satisfies Prisma.MeetingSelect;
+
+function todayInPoland() {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Warsaw' }).format(
+    new Date(),
+  );
+}
 
 @Injectable()
 export class MeetingsService {
@@ -50,6 +60,7 @@ export class MeetingsService {
         date: true,
         startTime: true,
         endTime: true,
+        status: true,
       },
     });
   }
@@ -62,6 +73,7 @@ export class MeetingsService {
         createdAt: true,
         project: { select: { name: true, archivedAt: true } },
         createdBy: { select: { id: true, firstName: true, lastName: true } },
+        confirmedBy: { select: { firstName: true, lastName: true } },
         invitees: {
           select: {
             user: { select: { id: true, firstName: true, lastName: true } },
@@ -154,6 +166,31 @@ export class MeetingsService {
     });
   }
 
+  async setOutcome(id: string, dto: MeetingOutcomeDto, editor: Viewer) {
+    const meeting = await this.findManageable(id, editor);
+    const held = dto.status === 'HELD';
+
+    if (held && meeting.date.toISOString().slice(0, 10) > todayInPoland()) {
+      throw new BadRequestException(
+        'Spotkanie można oznaczyć jako odbyte dopiero w dniu, w którym się odbywa',
+      );
+    }
+    if (held && dto.attendeeCount === undefined) {
+      throw new BadRequestException('Podaj, ile osób przyszło na spotkanie');
+    }
+
+    return this.prisma.meeting.update({
+      where: { id },
+      data: {
+        status: dto.status,
+        attendeeCount: held ? dto.attendeeCount : null,
+        confirmedAt: new Date(),
+        confirmedById: editor.id,
+      },
+      select: SAVED_MEETING_FIELDS,
+    });
+  }
+
   async remove(id: string, editor: Viewer) {
     await this.findManageable(id, editor);
 
@@ -168,6 +205,7 @@ export class MeetingsService {
       where: { id, deletedAt: null, ...this.visibleTo(viewer) },
       select: {
         projectId: true,
+        date: true,
         createdById: true,
         project: { select: { archivedAt: true } },
       },

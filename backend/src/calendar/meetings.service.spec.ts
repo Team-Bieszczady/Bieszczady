@@ -194,6 +194,79 @@ describe('MeetingsService', () => {
     });
   });
 
+  describe('setOutcome', () => {
+    const coordinator = { id: 'coordinator-1', isDirector: false };
+    const pastMeeting = { ...storedMeeting, date: new Date('2020-05-04') };
+    const futureMeeting = { ...storedMeeting, date: new Date('2099-05-04') };
+
+    const savedData = () => {
+      const [updateArgs] = prisma.meeting.update.mock.calls[0] as [
+        { data: Record<string, unknown> },
+      ];
+      return updateArgs.data;
+    };
+
+    beforeEach(() => {
+      prisma.projectMember.findUnique.mockResolvedValue({
+        projectRole: 'COORDINATOR',
+      });
+    });
+
+    it('records who confirmed a held meeting and how many people came', async () => {
+      prisma.meeting.findFirst.mockResolvedValue(pastMeeting);
+
+      await service.setOutcome(
+        'meeting-1',
+        { status: 'HELD', attendeeCount: 18 },
+        coordinator,
+      );
+
+      expect(savedData()).toMatchObject({
+        status: 'HELD',
+        attendeeCount: 18,
+        confirmedById: 'coordinator-1',
+      });
+      expect(savedData().confirmedAt).toBeInstanceOf(Date);
+    });
+
+    it('needs the number of people for a held meeting', async () => {
+      prisma.meeting.findFirst.mockResolvedValue(pastMeeting);
+
+      await expect(
+        service.setOutcome('meeting-1', { status: 'HELD' }, coordinator),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.meeting.update).not.toHaveBeenCalled();
+    });
+
+    it('does not let a future meeting be marked as held', async () => {
+      prisma.meeting.findFirst.mockResolvedValue(futureMeeting);
+
+      await expect(
+        service.setOutcome(
+          'meeting-1',
+          { status: 'HELD', attendeeCount: 5 },
+          coordinator,
+        ),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.meeting.update).not.toHaveBeenCalled();
+    });
+
+    it('lets a future meeting be cancelled and drops any head count', async () => {
+      prisma.meeting.findFirst.mockResolvedValue(futureMeeting);
+
+      await service.setOutcome(
+        'meeting-1',
+        { status: 'CANCELLED', attendeeCount: 7 },
+        coordinator,
+      );
+
+      expect(savedData()).toMatchObject({
+        status: 'CANCELLED',
+        attendeeCount: null,
+      });
+    });
+  });
+
   describe('remove', () => {
     it('hides the meeting instead of erasing it', async () => {
       prisma.projectMember.findUnique.mockResolvedValue({

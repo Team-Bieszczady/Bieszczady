@@ -22,6 +22,7 @@ import { MeetingsService } from './meetings.service';
 import { ListMeetingsQueryDto } from './dto/list-meetings-query.dto';
 import { CreateMeetingDto } from './dto/create-meeting.dto';
 import { UpdateMeetingDto } from './dto/update-meeting.dto';
+import { MeetingOutcomeDto } from './dto/meeting-outcome.dto';
 
 @Controller('meetings')
 @UseGuards(JwtAuthGuard, PasswordChangeGuard, ModuleAccessGuard)
@@ -60,6 +61,15 @@ export class MeetingsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.meetingsService.update(id, dto, user);
+  }
+
+  @Patch(':id/outcome')
+  setOutcome(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: MeetingOutcomeDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.meetingsService.setOutcome(id, dto, user);
   }
 
   @Delete(':id')
