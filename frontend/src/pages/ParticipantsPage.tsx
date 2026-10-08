@@ -1,12 +1,20 @@
 import { useState } from 'react';
+import toast from 'react-hot-toast';
 import { AiOutlineSearch } from 'react-icons/ai';
+import { HiOutlinePlus } from 'react-icons/hi';
+import { Button } from '../components/ui/Button';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import Pagination from '../features/people/components/Pagination';
+import ParticipantFormModal from '../features/participants/components/ParticipantFormModal';
 import ParticipantsTable from '../features/participants/components/ParticipantsTable';
+import { useCreateParticipant } from '../features/participants/hooks/useCreateParticipant';
+import { useDeleteParticipant } from '../features/participants/hooks/useDeleteParticipant';
 import { useParticipants } from '../features/participants/hooks/useParticipants';
+import { useUpdateParticipant } from '../features/participants/hooks/useUpdateParticipant';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { useInfiniteScroll } from '../hooks/useInfiniteScroll';
 import { useMediaQuery } from '../hooks/useMediaQuery';
-import type { BackendParticipant } from '../lib/api';
+import type { BackendParticipant, ParticipantChanges } from '../lib/api';
 import { PERSON_FORMS, pluralizePl } from '../lib/pluralizePl';
 
 const PAGE_SIZE = 10;
@@ -30,8 +38,16 @@ export default function ParticipantsPage() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editedParticipant, setEditedParticipant] =
+    useState<BackendParticipant | null>(null);
+  const [participantToDelete, setParticipantToDelete] =
+    useState<BackendParticipant | null>(null);
   const searchedText = useDebouncedValue(search.trim(), SEARCH_DELAY_MS);
   const participantsQuery = useParticipants(searchedText);
+  const createParticipant = useCreateParticipant();
+  const updateParticipant = useUpdateParticipant();
+  const deleteParticipant = useDeleteParticipant();
   const isWideLayout = useMediaQuery('(min-width: 640px)');
 
   const participants = participantsQuery.data || [];
@@ -61,22 +77,103 @@ export default function ParticipantsPage() {
     setVisibleCount(PAGE_SIZE);
   };
 
+  const openAddForm = () => {
+    setEditedParticipant(null);
+    setIsFormOpen(true);
+  };
+
+  const openEditForm = (participant: BackendParticipant) => {
+    setEditedParticipant(participant);
+    setIsFormOpen(true);
+  };
+
+  const closeForm = () => {
+    setIsFormOpen(false);
+    setEditedParticipant(null);
+  };
+
+  const afterSave = (message: string) => ({
+    onSuccess: () => {
+      closeForm();
+      toast.success(message);
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const submitParticipant = (values: ParticipantChanges) => {
+    if (editedParticipant) {
+      updateParticipant.mutate(
+        { id: editedParticipant.id, changes: values },
+        afterSave('Zmiany zapisane'),
+      );
+      return;
+    }
+
+    createParticipant.mutate(values, afterSave('Uczestnik dodany'));
+  };
+
+  const askToDelete = () => {
+    setParticipantToDelete(editedParticipant);
+    setIsFormOpen(false);
+  };
+
+  const cancelDelete = () => {
+    setParticipantToDelete(null);
+    setIsFormOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (!participantToDelete) {
+      return;
+    }
+
+    deleteParticipant.mutate(participantToDelete.id, {
+      onSuccess: () => {
+        setParticipantToDelete(null);
+        setEditedParticipant(null);
+        toast.success('Uczestnik usunięty');
+      },
+      onError: (error) => {
+        toast.error(error.message);
+      },
+    });
+  };
+
   let emptyMessage = 'Baza uczestników jest jeszcze pusta.';
   if (isSearching) {
     emptyMessage = `Nikt nie pasuje do „${searchedText}”.`;
   }
 
+  let deleteDescription = '';
+  if (participantToDelete) {
+    deleteDescription = `Czy na pewno chcesz usunąć z bazy uczestników: ${participantToDelete.firstName} ${participantToDelete.lastName}?`;
+  }
+
   return (
     <div className="mx-auto max-w-7xl px-4 pt-16 pb-8 min-[400px]:px-6 sm:px-8 lg:pt-4">
-      <div className="mb-6">
-        <h1 className="text-base font-bold text-dark min-[500px]:text-xl lg:text-2xl">
-          Uczestnicy
-        </h1>
-        {participantsQuery.isSuccess && (
-          <p className="mt-1 text-xs text-gray-500">
-            {summaryOf(participants, isSearching)}
-          </p>
-        )}
+      <div className="mb-6 flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-base font-bold text-dark 500:text-xl lg:text-2xl">
+            Uczestnicy
+          </h1>
+          {participantsQuery.isSuccess && (
+            <p className="mt-1 text-xs text-gray-500">
+              {summaryOf(participants, isSearching)}
+            </p>
+          )}
+        </div>
+        <Button
+          variant="primary"
+          size="small"
+          type="button"
+          onClick={openAddForm}
+          className="flex shrink-0 items-center gap-2 max-lg:h-7 max-lg:gap-1.5 max-lg:px-4 max-lg:py-1 max-lg:text-xs"
+        >
+          <HiOutlinePlus className="h-4 w-4" aria-hidden="true" />
+          Dodaj uczestnika
+        </Button>
       </div>
 
       <div className="relative mb-4">
@@ -113,6 +210,7 @@ export default function ParticipantsPage() {
             participants={listedParticipants}
             isLoading={participantsQuery.isLoading}
             emptyMessage={emptyMessage}
+            onSelect={openEditForm}
           />
         </div>
       )}
@@ -127,6 +225,27 @@ export default function ParticipantsPage() {
       ) : (
         <div ref={sentinelRef} aria-hidden="true" className="h-px" />
       )}
+
+      {isFormOpen && (
+        <ParticipantFormModal
+          participant={editedParticipant || undefined}
+          onClose={closeForm}
+          onSubmit={submitParticipant}
+          onDelete={editedParticipant ? askToDelete : undefined}
+          isPending={createParticipant.isPending || updateParticipant.isPending}
+        />
+      )}
+
+      <ConfirmDialog
+        isOpen={participantToDelete !== null}
+        onClose={cancelDelete}
+        onConfirm={confirmDelete}
+        title="Usuń uczestnika"
+        description={deleteDescription}
+        confirmLabel="Usuń"
+        tone="danger"
+        isPending={deleteParticipant.isPending}
+      />
     </div>
   );
 }

@@ -23,6 +23,8 @@ export class ParticipantsService {
         lastName: true,
         email: true,
         phone: true,
+        address: true,
+        note: true,
         consentAt: true,
         _count: {
           select: { meetings: { where: { meeting: { deletedAt: null } } } },
@@ -36,6 +38,8 @@ export class ParticipantsService {
       lastName: participant.lastName,
       email: participant.email,
       phone: participant.phone,
+      address: participant.address,
+      note: participant.note,
       consentAt: participant.consentAt,
       meetingCount: participant._count.meetings,
     }));

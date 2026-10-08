@@ -8,6 +8,7 @@ interface ParticipantsTableProps {
   participants: BackendParticipant[];
   isLoading: boolean;
   emptyMessage: string;
+  onSelect: (participant: BackendParticipant) => void;
 }
 
 const HEADER_CLASSES =
@@ -47,6 +48,7 @@ export default function ParticipantsTable({
   participants,
   isLoading,
   emptyMessage,
+  onSelect,
 }: ParticipantsTableProps) {
   return (
     <>
@@ -64,7 +66,8 @@ export default function ParticipantsTable({
             {participants.map((participant) => (
               <tr
                 key={participant.id}
-                className="border-b border-gray-200 last:border-b-0"
+                onClick={() => onSelect(participant)}
+                className="cursor-pointer border-b border-gray-200 transition-colors last:border-b-0 hover:bg-gray-50"
               >
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
@@ -108,7 +111,8 @@ export default function ParticipantsTable({
         {participants.map((participant) => (
           <div
             key={participant.id}
-            className="animate-fade-in rounded-lg border border-gray-200 bg-white p-4"
+            onClick={() => onSelect(participant)}
+            className="animate-fade-in cursor-pointer rounded-lg border border-gray-200 bg-white p-4 transition-colors hover:bg-gray-50"
           >
             <div className="flex items-center gap-3">
               <Avatar initials={initialsOf(participant)} size="md" />

@@ -22,8 +22,20 @@ export interface BackendParticipant {
   lastName: string;
   email: string | null;
   phone: string | null;
+  address: string | null;
+  note: string;
   consentAt: string | null;
   meetingCount: number;
+}
+
+export interface ParticipantChanges {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  address: string;
+  note: string;
+  hasConsent: boolean;
 }
 
 export interface BackendMeeting {
@@ -354,6 +366,39 @@ export const api = {
       method: 'GET',
       accessToken,
       fallbackMessage: 'Nie udało się pobrać listy uczestników',
+    });
+  },
+
+  async createParticipant(
+    accessToken: string,
+    participant: ParticipantChanges,
+  ): Promise<void> {
+    await request('/api/v1/participants', {
+      method: 'POST',
+      accessToken,
+      body: participant,
+      fallbackMessage: 'Nie udało się dodać uczestnika',
+    });
+  },
+
+  async updateParticipant(
+    accessToken: string,
+    id: string,
+    participant: ParticipantChanges,
+  ): Promise<void> {
+    await request(`/api/v1/participants/${id}`, {
+      method: 'PATCH',
+      accessToken,
+      body: participant,
+      fallbackMessage: 'Nie udało się zapisać zmian',
+    });
+  },
+
+  async deleteParticipant(accessToken: string, id: string): Promise<void> {
+    await request(`/api/v1/participants/${id}`, {
+      method: 'DELETE',
+      accessToken,
+      fallbackMessage: 'Nie udało się usunąć uczestnika',
     });
   },
 
