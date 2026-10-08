@@ -32,6 +32,7 @@ function normalizeTime(text: string): string | null {
 
 interface TimeInputProps {
   id?: string;
+  ariaLabel?: string;
   value: string;
   onChange: (value: string) => void;
   onBlur?: () => void;
@@ -41,6 +42,7 @@ interface TimeInputProps {
 
 export function TimeInput({
   id,
+  ariaLabel,
   value,
   onChange,
   onBlur,
@@ -81,6 +83,7 @@ export function TimeInput({
     <div ref={buttonRef} className="relative">
       <input
         id={id}
+        aria-label={ariaLabel}
         type="text"
         inputMode="numeric"
         autoComplete="off"

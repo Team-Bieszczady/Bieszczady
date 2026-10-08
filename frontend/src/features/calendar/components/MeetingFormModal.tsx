@@ -1,14 +1,12 @@
 import { useId } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
+import { LuClock, LuMapPin, LuUsers } from 'react-icons/lu';
 import { Button } from '../../../components/ui/Button';
 import { FieldError } from '../../../components/ui/FieldError';
 import { Modal } from '../../../components/ui/Modal';
 import { Select, type SelectOption } from '../../../components/ui/Select';
-import {
-  FIELD_LABEL_CLASSES,
-  INPUT_CLASSES,
-} from '../../../components/ui/formStyles';
 import { TimeInput } from '../../../components/ui/TimeInput';
+import { INPUT_CLASSES } from '../../../components/ui/formStyles';
 import { InviteeCheckboxes } from './InviteeCheckboxes';
 
 export interface MeetingFormInputs {
@@ -33,6 +31,7 @@ interface MeetingFormModalProps {
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 const TIME_FORMAT_MESSAGE = 'Wpisz godzinę jak 10:30';
 
+const LABEL_CLASSES = 'mb-2 flex items-center gap-1.5 text-sm text-dark/80';
 const TEXTAREA_CLASSES =
   'w-full resize-y rounded-lg border border-gray-300 px-3 py-2 text-xs leading-relaxed text-dark focus:border-transparent focus:ring-1 focus:ring-darkGreen focus:outline-none';
 
@@ -43,9 +42,6 @@ export default function MeetingFormModal({
   isPending = false,
 }: MeetingFormModalProps) {
   const titleId = useId();
-  const dateId = useId();
-  const startId = useId();
-  const endId = useId();
   const placeId = useId();
   const linkId = useId();
   const noteId = useId();
@@ -71,12 +67,35 @@ export default function MeetingFormModal({
   });
 
   const projectId = useWatch({ control, name: 'projectId' });
+  const whenError =
+    errors.date?.message ??
+    errors.startTime?.message ??
+    errors.endTime?.message;
 
   return (
     <Modal isOpen onClose={onClose} title="Dodaj spotkanie" size="lg">
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div>
-          <label className={FIELD_LABEL_CLASSES}>Projekt</label>
+          <label className={LABEL_CLASSES} htmlFor={titleId}>
+            Nazwa spotkania
+          </label>
+          <input
+            {...register('title', {
+              validate: (value) =>
+                value.trim().length > 0 || 'Podaj nazwę spotkania',
+            })}
+            id={titleId}
+            type="text"
+            autoFocus
+            placeholder="Podaj nazwę, np. Spotkanie zespołu"
+            aria-invalid={!!errors.title}
+            className={INPUT_CLASSES}
+          />
+          <FieldError message={errors.title?.message} />
+        </div>
+
+        <div>
+          <p className={LABEL_CLASSES}>Projekt</p>
           <Controller
             name="projectId"
             control={control}
@@ -84,7 +103,7 @@ export default function MeetingFormModal({
             render={({ field }) => (
               <Select
                 size="md"
-                placeholder="Wybierz"
+                placeholder="Wybierz projekt"
                 options={projectOptions}
                 value={field.value}
                 onChange={(value) => {
@@ -99,136 +118,126 @@ export default function MeetingFormModal({
           <FieldError message={errors.projectId?.message} />
         </div>
 
+        <fieldset>
+          <legend className={LABEL_CLASSES}>
+            <LuClock size={14} aria-hidden="true" />
+            Kiedy
+          </legend>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              {...register('date', { required: 'Podaj datę spotkania' })}
+              type="date"
+              aria-label="Data"
+              aria-invalid={!!errors.date}
+              className={`${INPUT_CLASSES} w-36!`}
+            />
+            <div className="w-24">
+              <Controller
+                name="startTime"
+                control={control}
+                rules={{
+                  required: 'Podaj godzinę rozpoczęcia',
+                  validate: (value) =>
+                    TIME_PATTERN.test(value) || TIME_FORMAT_MESSAGE,
+                }}
+                render={({ field }) => (
+                  <TimeInput
+                    ariaLabel="Godzina rozpoczęcia"
+                    placeholder="9:00"
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    invalid={!!errors.startTime}
+                  />
+                )}
+              />
+            </div>
+            <span className="text-dark" aria-hidden="true">
+              –
+            </span>
+            <div className="w-24">
+              <Controller
+                name="endTime"
+                control={control}
+                rules={{
+                  required: 'Podaj godzinę zakończenia',
+                  validate: {
+                    format: (value) =>
+                      TIME_PATTERN.test(value) || TIME_FORMAT_MESSAGE,
+                    afterStart: (value, values) =>
+                      value > values.startTime ||
+                      'Koniec musi być później niż początek',
+                  },
+                }}
+                render={({ field }) => (
+                  <TimeInput
+                    ariaLabel="Godzina zakończenia"
+                    placeholder="10:00"
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    invalid={!!errors.endTime}
+                  />
+                )}
+              />
+            </div>
+          </div>
+          <FieldError message={whenError} />
+        </fieldset>
+
+        <fieldset>
+          <legend className={LABEL_CLASSES}>
+            <LuUsers size={14} aria-hidden="true" />
+            Uczestnicy
+          </legend>
+          {projectId ? (
+            <InviteeCheckboxes
+              projectId={projectId}
+              registration={register('inviteeIds')}
+            />
+          ) : (
+            <p className="text-xs text-grayText">
+              Wybierz projekt, aby zobaczyć jego zespół.
+            </p>
+          )}
+        </fieldset>
+
         <div>
-          <label className={FIELD_LABEL_CLASSES} htmlFor={titleId}>
-            Tytuł
+          <label className={LABEL_CLASSES} htmlFor={placeId}>
+            <LuMapPin size={14} aria-hidden="true" />
+            Miejsce
           </label>
           <input
-            {...register('title', {
-              validate: (value) =>
-                value.trim().length > 0 || 'Tytuł nie może być pusty',
-            })}
-            id={titleId}
+            {...register('place')}
+            id={placeId}
             type="text"
-            placeholder="Np. Spotkanie z gminą"
-            aria-invalid={!!errors.title}
+            placeholder="np. Urząd Gminy, sala nr 3"
             className={INPUT_CLASSES}
           />
-          <FieldError message={errors.title?.message} />
         </div>
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div>
-            <label className={FIELD_LABEL_CLASSES} htmlFor={dateId}>
-              Data
-            </label>
-            <input
-              {...register('date', { required: 'Podaj datę' })}
-              id={dateId}
-              type="date"
-              aria-invalid={!!errors.date}
-              className={INPUT_CLASSES}
-            />
-            <FieldError message={errors.date?.message} />
-          </div>
-          <div>
-            <label className={FIELD_LABEL_CLASSES} htmlFor={startId}>
-              Od
-            </label>
-            <Controller
-              name="startTime"
-              control={control}
-              rules={{
-                required: 'Podaj godzinę',
-                validate: (value) =>
-                  TIME_PATTERN.test(value) || TIME_FORMAT_MESSAGE,
-              }}
-              render={({ field }) => (
-                <TimeInput
-                  id={startId}
-                  value={field.value}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  invalid={!!errors.startTime}
-                />
-              )}
-            />
-            <FieldError message={errors.startTime?.message} />
-          </div>
-          <div>
-            <label className={FIELD_LABEL_CLASSES} htmlFor={endId}>
-              Do
-            </label>
-            <Controller
-              name="endTime"
-              control={control}
-              rules={{
-                required: 'Podaj godzinę',
-                validate: {
-                  format: (value) =>
-                    TIME_PATTERN.test(value) || TIME_FORMAT_MESSAGE,
-                  afterStart: (value, values) =>
-                    value > values.startTime ||
-                    'Koniec musi być później niż początek',
-                },
-              }}
-              render={({ field }) => (
-                <TimeInput
-                  id={endId}
-                  value={field.value}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  invalid={!!errors.endTime}
-                />
-              )}
-            />
-            <FieldError message={errors.endTime?.message} />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
-            <label className={FIELD_LABEL_CLASSES} htmlFor={placeId}>
-              Miejsce (opcjonalnie)
-            </label>
-            <input
-              {...register('place')}
-              id={placeId}
-              type="text"
-              placeholder="Np. Sala 2"
-              className={INPUT_CLASSES}
-            />
-          </div>
-          <div>
-            <label className={FIELD_LABEL_CLASSES} htmlFor={linkId}>
-              Link do spotkania (opcjonalnie)
-            </label>
-            <input
-              {...register('meetingUrl')}
-              id={linkId}
-              type="url"
-              placeholder="https://..."
-              className={INPUT_CLASSES}
-            />
-          </div>
-        </div>
-
-        {projectId && (
-          <InviteeCheckboxes
-            projectId={projectId}
-            registration={register('inviteeIds')}
-          />
-        )}
 
         <div>
-          <label className={FIELD_LABEL_CLASSES} htmlFor={noteId}>
-            Notatka (opcjonalnie)
+          <label className={LABEL_CLASSES} htmlFor={linkId}>
+            Link do spotkania
+          </label>
+          <input
+            {...register('meetingUrl')}
+            id={linkId}
+            type="url"
+            placeholder="wklej link do Google Meet / Zoom"
+            className={INPUT_CLASSES}
+          />
+        </div>
+
+        <div>
+          <label className={LABEL_CLASSES} htmlFor={noteId}>
+            Notatka
           </label>
           <textarea
             {...register('note')}
             id={noteId}
-            rows={3}
-            placeholder="Dodatkowe informacje"
+            rows={2}
+            placeholder="dodaj notatkę"
             className={TEXTAREA_CLASSES}
           />
         </div>
