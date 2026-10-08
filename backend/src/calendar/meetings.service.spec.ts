@@ -11,9 +11,14 @@ describe('MeetingsService', () => {
   let service: MeetingsService;
 
   const prisma = {
-    meeting: { findMany: jest.fn(), findFirst: jest.fn(), update: jest.fn() },
+    meeting: {
+      findMany: jest.fn(),
+      findFirst: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+    },
     projectMember: { findUnique: jest.fn(), findMany: jest.fn() },
-    project: { findMany: jest.fn() },
+    project: { findMany: jest.fn(), findUnique: jest.fn() },
   };
 
   const october = { from: '2026-10-01', to: '2026-10-31' };
@@ -134,6 +139,108 @@ describe('MeetingsService', () => {
           },
         }),
       );
+    });
+  });
+
+  describe('create', () => {
+    const newMeeting = { ...changes, projectId: 'project-1' };
+
+    beforeEach(() => {
+      prisma.project.findUnique.mockResolvedValue({
+        id: 'project-1',
+        archivedAt: null,
+      });
+      prisma.projectMember.findUnique.mockResolvedValue({
+        projectRole: 'EXECUTOR',
+      });
+      prisma.meeting.create.mockResolvedValue({});
+    });
+
+    it('answers 404 for a project that does not exist', async () => {
+      prisma.project.findUnique.mockResolvedValue(null);
+
+      await expect(service.create(newMeeting, executor)).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(prisma.meeting.create).not.toHaveBeenCalled();
+    });
+
+    it('refuses a meeting in an archived project', async () => {
+      prisma.project.findUnique.mockResolvedValue({
+        id: 'project-1',
+        archivedAt: new Date(),
+      });
+
+      await expect(service.create(newMeeting, executor)).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(prisma.meeting.create).not.toHaveBeenCalled();
+    });
+
+    it('refuses a partner', async () => {
+      prisma.projectMember.findUnique.mockResolvedValue({
+        projectRole: 'PARTNER',
+      });
+
+      await expect(service.create(newMeeting, executor)).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(prisma.meeting.create).not.toHaveBeenCalled();
+    });
+
+    it('refuses someone outside the project', async () => {
+      prisma.projectMember.findUnique.mockResolvedValue(null);
+
+      await expect(service.create(newMeeting, executor)).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(prisma.meeting.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects a meeting that ends before it starts', async () => {
+      await expect(
+        service.create(
+          { ...newMeeting, startTime: '11:00', endTime: '10:00' },
+          executor,
+        ),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.meeting.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects invitees from outside the project team', async () => {
+      prisma.projectMember.findMany.mockResolvedValue([]);
+
+      await expect(service.create(newMeeting, executor)).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(prisma.meeting.create).not.toHaveBeenCalled();
+    });
+
+    it('saves the meeting with its author and invitees', async () => {
+      await service.create(newMeeting, executor);
+
+      const [createArgs] = prisma.meeting.create.mock.calls[0] as [
+        { data: unknown },
+      ];
+      expect(createArgs.data).toMatchObject({
+        projectId: 'project-1',
+        title: 'Rada gminy',
+        date: new Date('2026-10-20'),
+        startTime: '10:00',
+        endTime: '11:00',
+        createdById: 'executor-1',
+        invitees: { create: [{ userId: 'member-1' }] },
+      });
+    });
+
+    it('lets a director add a meeting without being on the team', async () => {
+      await service.create(newMeeting, {
+        id: 'director-1',
+        isDirector: true,
+      });
+
+      expect(prisma.projectMember.findUnique).not.toHaveBeenCalled();
+      expect(prisma.meeting.create).toHaveBeenCalled();
     });
   });
 
