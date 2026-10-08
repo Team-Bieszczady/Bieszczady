@@ -4,6 +4,7 @@ import {
   LuLink,
   LuMapPin,
   LuPencil,
+  LuTrash2,
   LuUsers,
 } from 'react-icons/lu';
 import { Button } from '../../../components/ui/Button';
@@ -16,6 +17,7 @@ interface MeetingDetailsModalProps {
   meetingId: string;
   onClose: () => void;
   onEdit: (meeting: BackendMeetingDetails) => void;
+  onDelete: (meeting: BackendMeetingDetails) => void;
 }
 
 const ROW_CLASSES = 'flex items-start gap-3 text-sm text-dark';
@@ -39,6 +41,7 @@ export default function MeetingDetailsModal({
   meetingId,
   onClose,
   onEdit,
+  onDelete,
 }: MeetingDetailsModalProps) {
   const meetingQuery = useMeeting(meetingId);
   const meeting = meetingQuery.data;
@@ -140,7 +143,17 @@ export default function MeetingDetailsModal({
       )}
 
       {meeting?.canManage && (
-        <div className="mt-6 flex justify-end border-t border-gray-200 pt-4">
+        <div className="mt-6 flex justify-between border-t border-gray-200 pt-4">
+          <Button
+            variant="outline"
+            size="small"
+            type="button"
+            onClick={() => onDelete(meeting)}
+            className="gap-1.5 border-darkRed text-darkRed hover:bg-red-50"
+          >
+            <LuTrash2 size={14} aria-hidden="true" />
+            Usuń
+          </Button>
           <Button
             variant="outline"
             size="small"

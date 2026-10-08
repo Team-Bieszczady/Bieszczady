@@ -193,4 +193,43 @@ describe('MeetingsService', () => {
       expect(prisma.meeting.update).not.toHaveBeenCalled();
     });
   });
+
+  describe('remove', () => {
+    it('hides the meeting instead of erasing it', async () => {
+      prisma.projectMember.findUnique.mockResolvedValue({
+        projectRole: 'COORDINATOR',
+      });
+
+      await service.remove('meeting-1', {
+        id: 'coordinator-1',
+        isDirector: false,
+      });
+
+      const [updateArgs] = prisma.meeting.update.mock.calls[0] as [
+        { where: unknown; data: { deletedAt: unknown } },
+      ];
+      expect(updateArgs.where).toEqual({ id: 'meeting-1' });
+      expect(updateArgs.data.deletedAt).toBeInstanceOf(Date);
+    });
+
+    it('refuses an executor who did not add the meeting', async () => {
+      prisma.projectMember.findUnique.mockResolvedValue({
+        projectRole: 'EXECUTOR',
+      });
+
+      await expect(service.remove('meeting-1', executor)).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(prisma.meeting.update).not.toHaveBeenCalled();
+    });
+
+    it('answers 404 for a meeting the person cannot see', async () => {
+      prisma.meeting.findFirst.mockResolvedValue(null);
+
+      await expect(service.remove('meeting-1', executor)).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(prisma.meeting.update).not.toHaveBeenCalled();
+    });
+  });
 });

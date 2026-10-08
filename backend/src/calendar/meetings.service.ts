@@ -128,23 +128,7 @@ export class MeetingsService {
   }
 
   async update(id: string, dto: UpdateMeetingDto, editor: Viewer) {
-    const meeting = await this.prisma.meeting.findFirst({
-      where: { id, deletedAt: null, ...this.visibleTo(editor) },
-      select: {
-        projectId: true,
-        createdById: true,
-        project: { select: { archivedAt: true } },
-      },
-    });
-    if (!meeting) throw new NotFoundException('Nie znaleziono spotkania');
-    if (meeting.project.archivedAt)
-      throw new ForbiddenException('Projekt jest zarchiwizowany');
-
-    if (!(await this.canManage(meeting, editor))) {
-      throw new ForbiddenException(
-        'Spotkanie może zmienić dyrektor, koordynator projektu albo osoba, która je dodała',
-      );
-    }
+    const meeting = await this.findManageable(id, editor);
 
     this.assertEndsAfterStart(dto);
 
@@ -168,6 +152,37 @@ export class MeetingsService {
       },
       select: SAVED_MEETING_FIELDS,
     });
+  }
+
+  async remove(id: string, editor: Viewer) {
+    await this.findManageable(id, editor);
+
+    await this.prisma.meeting.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+  }
+
+  private async findManageable(id: string, viewer: Viewer) {
+    const meeting = await this.prisma.meeting.findFirst({
+      where: { id, deletedAt: null, ...this.visibleTo(viewer) },
+      select: {
+        projectId: true,
+        createdById: true,
+        project: { select: { archivedAt: true } },
+      },
+    });
+    if (!meeting) throw new NotFoundException('Nie znaleziono spotkania');
+    if (meeting.project.archivedAt)
+      throw new ForbiddenException('Projekt jest zarchiwizowany');
+
+    if (!(await this.canManage(meeting, viewer))) {
+      throw new ForbiddenException(
+        'Spotkanie może zmienić lub usunąć dyrektor, koordynator projektu albo osoba, która je dodała',
+      );
+    }
+
+    return meeting;
   }
 
   private visibleTo(viewer: Viewer): Prisma.MeetingWhereInput {

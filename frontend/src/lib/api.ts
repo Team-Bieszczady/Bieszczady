@@ -877,6 +877,13 @@ export const api = {
       fallbackMessage: 'Nie udało się zapisać spotkania',
     });
   },
+  async deleteMeeting(accessToken: string, id: string): Promise<void> {
+    return request<void>(`/api/v1/meetings/${id}`, {
+      method: 'DELETE',
+      accessToken,
+      fallbackMessage: 'Nie udało się usunąć spotkania',
+    });
+  },
 };
 
 export { isApiError };

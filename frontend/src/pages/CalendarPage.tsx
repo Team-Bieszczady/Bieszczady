@@ -11,6 +11,7 @@ import {
   todayIso,
 } from '../features/projects/utils/isoDate';
 import { Button } from '../components/ui/Button';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { MonthView } from '../features/calendar/components/MonthView';
 import { ProjectFilter } from '../features/calendar/components/ProjectFilter';
 import MeetingFormModal, {
@@ -20,6 +21,7 @@ import MeetingDetailsModal from '../features/calendar/components/MeetingDetailsM
 import { useMeetings } from '../features/calendar/hooks/useMeetings';
 import { useCreateMeeting } from '../features/calendar/hooks/useCreateMeeting';
 import { useUpdateMeeting } from '../features/calendar/hooks/useUpdateMeeting';
+import { useDeleteMeeting } from '../features/calendar/hooks/useDeleteMeeting';
 import { useProjects } from '../features/projects/hooks/useProjectsApi';
 import type { BackendMeetingDetails, MeetingChanges } from '../lib/api';
 
@@ -45,6 +47,8 @@ export default function CalendarPage() {
   const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(
     null,
   );
+  const [meetingToDelete, setMeetingToDelete] =
+    useState<BackendMeetingDetails | null>(null);
 
   const toggleProject = (id: string) => {
     if (hiddenProjectIds.includes(id)) {
@@ -62,6 +66,7 @@ export default function CalendarPage() {
   const projectsQuery = useProjects();
   const createMeeting = useCreateMeeting();
   const updateMeeting = useUpdateMeeting();
+  const deleteMeeting = useDeleteMeeting();
 
   const meetings = meetingsQuery.data ?? [];
   const projects = projectsQuery.data ?? [];
@@ -114,6 +119,30 @@ export default function CalendarPage() {
       { projectId: values.projectId, ...toMeetingChanges(values) },
       afterSave('Spotkanie dodane'),
     );
+  };
+
+  const askToDelete = (meeting: BackendMeetingDetails) => {
+    setSelectedMeetingId(null);
+    setMeetingToDelete(meeting);
+  };
+
+  const cancelDelete = () => {
+    if (meetingToDelete) setSelectedMeetingId(meetingToDelete.id);
+    setMeetingToDelete(null);
+  };
+
+  const confirmDelete = () => {
+    if (!meetingToDelete) return;
+
+    deleteMeeting.mutate(meetingToDelete.id, {
+      onSuccess: () => {
+        setMeetingToDelete(null);
+        toast.success('Spotkanie usunięte');
+      },
+      onError: (error) => {
+        toast.error(error.message);
+      },
+    });
   };
 
   return (
@@ -202,8 +231,20 @@ export default function CalendarPage() {
           meetingId={selectedMeetingId}
           onClose={() => setSelectedMeetingId(null)}
           onEdit={openEditForm}
+          onDelete={askToDelete}
         />
       )}
+
+      <ConfirmDialog
+        isOpen={meetingToDelete !== null}
+        onClose={cancelDelete}
+        onConfirm={confirmDelete}
+        title="Usuń spotkanie"
+        description={`Czy na pewno chcesz usunąć spotkanie „${meetingToDelete?.title ?? ''}”? Zniknie z kalendarza wszystkich uczestników.`}
+        confirmLabel="Usuń"
+        tone="danger"
+        isPending={deleteMeeting.isPending}
+      />
 
       {isFormOpen && (
         <MeetingFormModal
