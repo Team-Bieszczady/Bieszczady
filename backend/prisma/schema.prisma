@@ -34,6 +34,7 @@ model User {
   documentAccesses        DocumentAccess[]   @relation("DocumentAccessUser")
   documentAccessesGranted DocumentAccess[]   @relation("DocumentAccessGrantedBy")
   createdMeetings         Meeting[]          @relation("MeetingCreator")
+  confirmedMeetings       Meeting[]          @relation("MeetingConfirmer")
   meetingInvitations      MeetingInvitee[]   @relation("MeetingInviteeUser")
 
   projectMemberships ProjectMember[] @relation("ProjectMemberUser")
@@ -322,10 +323,11 @@ model Document {
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
 
-  folder   Folder            @relation(fields: [folderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  owner    User              @relation("DocumentOwner", fields: [ownerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  folder   Folder                  @relation(fields: [folderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  owner    User                    @relation("DocumentOwner", fields: [ownerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   versions DocumentVersion[]
   accesses DocumentAccess[]
+  meetings MeetingAttendanceFile[] @relation("DocumentMeetingAttendance")
 
   @@index([projectId])
   @@index([folderId])
@@ -374,27 +376,47 @@ model DocumentAccess {
 }
 
 model Meeting {
-  id          String    @id @default(uuid())
-  projectId   String    @map("project_id")
-  title       String
-  date        DateTime  @db.Date
-  startTime   String    @map("start_time")
-  endTime     String    @map("end_time")
-  place       String?
-  meetingUrl  String?   @map("meeting_url")
-  note        String    @default("") @db.NVarChar(Max)
-  createdById String    @map("created_by_id")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-  deletedAt   DateTime? @map("deleted_at")
+  id            String    @id @default(uuid())
+  projectId     String    @map("project_id")
+  title         String
+  date          DateTime  @db.Date
+  startTime     String    @map("start_time")
+  endTime       String    @map("end_time")
+  place         String?
+  meetingUrl    String?   @map("meeting_url")
+  note          String    @default("") @db.NVarChar(Max)
+  createdById   String    @map("created_by_id")
+  status        String    @default("PLANNED")
+  attendeeCount Int?      @map("attendee_count")
+  confirmedAt   DateTime? @map("confirmed_at")
+  confirmedById String?   @map("confirmed_by_id")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
 
-  project   Project          @relation("ProjectMeetings", fields: [projectId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  createdBy User             @relation("MeetingCreator", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  invitees  MeetingInvitee[] @relation("MeetingInvitees")
+  project         Project                 @relation("ProjectMeetings", fields: [projectId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  createdBy       User                    @relation("MeetingCreator", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  confirmedBy     User?                   @relation("MeetingConfirmer", fields: [confirmedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  invitees        MeetingInvitee[]        @relation("MeetingInvitees")
+  attendanceFiles MeetingAttendanceFile[] @relation("MeetingAttendanceFiles")
 
   @@index([projectId, date])
   @@index([createdById])
+  @@index([confirmedById])
   @@map("meetings")
+}
+
+model MeetingAttendanceFile {
+  id         String @id @default(uuid())
+  meetingId  String @map("meeting_id")
+  documentId String @map("document_id")
+
+  meeting  Meeting  @relation("MeetingAttendanceFiles", fields: [meetingId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  document Document @relation("DocumentMeetingAttendance", fields: [documentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([meetingId, documentId])
+  @@index([documentId])
+  @@map("meeting_attendance_files")
 }
 
 model MeetingInvitee {
