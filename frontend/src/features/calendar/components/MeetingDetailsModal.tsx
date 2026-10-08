@@ -35,6 +35,8 @@ interface MeetingDetailsModalProps {
   onDelete: (meeting: BackendMeetingDetails) => void;
 }
 
+const OUTCOME_TOAST_ID = 'meeting-outcome';
+
 const ROW_CLASSES = 'flex items-start gap-3 text-sm text-dark';
 const ICON_CLASSES = 'mt-0.5 shrink-0 text-grayText';
 
@@ -186,16 +188,21 @@ export default function MeetingDetailsModal({
     hasModule(user, 'PROJECTS') && hasModule(user, 'OVERVIEW');
 
   const submitOutcome = (outcome: MeetingOutcome) => {
+    let message = 'Zmiany zapisane';
+    if (meeting && meeting.status === 'PLANNED') {
+      if (outcome.status === 'HELD') {
+        message = 'Spotkanie zatwierdzone';
+      } else {
+        message = 'Spotkanie oznaczone jako odwołane';
+      }
+    }
+
     setOutcome.mutate(
       { id: meetingId, outcome },
       {
-        onSuccess: () =>
-          toast.success(
-            outcome.status === 'HELD'
-              ? 'Spotkanie zatwierdzone'
-              : 'Spotkanie oznaczone jako odwołane',
-          ),
-        onError: (error) => toast.error(error.message),
+        onSuccess: () => toast.success(message, { id: OUTCOME_TOAST_ID }),
+        onError: (error) =>
+          toast.error(error.message, { id: OUTCOME_TOAST_ID }),
       },
     );
   };
