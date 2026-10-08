@@ -16,6 +16,7 @@ import { ProjectFilter } from '../features/calendar/components/ProjectFilter';
 import MeetingFormModal, {
   type MeetingFormInputs,
 } from '../features/calendar/components/MeetingFormModal';
+import MeetingDetailsModal from '../features/calendar/components/MeetingDetailsModal';
 import { useMeetings } from '../features/calendar/hooks/useMeetings';
 import { useCreateMeeting } from '../features/calendar/hooks/useCreateMeeting';
 import { useProjects } from '../features/projects/hooks/useProjectsApi';
@@ -24,6 +25,9 @@ export default function CalendarPage() {
   const [anchor, setAnchor] = useState(todayIso);
   const [hiddenProjectIds, setHiddenProjectIds] = useState<string[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(
+    null,
+  );
 
   const toggleProject = (id: string) => {
     if (hiddenProjectIds.includes(id)) {
@@ -160,7 +164,15 @@ export default function CalendarPage() {
         anchor={anchor}
         meetings={filteredMeetings}
         projects={projects}
+        onMeetingClick={setSelectedMeetingId}
       />
+
+      {selectedMeetingId && (
+        <MeetingDetailsModal
+          meetingId={selectedMeetingId}
+          onClose={() => setSelectedMeetingId(null)}
+        />
+      )}
 
       {isFormOpen && (
         <MeetingFormModal

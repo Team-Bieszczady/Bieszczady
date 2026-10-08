@@ -79,6 +79,7 @@ export class MeetingsService {
         place: true,
         meetingUrl: true,
         note: true,
+        createdAt: true,
         project: { select: { name: true } },
         createdBy: { select: { id: true, firstName: true, lastName: true } },
         invitees: {

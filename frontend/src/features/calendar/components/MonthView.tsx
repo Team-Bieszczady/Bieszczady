@@ -17,9 +17,15 @@ interface Props {
   anchor: string;
   meetings: Meeting[];
   projects: CalendarProject[];
+  onMeetingClick: (meetingId: string) => void;
 }
 
-export function MonthView({ anchor, meetings, projects }: Props) {
+export function MonthView({
+  anchor,
+  meetings,
+  projects,
+  onMeetingClick,
+}: Props) {
   const gridDays = getMonthGridDays(anchor);
   const today = todayIso();
   const firstDay = startOfMonthIso(anchor);
@@ -66,12 +72,14 @@ export function MonthView({ anchor, meetings, projects }: Props) {
                     ?.className ?? 'border-gray-400 bg-gray-100';
 
                 return (
-                  <div
+                  <button
                     key={meeting.id}
-                    className={`h-5 truncate rounded border-l-2 px-1.5 text-[11px] font-medium leading-5 text-dark ${colorClass}`}
+                    type="button"
+                    onClick={() => onMeetingClick(meeting.id)}
+                    className={`h-5 w-full cursor-pointer truncate rounded border-l-2 px-1.5 text-left text-[11px] leading-5 font-medium text-dark hover:brightness-95 ${colorClass}`}
                   >
-                    <span>{`${meeting.startTime} ${meeting.title}`}</span>
-                  </div>
+                    {`${meeting.startTime} ${meeting.title}`}
+                  </button>
                 );
               })}
               {hiddenCount > 0 && (

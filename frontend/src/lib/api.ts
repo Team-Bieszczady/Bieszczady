@@ -51,6 +51,22 @@ export interface NewMeeting {
   inviteeIds?: string[];
 }
 
+export interface MeetingPerson {
+  id: string;
+  firstName: string;
+  lastName: string;
+}
+
+export interface BackendMeetingDetails extends BackendMeeting {
+  place: string | null;
+  meetingUrl: string | null;
+  note: string;
+  createdAt: string;
+  project: { name: string };
+  createdBy: MeetingPerson;
+  invitees: { user: MeetingPerson }[];
+}
+
 export interface BackendFolder {
   id: string;
   projectId: string;
@@ -834,6 +850,16 @@ export const api = {
       accessToken,
       body: meeting,
       fallbackMessage: 'Nie udało się dodać spotkania',
+    });
+  },
+  async getMeeting(
+    accessToken: string,
+    id: string,
+  ): Promise<BackendMeetingDetails> {
+    return request<BackendMeetingDetails>(`/api/v1/meetings/${id}`, {
+      method: 'GET',
+      accessToken,
+      fallbackMessage: 'Nie udało się pobrać spotkania',
     });
   },
 };
