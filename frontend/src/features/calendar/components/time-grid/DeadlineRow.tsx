@@ -49,6 +49,7 @@ export function DeadlineRow({
               deadline={deadline}
               project={projectOf(deadline)}
               size={isSingleDay ? 'day' : 'week'}
+              withPrefix={false}
               onClick={() => onDeadlineClick(deadline)}
             />
           ))}

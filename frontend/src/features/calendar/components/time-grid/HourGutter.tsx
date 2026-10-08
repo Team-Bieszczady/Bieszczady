@@ -1,7 +1,7 @@
 import { minutesToTop, type NowMarker } from '../../utils/timeGrid';
 import { GUTTER_CLASSES } from './layout';
 
-const NOW_LABEL_CLEARANCE = 10;
+const NOW_LABEL_CLEARANCE = 18;
 
 interface HourGutterProps {
   hours: number[];

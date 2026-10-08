@@ -7,6 +7,9 @@ const DEFAULT_LAST_HOUR = 18;
 const SHORT_MEETING_MINUTES = 45;
 const LONG_MEETING_MINUTES = 75;
 const GAP_BETWEEN_MEETINGS = 4;
+const STACK_INDENT = 10;
+const MAX_INDENT_LEVELS = 2;
+const STACK_MIN_GAP_MINUTES = 30;
 
 export type MeetingSize = 'short' | 'medium' | 'long';
 
@@ -15,6 +18,8 @@ export interface PlacedMeeting {
   column: number;
   span: number;
   columns: number;
+  depth: number;
+  visibleMinutes: number;
 }
 
 export interface NowMarker {
@@ -54,32 +59,49 @@ export function visibleHours(meetings: Meeting[]) {
   return { first, last };
 }
 
-export function meetingSize(meeting: Meeting): MeetingSize {
-  const minutes = toMinutes(meeting.endTime) - toMinutes(meeting.startTime);
+function durationOf(meeting: Meeting) {
+  return toMinutes(meeting.endTime) - toMinutes(meeting.startTime);
+}
 
-  if (minutes < SHORT_MEETING_MINUTES) return 'short';
-  if (minutes < LONG_MEETING_MINUTES) return 'medium';
+export function meetingSize(visibleMinutes: number): MeetingSize {
+  if (visibleMinutes < SHORT_MEETING_MINUTES) return 'short';
+  if (visibleMinutes < LONG_MEETING_MINUTES) return 'medium';
   return 'long';
 }
 
 export function horizontalPlacement(
-  { column, span, columns }: PlacedMeeting,
+  { column, span, columns, depth }: PlacedMeeting,
   edgeGap: number,
 ) {
-  const share = 100 / columns;
+  const indent = Math.min(depth, MAX_INDENT_LEVELS) * STACK_INDENT;
   const lastColumn = column + span - 1;
   const leftGap = column === 0 ? edgeGap : GAP_BETWEEN_MEETINGS / 2;
   const rightGap =
     lastColumn === columns - 1 ? edgeGap : GAP_BETWEEN_MEETINGS / 2;
 
   return {
-    left: `calc(${column * share}% + ${leftGap}px)`,
-    width: `calc(${span * share}% - ${leftGap + rightGap}px)`,
+    left: `calc(${indent}px + (100% - ${indent}px) * ${column / columns} + ${leftGap}px)`,
+    width: `calc((100% - ${indent}px) * ${span / columns} - ${leftGap + rightGap}px)`,
   };
 }
 
 function overlaps(a: Meeting, b: Meeting) {
   return a.startTime < b.endTime && b.startTime < a.endTime;
+}
+
+function startsTogether(earlier: Meeting, later: Meeting) {
+  return (
+    toMinutes(later.startTime) - toMinutes(earlier.startTime) <
+    STACK_MIN_GAP_MINUTES
+  );
+}
+
+function sortByStart(meetings: Meeting[]) {
+  return [...meetings].sort(
+    (a, b) =>
+      a.startTime.localeCompare(b.startTime) ||
+      b.endTime.localeCompare(a.endTime),
+  );
 }
 
 export function nowMarker(
@@ -97,11 +119,7 @@ export function nowMarker(
 }
 
 export function placeSideBySide(meetings: Meeting[]): PlacedMeeting[] {
-  const sorted = [...meetings].sort(
-    (a, b) =>
-      a.startTime.localeCompare(b.startTime) ||
-      b.endTime.localeCompare(a.endTime),
-  );
+  const sorted = sortByStart(meetings);
 
   const placed: PlacedMeeting[] = [];
   let group: { meeting: Meeting; column: number }[] = [];
@@ -122,7 +140,13 @@ export function placeSideBySide(meetings: Meeting[]): PlacedMeeting[] {
       ) {
         span += 1;
       }
-      placed.push({ ...item, span, columns: columnEnds.length });
+      placed.push({
+        ...item,
+        span,
+        columns: columnEnds.length,
+        depth: 0,
+        visibleMinutes: durationOf(item.meeting),
+      });
     }
     group = [];
     columnEnds = [];
@@ -146,4 +170,51 @@ export function placeSideBySide(meetings: Meeting[]): PlacedMeeting[] {
   closeGroup();
 
   return placed;
+}
+
+interface Stack {
+  depth: number;
+  members: Meeting[];
+}
+
+export function placeStacked(meetings: Meeting[]): PlacedMeeting[] {
+  const placed: { meeting: Meeting; stack: Stack }[] = [];
+
+  for (const meeting of sortByStart(meetings)) {
+    const below = placed.filter((item) => overlaps(item.meeting, meeting));
+    const neighbour = below.find((item) =>
+      startsTogether(item.meeting, meeting),
+    );
+
+    if (neighbour) {
+      neighbour.stack.members.push(meeting);
+      placed.push({ meeting, stack: neighbour.stack });
+      continue;
+    }
+
+    const depth = Math.max(-1, ...below.map((item) => item.stack.depth)) + 1;
+    placed.push({ meeting, stack: { depth, members: [meeting] } });
+  }
+
+  return placed.map(({ meeting, stack }, index) => {
+    const coveredAfter = placed
+      .slice(index + 1)
+      .filter(
+        (item) =>
+          item.stack.depth > stack.depth && overlaps(item.meeting, meeting),
+      )
+      .map(
+        (item) =>
+          toMinutes(item.meeting.startTime) - toMinutes(meeting.startTime),
+      );
+
+    return {
+      meeting,
+      column: stack.members.indexOf(meeting),
+      span: 1,
+      columns: stack.members.length,
+      depth: stack.depth,
+      visibleMinutes: Math.min(durationOf(meeting), ...coveredAfter),
+    };
+  });
 }

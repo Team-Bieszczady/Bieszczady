@@ -1,5 +1,9 @@
 import type { CalendarProject, Meeting } from '../../types';
-import { minutesToTop, placeSideBySide } from '../../utils/timeGrid';
+import {
+  minutesToTop,
+  placeSideBySide,
+  placeStacked,
+} from '../../utils/timeGrid';
 import { MeetingBlock } from './MeetingBlock';
 
 interface DayColumnProps {
@@ -56,6 +60,7 @@ export function DayColumn({
 }: DayColumnProps) {
   const projectOf = (meeting: Meeting) =>
     projects.find((project) => project.id === meeting.projectId);
+  const placeMeetings = detailed ? placeSideBySide : placeStacked;
 
   return (
     <div
@@ -64,7 +69,7 @@ export function DayColumn({
     >
       <HourLines hours={hours} firstHour={firstHour} />
 
-      {placeSideBySide(meetings).map((placed) => (
+      {placeMeetings(meetings).map((placed) => (
         <MeetingBlock
           key={placed.meeting.id}
           placed={placed}

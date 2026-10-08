@@ -23,22 +23,25 @@ interface DeadlineChipProps {
   deadline: Deadline;
   project: CalendarProject | undefined;
   size: DeadlineChipSize;
+  withPrefix?: boolean;
   onClick: () => void;
 }
 
-function deadlineLabel(deadline: Deadline) {
-  const prefix = deadline.status === 'DONE' ? '✓ ' : '';
-  return `${prefix}Termin: ${deadline.title}`;
+function deadlineLabel(deadline: Deadline, withPrefix: boolean) {
+  const done = deadline.status === 'DONE' ? '✓ ' : '';
+  const prefix = withPrefix ? 'Termin: ' : '';
+  return `${done}${prefix}${deadline.title}`;
 }
 
 function describeDeadline(deadline: Deadline) {
-  return `${deadlineLabel(deadline)}, ${TASK_STATUS_LABELS[deadline.status].toLowerCase()}`;
+  return `${deadlineLabel(deadline, true)}, ${TASK_STATUS_LABELS[deadline.status].toLowerCase()}`;
 }
 
 export function DeadlineChip({
   deadline,
   project,
   size,
+  withPrefix = true,
   onClick,
 }: DeadlineChipProps) {
   const colors = meetingColors(project?.color);
@@ -56,7 +59,7 @@ export function DeadlineChip({
         aria-hidden="true"
         className={`absolute -inset-y-px left-0 rounded-full ${bar} ${colors.accent}`}
       />
-      {deadlineLabel(deadline)}
+      {deadlineLabel(deadline, withPrefix)}
       {size === 'day' && project && (
         <span className="ml-2 font-normal text-gray-400">{project.name}</span>
       )}

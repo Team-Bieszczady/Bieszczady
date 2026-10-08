@@ -56,7 +56,7 @@ export const deadlinesOnDay = (
   day: string,
 ): Deadline[] => deadlines.filter((deadline) => deadline.date === day);
 
-const MONTH_CELL_LIMIT = 2;
+const MONTH_CELL_ROWS = 3;
 
 export const monthCellEntries = (
   meetings: Meeting[],
@@ -65,17 +65,12 @@ export const monthCellEntries = (
 ) => {
   const dayDeadlines = deadlinesOnDay(deadlines, day);
   const dayMeetings = meetingsOnDay(meetings, day);
+  const total = dayDeadlines.length + dayMeetings.length;
+  const shown = total <= MONTH_CELL_ROWS ? total : MONTH_CELL_ROWS - 1;
 
-  const visibleDeadlines = dayDeadlines.slice(0, MONTH_CELL_LIMIT);
-  const visibleMeetings = dayMeetings.slice(
-    0,
-    MONTH_CELL_LIMIT - visibleDeadlines.length,
-  );
-  const hiddenCount =
-    dayDeadlines.length +
-    dayMeetings.length -
-    visibleDeadlines.length -
-    visibleMeetings.length;
+  const visibleDeadlines = dayDeadlines.slice(0, shown);
+  const visibleMeetings = dayMeetings.slice(0, shown - visibleDeadlines.length);
+  const hiddenCount = total - visibleDeadlines.length - visibleMeetings.length;
 
   return { visibleDeadlines, visibleMeetings, hiddenCount };
 };

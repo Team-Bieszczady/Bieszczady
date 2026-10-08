@@ -95,7 +95,7 @@ function FullContent({
   return (
     <>
       <p
-        className={`w-full leading-snug font-semibold ${style.title} ${wrapsTitle ? 'line-clamp-2' : 'truncate'}`}
+        className={`w-full leading-snug font-semibold ${style.title} ${wrapsTitle ? 'line-clamp-2 wrap-break-word' : 'truncate'}`}
       >
         {titleText(meeting)}
       </p>
@@ -123,7 +123,7 @@ export function MeetingBlock({
   onClick,
 }: MeetingBlockProps) {
   const { meeting } = placed;
-  const size = meetingSize(meeting);
+  const size = meetingSize(placed.visibleMinutes);
   const style = detailed ? DAY_STYLE : WEEK_STYLE;
   const colors = meetingColors(project?.color);
   const isCancelled = meeting.status === 'CANCELLED';
@@ -133,6 +133,8 @@ export function MeetingBlock({
   const { left, width } = horizontalPlacement(placed, style.edgeGap);
 
   const Content = size === 'short' ? ShortContent : FullContent;
+  const faded = isCancelled ? 'opacity-60' : '';
+  const isStacked = placed.depth > 0;
 
   return (
     <button
@@ -145,20 +147,29 @@ export function MeetingBlock({
         height: Math.max(bottom - top, MIN_BLOCK_HEIGHT),
         left,
         width,
+        zIndex: placed.depth + 1,
       }}
-      className={`${BLOCK_CLASSES} ${PADDING[size]} ${colors.tint} ${isCancelled ? 'line-through opacity-60' : ''}`}
+      className={`${BLOCK_CLASSES} ${PADDING[size]} bg-white ${isStacked ? 'ring-1 ring-white' : ''}`}
     >
       <span
         aria-hidden="true"
-        className={`absolute inset-y-0 left-0 w-1 rounded-full ${colors.accent}`}
+        className={`absolute inset-0 ${colors.tint} ${faded}`}
       />
-      <Content
-        meeting={meeting}
-        project={project}
-        size={size}
-        detailed={detailed}
-        style={style}
+      <span
+        aria-hidden="true"
+        className={`absolute inset-y-0 left-0 w-1 rounded-full ${colors.accent} ${faded}`}
       />
+      <span
+        className={`relative flex w-full flex-col items-start ${isCancelled ? 'line-through' : ''} ${faded}`}
+      >
+        <Content
+          meeting={meeting}
+          project={project}
+          size={size}
+          detailed={detailed}
+          style={style}
+        />
+      </span>
     </button>
   );
 }
