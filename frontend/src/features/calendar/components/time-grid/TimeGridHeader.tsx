@@ -9,15 +9,15 @@ interface TimeGridHeaderProps {
 }
 
 function dayButtonClasses(isToday: boolean, isWeekend: boolean) {
-  if (isToday) return 'bg-dark text-white';
+  if (isToday) return 'bg-dark font-semibold text-white';
   if (isWeekend) return 'text-gray-400 hover:bg-gray-100';
-  return 'text-dark/80 hover:bg-gray-100';
+  return 'text-gray-500 hover:bg-gray-100';
 }
 
 function GutterCaption() {
   return (
     <div
-      className={`${GUTTER_CLASSES} flex items-center justify-center text-[11px] text-grayText`}
+      className={`${GUTTER_CLASSES} flex items-center justify-center text-[11px] text-gray-400`}
     >
       godz.
     </div>
@@ -52,7 +52,7 @@ export function TimeGridHeader({
             type="button"
             onClick={() => onDayClick(day)}
             aria-label={`Pokaż dzień: ${formatFullDay(day)}`}
-            className={`cursor-pointer rounded-full px-3 py-0.5 text-xs font-medium transition-colors ${dayButtonClasses(day === today, index >= 5)}`}
+            className={`cursor-pointer rounded-full px-3 py-0.5 text-[13px] transition-colors ${dayButtonClasses(day === today, index >= 5)}`}
           >
             {WEEKDAY_SHORT_NAMES[index]} {dayNumber(day)}
           </button>

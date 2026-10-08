@@ -11,20 +11,28 @@ interface HourGutterProps {
 }
 
 export function HourGutter({ hours, firstHour, height, now }: HourGutterProps) {
-  const isCoveredByNow = (top: number) =>
-    now !== null && Math.abs(now.top - top) < NOW_LABEL_CLEARANCE;
+  const isCoveredByNow = (labelTop: number) =>
+    now !== null && Math.abs(now.top - labelTop) < NOW_LABEL_CLEARANCE;
 
   return (
     <div className={`relative ${GUTTER_CLASSES}`} style={{ height }}>
+      {hours.slice(1).map((hour) => (
+        <div
+          key={hour}
+          className="absolute inset-x-0 border-t border-gray-200"
+          style={{ top: minutesToTop(hour * 60, firstHour) }}
+        />
+      ))}
+
       {hours.map((hour) => {
-        const top = minutesToTop(hour * 60, firstHour);
-        if (isCoveredByNow(top)) return null;
+        const labelTop = minutesToTop(hour * 60 + 30, firstHour);
+        if (isCoveredByNow(labelTop)) return null;
 
         return (
           <span
             key={hour}
-            className="absolute right-2 -translate-y-1/2 text-[11px] text-grayText"
-            style={{ top }}
+            className="absolute right-3 -translate-y-1/2 text-xs text-gray-400"
+            style={{ top: labelTop }}
           >
             {hour}:00
           </span>
@@ -33,7 +41,7 @@ export function HourGutter({ hours, firstHour, height, now }: HourGutterProps) {
 
       {now && (
         <span
-          className="absolute right-2 -translate-y-1/2 text-[11px] font-semibold text-red-600"
+          className="absolute right-3 -translate-y-1/2 text-[11px] font-semibold text-darkRed"
           style={{ top: now.top }}
         >
           {now.label}

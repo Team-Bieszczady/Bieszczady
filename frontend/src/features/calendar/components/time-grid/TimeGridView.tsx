@@ -40,7 +40,7 @@ export function TimeGridView({
   const now = days.includes(today) ? nowMarker(currentTime, first, last) : null;
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+    <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white font-calendar">
       <div className={isSingleDay ? '' : 'min-w-180'}>
         <TimeGridHeader days={days} today={today} onDayClick={onDayClick} />
 

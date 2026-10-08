@@ -1,12 +1,12 @@
 import type { Meeting } from '../types';
 
 export const HOUR_HEIGHT = 48;
-export const GRID_TOP_PADDING = 8;
 
 const DEFAULT_FIRST_HOUR = 8;
 const DEFAULT_LAST_HOUR = 18;
 const SHORT_MEETING_MINUTES = 45;
 const LONG_MEETING_MINUTES = 75;
+const GAP_BETWEEN_MEETINGS = 4;
 
 export type MeetingSize = 'short' | 'medium' | 'long';
 
@@ -27,11 +27,11 @@ export function toMinutes(time: string) {
 }
 
 export function minutesToTop(minutes: number, firstHour: number) {
-  return GRID_TOP_PADDING + ((minutes - firstHour * 60) / 60) * HOUR_HEIGHT;
+  return ((minutes - firstHour * 60) / 60) * HOUR_HEIGHT;
 }
 
 export function gridHeight(firstHour: number, lastHour: number) {
-  return GRID_TOP_PADDING + (lastHour - firstHour) * HOUR_HEIGHT;
+  return (lastHour - firstHour) * HOUR_HEIGHT;
 }
 
 export function hoursBetween(firstHour: number, lastHour: number) {
@@ -59,6 +59,20 @@ export function meetingSize(meeting: Meeting): MeetingSize {
   if (minutes < SHORT_MEETING_MINUTES) return 'short';
   if (minutes < LONG_MEETING_MINUTES) return 'medium';
   return 'long';
+}
+
+export function horizontalPlacement(
+  { column, columns }: PlacedMeeting,
+  edgeGap: number,
+) {
+  const share = 100 / columns;
+  const leftGap = column === 0 ? edgeGap : GAP_BETWEEN_MEETINGS / 2;
+  const rightGap = column === columns - 1 ? edgeGap : GAP_BETWEEN_MEETINGS / 2;
+
+  return {
+    left: `calc(${column * share}% + ${leftGap}px)`,
+    width: `calc(${share}% - ${leftGap + rightGap}px)`,
+  };
 }
 
 export function nowMarker(

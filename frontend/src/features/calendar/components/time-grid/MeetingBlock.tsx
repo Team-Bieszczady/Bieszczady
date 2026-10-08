@@ -1,7 +1,8 @@
 import type { MeetingStatus } from '../../../../lib/api';
-import { meetingColorClass } from '../../meetingColors';
+import { meetingColors } from '../../meetingColors';
 import type { CalendarProject, Meeting } from '../../types';
 import {
+  horizontalPlacement,
   meetingSize,
   minutesToTop,
   toMinutes,
@@ -10,9 +11,28 @@ import {
 } from '../../utils/timeGrid';
 
 const MIN_BLOCK_HEIGHT = 20;
+const DAY_EDGE_GAP = 8;
+const WEEK_EDGE_GAP = 3;
 
 const BLOCK_CLASSES =
-  'absolute flex cursor-pointer flex-col items-start justify-start overflow-hidden rounded-md border-l-3 text-left text-dark transition hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-darkGreen';
+  'absolute flex cursor-pointer flex-col items-start justify-start overflow-hidden rounded-r-md text-left text-dark transition hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-darkGreen';
+
+const DAY_PADDING: Record<MeetingSize, string> = {
+  short: 'py-0.5 pr-2 pl-3',
+  medium: 'py-1 pr-3 pl-3.5',
+  long: 'py-1.5 pr-3 pl-3.5',
+};
+
+const WEEK_PADDING: Record<MeetingSize, string> = {
+  short: 'py-0.5 pr-1.5 pl-2',
+  medium: 'py-1 pr-1.5 pl-2.5',
+  long: 'py-1.5 pr-1.5 pl-2.5',
+};
+
+const DAY_TEXT = { title: 'text-[13px]', detail: 'text-xs' };
+const WEEK_TEXT = { title: 'text-xs', detail: 'text-[11px]' };
+
+type TextSizes = typeof DAY_TEXT;
 
 const STATUS_DESCRIPTIONS: Record<MeetingStatus, string> = {
   PLANNED: '',
@@ -20,16 +40,16 @@ const STATUS_DESCRIPTIONS: Record<MeetingStatus, string> = {
   CANCELLED: ', odwołane',
 };
 
-function describeMeeting(meeting: Meeting) {
-  return `${meeting.title}, ${meeting.startTime}–${meeting.endTime}${STATUS_DESCRIPTIONS[meeting.status]}`;
-}
-
 interface MeetingBlockProps {
   placed: PlacedMeeting;
   firstHour: number;
   project: CalendarProject | undefined;
   detailed: boolean;
   onClick: () => void;
+}
+
+function describeMeeting(meeting: Meeting) {
+  return `${meeting.title}, ${meeting.startTime}–${meeting.endTime}${STATUS_DESCRIPTIONS[meeting.status]}`;
 }
 
 function titleText(meeting: Meeting) {
@@ -41,11 +61,20 @@ function timeText(meeting: Meeting, withPlace: boolean) {
   return withPlace && meeting.place ? `${time}, ${meeting.place}` : time;
 }
 
-function ShortContent({ meeting }: { meeting: Meeting }) {
+interface ShortContentProps {
+  meeting: Meeting;
+  text: TextSizes;
+}
+
+function ShortContent({ meeting, text }: ShortContentProps) {
   return (
-    <p className="w-full truncate text-[11px] leading-4">
-      <span className="font-semibold">{titleText(meeting)}</span>{' '}
-      <span className="text-dark/70">{meeting.startTime}</span>
+    <p className="w-full truncate leading-4">
+      <span className={`font-semibold ${text.title}`}>
+        {titleText(meeting)}
+      </span>{' '}
+      <span className={`text-gray-500 ${text.detail}`}>
+        {meeting.startTime}
+      </span>
     </p>
   );
 }
@@ -55,21 +84,30 @@ interface FullContentProps {
   project: CalendarProject | undefined;
   size: MeetingSize;
   detailed: boolean;
+  text: TextSizes;
 }
 
-function FullContent({ meeting, project, size, detailed }: FullContentProps) {
+function FullContent({
+  meeting,
+  project,
+  size,
+  detailed,
+  text,
+}: FullContentProps) {
   const titleClamp = size === 'long' && !detailed ? 'line-clamp-2' : 'truncate';
 
   return (
     <>
-      <p className={`w-full text-xs leading-4 font-semibold ${titleClamp}`}>
+      <p
+        className={`w-full leading-4 font-semibold ${text.title} ${titleClamp}`}
+      >
         {titleText(meeting)}
       </p>
-      <p className="w-full truncate text-[11px] leading-4 text-dark/70">
+      <p className={`w-full truncate leading-4 text-gray-500 ${text.detail}`}>
         {timeText(meeting, detailed)}
       </p>
       {detailed && size === 'long' && project && (
-        <p className="w-full truncate text-[11px] leading-4 text-grayText">
+        <p className={`w-full truncate leading-4 text-gray-400 ${text.detail}`}>
           {project.name}
         </p>
       )}
@@ -84,13 +122,19 @@ export function MeetingBlock({
   detailed,
   onClick,
 }: MeetingBlockProps) {
-  const { meeting, column, columns } = placed;
+  const { meeting } = placed;
   const size = meetingSize(meeting);
+  const padding = detailed ? DAY_PADDING[size] : WEEK_PADDING[size];
+  const text = detailed ? DAY_TEXT : WEEK_TEXT;
+  const colors = meetingColors(project?.color);
   const isCancelled = meeting.status === 'CANCELLED';
 
   const top = minutesToTop(toMinutes(meeting.startTime), firstHour);
   const bottom = minutesToTop(toMinutes(meeting.endTime), firstHour);
-  const width = 100 / columns;
+  const { left, width } = horizontalPlacement(
+    placed,
+    detailed ? DAY_EDGE_GAP : WEEK_EDGE_GAP,
+  );
 
   return (
     <button
@@ -101,19 +145,24 @@ export function MeetingBlock({
       style={{
         top,
         height: Math.max(bottom - top, MIN_BLOCK_HEIGHT),
-        left: `calc(${column * width}% + 2px)`,
-        width: `calc(${width}% - 4px)`,
+        left,
+        width,
       }}
-      className={`${BLOCK_CLASSES} ${size === 'short' ? 'px-1.5 py-0.5' : 'px-2 py-1'} ${meetingColorClass(project?.color)} ${isCancelled ? 'line-through opacity-60' : ''}`}
+      className={`${BLOCK_CLASSES} ${padding} ${colors.tint} ${isCancelled ? 'line-through opacity-60' : ''}`}
     >
+      <span
+        aria-hidden="true"
+        className={`absolute inset-y-0 left-0 w-0.75 rounded-full ${colors.accent}`}
+      />
       {size === 'short' ? (
-        <ShortContent meeting={meeting} />
+        <ShortContent meeting={meeting} text={text} />
       ) : (
         <FullContent
           meeting={meeting}
           project={project}
           size={size}
           detailed={detailed}
+          text={text}
         />
       )}
     </button>

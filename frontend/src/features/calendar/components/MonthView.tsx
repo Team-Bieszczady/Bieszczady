@@ -3,9 +3,9 @@ import {
   startOfMonthIso,
   todayIso,
 } from '../../projects/utils/isoDate';
-import { meetingColorClass } from '../meetingColors';
-import { WEEKDAY_SHORT_NAMES } from '../utils/calendarView';
+import { meetingColors } from '../meetingColors';
 import type { CalendarProject, Meeting } from '../types';
+import { WEEKDAY_SHORT_NAMES } from '../utils/calendarView';
 import {
   dayNumber,
   getMonthGridDays,
@@ -20,6 +20,41 @@ interface Props {
   onDayClick: (day: string) => void;
 }
 
+function dayNumberClasses(isToday: boolean, isMuted: boolean) {
+  if (isToday) return 'bg-dark font-semibold text-white';
+  if (isMuted) return 'text-gray-400 hover:bg-gray-100';
+  return 'text-dark hover:bg-gray-100';
+}
+
+interface MeetingChipProps {
+  meeting: Meeting;
+  project: CalendarProject | undefined;
+  onClick: () => void;
+}
+
+function MeetingChip({ meeting, project, onClick }: MeetingChipProps) {
+  const colors = meetingColors(project?.color);
+  const isCancelled = meeting.status === 'CANCELLED';
+  const prefix = meeting.status === 'HELD' ? '✓ ' : '';
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={isCancelled ? 'Spotkanie odwołane' : undefined}
+      className={`relative h-5 w-full cursor-pointer truncate rounded-r pr-1.5 pl-2.5 text-left text-[11px] leading-5 text-dark hover:brightness-95 ${colors.tint} ${
+        isCancelled ? 'line-through opacity-60' : ''
+      }`}
+    >
+      <span
+        aria-hidden="true"
+        className={`absolute inset-y-0 left-0 w-0.75 rounded-full ${colors.accent}`}
+      />
+      {`${prefix}${meeting.startTime} ${meeting.title}`}
+    </button>
+  );
+}
+
 export function MonthView({
   anchor,
   meetings,
@@ -32,13 +67,16 @@ export function MonthView({
   const firstDay = startOfMonthIso(anchor);
   const lastDay = endOfMonthIso(anchor);
 
+  const projectOf = (meeting: Meeting) =>
+    projects.find((project) => project.id === meeting.projectId);
+
   return (
-    <div className="grid grid-cols-7 gap-px overflow-hidden rounded-lg border border-gray-200 bg-gray-200">
+    <div className="grid grid-cols-7 gap-px overflow-hidden rounded-lg border border-gray-200 bg-gray-200 font-calendar">
       {WEEKDAY_SHORT_NAMES.map((day, index) => (
         <div
           key={day}
-          className={`bg-white py-2 text-center text-xs font-medium ${
-            index >= 5 ? 'text-gray-400' : 'text-dark/70'
+          className={`bg-white py-2.5 text-center text-[13px] ${
+            index >= 5 ? 'text-gray-400' : 'text-gray-500'
           }`}
         >
           {day}
@@ -50,59 +88,37 @@ export function MonthView({
           meetings,
           day,
         );
+        const isToday = day === today;
         const isOutsideMonth = day < firstDay || day > lastDay;
         const isWeekend = index % 7 === 5 || index % 7 === 6;
-        const background = isOutsideMonth ? 'bg-gray-50' : 'bg-white';
-        const textColor =
-          isOutsideMonth || isWeekend ? 'text-gray-400' : 'text-dark';
+
         return (
           <div
             key={day}
-            className={`h-28 overflow-hidden p-2 text-xs ${background} ${textColor}`}
+            className={`h-28 overflow-hidden p-2 text-xs ${isToday ? 'bg-gray-50' : 'bg-white'}`}
           >
             <button
               type="button"
               onClick={() => onDayClick(day)}
               aria-label={`Pokaż dzień ${day}`}
-              className={`inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-full transition-colors ${
-                day === today
-                  ? 'bg-dark font-semibold text-white'
-                  : 'hover:bg-gray-100'
-              }`}
+              className={`inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-full transition-colors ${dayNumberClasses(isToday, isOutsideMonth || isWeekend)}`}
             >
               {dayNumber(day)}
             </button>
             <div className="mt-1 flex flex-col gap-1">
-              {visibleMeetings.map((meeting) => {
-                const project = projects.find(
-                  (el) => el.id === meeting.projectId,
-                );
-
-                return (
-                  <button
-                    key={meeting.id}
-                    type="button"
-                    onClick={() => onMeetingClick(meeting.id)}
-                    title={
-                      meeting.status === 'CANCELLED'
-                        ? 'Spotkanie odwołane'
-                        : undefined
-                    }
-                    className={`h-5 w-full cursor-pointer truncate rounded border-l-2 px-1.5 text-left text-[11px] leading-5 font-medium text-dark hover:brightness-95 ${meetingColorClass(project?.color)} ${
-                      meeting.status === 'CANCELLED'
-                        ? 'line-through opacity-60'
-                        : ''
-                    }`}
-                  >
-                    {`${meeting.status === 'HELD' ? '✓ ' : ''}${meeting.startTime} ${meeting.title}`}
-                  </button>
-                );
-              })}
+              {visibleMeetings.map((meeting) => (
+                <MeetingChip
+                  key={meeting.id}
+                  meeting={meeting}
+                  project={projectOf(meeting)}
+                  onClick={() => onMeetingClick(meeting.id)}
+                />
+              ))}
               {hiddenCount > 0 && (
                 <button
                   type="button"
                   onClick={() => onDayClick(day)}
-                  className="cursor-pointer pl-2 text-left text-[11px] font-medium text-grayText hover:text-dark"
+                  className="cursor-pointer pl-2 text-left text-[11px] text-gray-500 hover:text-dark"
                 >
                   +{hiddenCount} więcej
                 </button>

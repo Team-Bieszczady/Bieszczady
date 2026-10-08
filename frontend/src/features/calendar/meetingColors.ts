@@ -1,15 +1,16 @@
 export const MEETING_COLORS = [
-  { id: 'green', className: 'border-darkGreen bg-lightGreen' },
-  { id: 'blue', className: 'border-blue-500 bg-blue-100' },
-  { id: 'fuchsia', className: 'border-fuchsia-500 bg-fuchsia-100' },
-  { id: 'red', className: 'border-red-500 bg-red-100' },
-  { id: 'orange', className: 'border-orange-400 bg-orange-100' },
-  { id: 'yellow', className: 'border-yellow-400 bg-yellow-100' },
+  { id: 'green', accent: 'bg-darkGreen', tint: 'bg-darkGreen/12' },
+  { id: 'blue', accent: 'bg-blue-500', tint: 'bg-blue-500/15' },
+  { id: 'fuchsia', accent: 'bg-fuchsia-500', tint: 'bg-fuchsia-500/12' },
+  { id: 'red', accent: 'bg-red-500', tint: 'bg-red-500/12' },
+  { id: 'orange', accent: 'bg-orange-400', tint: 'bg-orange-400/18' },
+  { id: 'yellow', accent: 'bg-yellow-400', tint: 'bg-yellow-400/25' },
 ] as const;
 
-export function meetingColorClass(projectColor: string | undefined) {
+const FALLBACK_COLORS = { accent: 'bg-gray-400', tint: 'bg-gray-400/15' };
+
+export function meetingColors(projectColor: string | undefined) {
   return (
-    MEETING_COLORS.find((color) => color.id === projectColor)?.className ??
-    'border-gray-400 bg-gray-100'
+    MEETING_COLORS.find((color) => color.id === projectColor) ?? FALLBACK_COLORS
   );
 }
