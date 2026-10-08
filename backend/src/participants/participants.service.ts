@@ -1,19 +1,10 @@
-import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ListParticipantsQueryDto } from './dto/list-participants-query.dto';
-
-const LIST_FIELDS = {
-  id: true,
-  firstName: true,
-  lastName: true,
-  email: true,
-  phone: true,
-  consentAt: true,
-  _count: {
-    select: { meetings: { where: { meeting: { deletedAt: null } } } },
-  },
-} satisfies Prisma.ParticipantSelect;
+import {
+  CreateParticipantDto,
+  UpdateParticipantDto,
+} from './dto/participant.dto';
 
 @Injectable()
 export class ParticipantsService {
@@ -21,21 +12,95 @@ export class ParticipantsService {
 
   async findAll(query: ListParticipantsQueryDto) {
     const participants = await this.prisma.participant.findMany({
-      where: { deletedAt: null, AND: this.matchingEveryWord(query.search) },
+      where: {
+        deletedAt: null,
+        AND: this.searchConditions(query.search),
+      },
       orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
-      select: LIST_FIELDS,
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        phone: true,
+        consentAt: true,
+        _count: {
+          select: { meetings: { where: { meeting: { deletedAt: null } } } },
+        },
+      },
     });
 
-    return participants.map(({ _count, ...participant }) => ({
-      ...participant,
-      meetingCount: _count.meetings,
+    return participants.map((participant) => ({
+      id: participant.id,
+      firstName: participant.firstName,
+      lastName: participant.lastName,
+      email: participant.email,
+      phone: participant.phone,
+      consentAt: participant.consentAt,
+      meetingCount: participant._count.meetings,
     }));
   }
 
-  private matchingEveryWord(
-    search: string | undefined,
-  ): Prisma.ParticipantWhereInput[] {
-    const words = search?.split(/\s+/).filter(Boolean) ?? [];
+  async create(dto: CreateParticipantDto, creatorId: string) {
+    return this.prisma.participant.create({
+      data: {
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        email: dto.email || null,
+        phone: dto.phone || null,
+        address: dto.address || null,
+        note: dto.note || '',
+        consentAt: this.consentDate(dto.hasConsent, null),
+        createdById: creatorId,
+      },
+    });
+  }
+
+  async update(id: string, dto: UpdateParticipantDto) {
+    const existing = await this.findExisting(id);
+
+    return this.prisma.participant.update({
+      where: { id },
+      data: {
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        email: dto.email || null,
+        phone: dto.phone || null,
+        address: dto.address || null,
+        note: dto.note || '',
+        consentAt: this.consentDate(dto.hasConsent, existing.consentAt),
+      },
+    });
+  }
+
+  async remove(id: string) {
+    await this.findExisting(id);
+
+    await this.prisma.participant.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+  }
+
+  private async findExisting(id: string) {
+    const participant = await this.prisma.participant.findFirst({
+      where: { id, deletedAt: null },
+      select: { consentAt: true },
+    });
+
+    if (!participant) {
+      throw new NotFoundException('Nie znaleziono uczestnika');
+    }
+
+    return participant;
+  }
+
+  private searchConditions(search: string | undefined) {
+    if (!search) {
+      return [];
+    }
+
+    const words = search.split(' ').filter((word) => word !== '');
 
     return words.map((word) => ({
       OR: [
@@ -44,5 +109,17 @@ export class ParticipantsService {
         { email: { contains: word } },
       ],
     }));
+  }
+
+  private consentDate(hasConsent: boolean, previousDate: Date | null) {
+    if (!hasConsent) {
+      return null;
+    }
+
+    if (previousDate) {
+      return previousDate;
+    }
+
+    return new Date();
   }
 }
