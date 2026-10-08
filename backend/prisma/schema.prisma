@@ -36,6 +36,7 @@ model User {
   createdMeetings         Meeting[]          @relation("MeetingCreator")
   confirmedMeetings       Meeting[]          @relation("MeetingConfirmer")
   meetingInvitations      MeetingInvitee[]   @relation("MeetingInviteeUser")
+  createdParticipants     Participant[]      @relation("ParticipantCreator")
 
   projectMemberships ProjectMember[] @relation("ProjectMemberUser")
   ownedTasks         Task[]          @relation("TaskOwner")
@@ -399,6 +400,7 @@ model Meeting {
   confirmedBy     User?                   @relation("MeetingConfirmer", fields: [confirmedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
   invitees        MeetingInvitee[]        @relation("MeetingInvitees")
   attendanceFiles MeetingAttendanceFile[] @relation("MeetingAttendanceFiles")
+  participants    MeetingParticipant[]    @relation("MeetingParticipants")
 
   @@index([projectId, date])
   @@index([createdById])
@@ -430,4 +432,39 @@ model MeetingInvitee {
   @@unique([meetingId, userId])
   @@index([userId])
   @@map("meeting_invitees")
+}
+
+model Participant {
+  id          String    @id @default(uuid())
+  firstName   String    @map("first_name")
+  lastName    String    @map("last_name")
+  email       String?
+  phone       String?
+  address     String?   @db.NVarChar(500)
+  consentAt   DateTime? @map("consent_at")
+  note        String    @default("") @db.NVarChar(Max)
+  createdById String    @map("created_by_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  createdBy User                 @relation("ParticipantCreator", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  meetings  MeetingParticipant[] @relation("ParticipantMeetings")
+
+  @@index([lastName, firstName])
+  @@index([createdById])
+  @@map("participants")
+}
+
+model MeetingParticipant {
+  id            String @id @default(uuid())
+  meetingId     String @map("meeting_id")
+  participantId String @map("participant_id")
+
+  meeting     Meeting     @relation("MeetingParticipants", fields: [meetingId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  participant Participant @relation("ParticipantMeetings", fields: [participantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([meetingId, participantId])
+  @@index([participantId])
+  @@map("meeting_participants")
 }
