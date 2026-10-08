@@ -33,6 +33,20 @@ interface MeetingFormModalProps {
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 const TIME_FORMAT_MESSAGE = 'Wpisz godzinę jak 10:30';
 
+function linkOrEmpty(value: string) {
+  const link = value.trim();
+
+  if (link === '') {
+    return true;
+  }
+
+  if (link.startsWith('http://') || link.startsWith('https://')) {
+    return true;
+  }
+
+  return 'Link musi zaczynać się od http:// albo https://';
+}
+
 const LABEL_CLASSES = 'mb-2 flex items-center gap-1.5 text-sm text-dark/80';
 const TEXTAREA_CLASSES =
   'w-full resize-y rounded-lg border border-gray-300 px-3 py-2 text-xs leading-relaxed text-dark focus:border-transparent focus:ring-1 focus:ring-darkGreen focus:outline-none';
@@ -82,7 +96,7 @@ export default function MeetingFormModal({
       title={meeting ? 'Edytuj spotkanie' : 'Dodaj spotkanie'}
       size="lg"
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
         <div>
           <label className={LABEL_CLASSES} htmlFor={titleId}>
             Nazwa spotkania
@@ -239,12 +253,14 @@ export default function MeetingFormModal({
             Link do spotkania
           </label>
           <input
-            {...register('meetingUrl')}
+            {...register('meetingUrl', { validate: linkOrEmpty })}
             id={linkId}
             type="url"
             placeholder="wklej link do Google Meet / Zoom"
+            aria-invalid={!!errors.meetingUrl}
             className={INPUT_CLASSES}
           />
+          <FieldError message={errors.meetingUrl?.message} />
         </div>
 
         <div>
