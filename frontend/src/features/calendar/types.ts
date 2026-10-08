@@ -1,4 +1,4 @@
-import type { MeetingStatus } from '../../lib/api';
+import type { BackendDeadline, MeetingStatus } from '../../lib/api';
 
 export interface Meeting {
   id: string;
@@ -10,6 +10,11 @@ export interface Meeting {
   place: string | null;
   status: MeetingStatus;
 }
+
+export interface Deadline extends Omit<BackendDeadline, 'dueDate'> {
+  date: string;
+}
+
 export interface CalendarProject {
   id: string;
   name: string;

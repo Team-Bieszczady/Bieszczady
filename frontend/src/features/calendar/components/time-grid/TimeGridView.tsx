@@ -1,6 +1,6 @@
 import { todayIso } from '../../../projects/utils/isoDate';
 import { useNow } from '../../hooks/useNow';
-import type { CalendarProject, Meeting } from '../../types';
+import type { CalendarProject, Deadline, Meeting } from '../../types';
 import { meetingsOnDay } from '../../utils/monthGrid';
 import {
   gridHeight,
@@ -9,22 +9,27 @@ import {
   visibleHours,
 } from '../../utils/timeGrid';
 import { DayColumn } from './DayColumn';
+import { DeadlineRow } from './DeadlineRow';
 import { HourGutter } from './HourGutter';
 import { TimeGridHeader } from './TimeGridHeader';
 
 interface TimeGridViewProps {
   days: string[];
   meetings: Meeting[];
+  deadlines: Deadline[];
   projects: CalendarProject[];
   onMeetingClick: (meetingId: string) => void;
+  onDeadlineClick: (deadline: Deadline) => void;
   onDayClick: (day: string) => void;
 }
 
 export function TimeGridView({
   days,
   meetings,
+  deadlines,
   projects,
   onMeetingClick,
+  onDeadlineClick,
   onDayClick,
 }: TimeGridViewProps) {
   const currentTime = useNow();
@@ -43,6 +48,14 @@ export function TimeGridView({
     <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white font-calendar">
       <div className={isSingleDay ? '' : 'min-w-180'}>
         <TimeGridHeader days={days} today={today} onDayClick={onDayClick} />
+
+        <DeadlineRow
+          days={days}
+          deadlines={deadlines}
+          projects={projects}
+          today={today}
+          onDeadlineClick={onDeadlineClick}
+        />
 
         <div className="flex">
           <HourGutter

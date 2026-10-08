@@ -5,7 +5,7 @@ import {
   startOfMonthIso,
   startOfWeekIso,
 } from '../../projects/utils/isoDate';
-import type { Meeting } from '../types';
+import type { Deadline, Meeting } from '../types';
 
 export const getMonthGridDays = (date: string) => {
   const monthDays: string[] = [];
@@ -45,12 +45,31 @@ export const meetingsOnDay = (meetings: Meeting[], day: string): Meeting[] => {
   return dayMeetings;
 };
 
-export const monthCellMeetings = (
-  meetings: Meeting[],
+export const deadlinesOnDay = (
+  deadlines: Deadline[],
   day: string,
-): { visibleMeetings: Meeting[]; hiddenCount: number } => {
+): Deadline[] => deadlines.filter((deadline) => deadline.date === day);
+
+const MONTH_CELL_LIMIT = 2;
+
+export const monthCellEntries = (
+  meetings: Meeting[],
+  deadlines: Deadline[],
+  day: string,
+) => {
+  const dayDeadlines = deadlinesOnDay(deadlines, day);
   const dayMeetings = meetingsOnDay(meetings, day);
-  const visibleMeetings = dayMeetings.slice(0, 2);
-  const hiddenCount = dayMeetings.length - visibleMeetings.length;
-  return { visibleMeetings, hiddenCount };
+
+  const visibleDeadlines = dayDeadlines.slice(0, MONTH_CELL_LIMIT);
+  const visibleMeetings = dayMeetings.slice(
+    0,
+    MONTH_CELL_LIMIT - visibleDeadlines.length,
+  );
+  const hiddenCount =
+    dayDeadlines.length +
+    dayMeetings.length -
+    visibleDeadlines.length -
+    visibleMeetings.length;
+
+  return { visibleDeadlines, visibleMeetings, hiddenCount };
 };

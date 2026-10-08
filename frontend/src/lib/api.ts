@@ -1,5 +1,6 @@
 import type { DocumentKind, DocumentStatus } from './documents';
 import { type ModuleKey } from './modules';
+import type { TaskStatusValue } from './projectsApi';
 
 export type AccountStatus = 'ACTIVE' | 'INACTIVE';
 
@@ -24,6 +25,17 @@ export interface BackendMeeting {
   endTime: string;
   place: string | null;
   status: MeetingStatus;
+}
+
+export interface BackendDeadline {
+  id: string;
+  projectId: string;
+  title: string;
+  dueDate: string;
+  status: TaskStatusValue;
+  projectName: string;
+  stageName: string;
+  owner: { firstName: string; lastName: string } | null;
 }
 
 export interface MeetingProjectOption {
@@ -867,6 +879,21 @@ export const api = {
       accessToken,
       fallbackMessage: 'Nie udało się pobrać spotkań',
     });
+  },
+
+  async getDeadlines(
+    accessToken: string,
+    from: string,
+    to: string,
+  ): Promise<BackendDeadline[]> {
+    return request<BackendDeadline[]>(
+      `/api/v1/deadlines?from=${from}&to=${to}`,
+      {
+        method: 'GET',
+        accessToken,
+        fallbackMessage: 'Nie udało się pobrać terminów',
+      },
+    );
   },
 
   async createMeeting(

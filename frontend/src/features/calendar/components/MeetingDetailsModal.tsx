@@ -10,16 +10,21 @@ import {
 } from 'react-icons/lu';
 import { Button } from '../../../components/ui/Button';
 import { Modal } from '../../../components/ui/Modal';
+import { useAuth } from '../../../context/useAuth';
 import type { BackendMeetingDetails, MeetingOutcome } from '../../../lib/api';
+import { hasModule } from '../../../lib/modules';
 import { formatStageDate } from '../../projects/utils/isoDate';
 import { useMeeting } from '../hooks/useMeeting';
+import { useOpenProjectPage } from '../hooks/useOpenProjectPage';
 import { useSetMeetingOutcome } from '../hooks/useSetMeetingOutcome';
+import { formatWeekday } from '../utils/calendarView';
 import { formatLongDate } from '../utils/formatLongDate';
 import { AttendanceFilesSection } from './AttendanceFilesSection';
 import {
   MEETING_OUTCOME_FORM_ID,
   MeetingOutcomeForm,
 } from './MeetingOutcomeForm';
+import { ProjectName } from './ProjectName';
 
 interface MeetingDetailsModalProps {
   meetingId: string;
@@ -30,12 +35,6 @@ interface MeetingDetailsModalProps {
 
 const ROW_CLASSES = 'flex items-start gap-3 text-sm text-dark';
 const ICON_CLASSES = 'mt-0.5 shrink-0 text-grayText';
-
-function weekdayOf(isoDate: string) {
-  return new Date(`${isoDate}T00:00:00`).toLocaleDateString('pl-PL', {
-    weekday: 'long',
-  });
-}
 
 function OutcomeSummary({ meeting }: { meeting: BackendMeetingDetails }) {
   const held = meeting.status === 'HELD';
@@ -81,9 +80,13 @@ export default function MeetingDetailsModal({
   const meetingQuery = useMeeting(meetingId);
   const meeting = meetingQuery.data;
   const setOutcome = useSetMeetingOutcome();
+  const { user } = useAuth();
+  const openProjectPage = useOpenProjectPage(onClose);
 
   const showOutcome =
     !!meeting && (meeting.canManage || meeting.status !== 'PLANNED');
+  const canOpenProject =
+    hasModule(user, 'PROJECTS') && hasModule(user, 'OVERVIEW');
 
   const submitOutcome = (outcome: MeetingOutcome) => {
     setOutcome.mutate(
@@ -132,7 +135,8 @@ export default function MeetingDetailsModal({
               <LuClock size={18} className={ICON_CLASSES} aria-hidden="true" />
               <div>
                 <p>
-                  {formatStageDate(meeting.date)} – {weekdayOf(meeting.date)}
+                  {formatStageDate(meeting.date)} –{' '}
+                  {formatWeekday(meeting.date)}
                 </p>
                 <p className="mt-0.5 text-grayText">
                   {meeting.startTime} – {meeting.endTime}
@@ -146,9 +150,15 @@ export default function MeetingDetailsModal({
                 className={ICON_CLASSES}
                 aria-hidden="true"
               />
-              <p className="font-medium text-darkGreen">
-                {meeting.project.name}
-              </p>
+              <ProjectName
+                name={meeting.project.name}
+                onOpen={
+                  canOpenProject
+                    ? () =>
+                        openProjectPage(meeting.projectId, '/project/overview')
+                    : undefined
+                }
+              />
             </div>
 
             {meeting.place && (

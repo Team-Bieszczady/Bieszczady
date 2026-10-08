@@ -28,6 +28,12 @@ export function formatFullDay(isoDate: string) {
   });
 }
 
+export function formatWeekday(isoDate: string) {
+  return new Date(`${isoDate}T00:00:00`).toLocaleDateString('pl-PL', {
+    weekday: 'long',
+  });
+}
+
 export function weekDays(anchor: string) {
   const monday = startOfWeekIso(anchor);
   return Array.from({ length: 7 }, (_, index) => addDaysIso(monday, index));

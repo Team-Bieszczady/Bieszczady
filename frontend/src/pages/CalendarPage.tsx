@@ -18,12 +18,15 @@ import MeetingFormModal, {
   type MeetingFormInputs,
 } from '../features/calendar/components/MeetingFormModal';
 import MeetingDetailsModal from '../features/calendar/components/MeetingDetailsModal';
+import DeadlineDetailsModal from '../features/calendar/components/DeadlineDetailsModal';
 import { useMeetings } from '../features/calendar/hooks/useMeetings';
+import { useDeadlines } from '../features/calendar/hooks/useDeadlines';
 import { useCreateMeeting } from '../features/calendar/hooks/useCreateMeeting';
 import { useUpdateMeeting } from '../features/calendar/hooks/useUpdateMeeting';
 import { useDeleteMeeting } from '../features/calendar/hooks/useDeleteMeeting';
 import { useMeetingProjectOptions } from '../features/calendar/hooks/useMeetingProjectOptions';
 import { useProjects } from '../features/projects/hooks/useProjectsApi';
+import type { Deadline } from '../features/calendar/types';
 import type { BackendMeetingDetails, MeetingChanges } from '../lib/api';
 
 const PREVIOUS_LABELS: Record<CalendarView, string> = {
@@ -66,6 +69,9 @@ export default function CalendarPage() {
   );
   const [meetingToDelete, setMeetingToDelete] =
     useState<BackendMeetingDetails | null>(null);
+  const [selectedDeadline, setSelectedDeadline] = useState<Deadline | null>(
+    null,
+  );
 
   const toggleProject = (id: string) => {
     if (hiddenProjectIds.includes(id)) {
@@ -77,6 +83,7 @@ export default function CalendarPage() {
 
   const days = visibleDays(view, anchor);
   const meetingsQuery = useMeetings(days[0], days[days.length - 1]);
+  const deadlinesQuery = useDeadlines(days[0], days[days.length - 1]);
   const projectsQuery = useProjects();
   const projectOptionsQuery = useMeetingProjectOptions();
   const createMeeting = useCreateMeeting();
@@ -89,6 +96,15 @@ export default function CalendarPage() {
   const filteredMeetings = meetings.filter(
     (meeting) => !hiddenProjectIds.includes(meeting.projectId),
   );
+  const filteredDeadlines = (deadlinesQuery.data ?? []).filter(
+    (deadline) => !hiddenProjectIds.includes(deadline.projectId),
+  );
+  const loadFailed = meetingsQuery.isError || deadlinesQuery.isError;
+
+  const retryLoading = () => {
+    if (meetingsQuery.isError) void meetingsQuery.refetch();
+    if (deadlinesQuery.isError) void deadlinesQuery.refetch();
+  };
 
   const projectOptions = (projectOptionsQuery.data ?? []).map((project) => ({
     value: project.id,
@@ -229,12 +245,16 @@ export default function CalendarPage() {
         />
       </div>
 
-      {meetingsQuery.isError && (
+      {loadFailed && (
         <div role="alert" className="flex items-center gap-3">
-          <p className="text-xs text-darkRed">Nie udało się pobrać spotkań.</p>
+          <p className="text-xs text-darkRed">
+            {meetingsQuery.isError
+              ? 'Nie udało się pobrać spotkań.'
+              : 'Nie udało się pobrać terminów.'}
+          </p>
           <button
             type="button"
-            onClick={() => meetingsQuery.refetch()}
+            onClick={retryLoading}
             className="cursor-pointer text-xs font-medium text-darkGreen hover:text-darkGreenHover"
           >
             Spróbuj ponownie
@@ -246,17 +266,28 @@ export default function CalendarPage() {
         <MonthView
           anchor={anchor}
           meetings={filteredMeetings}
+          deadlines={filteredDeadlines}
           projects={projects}
           onMeetingClick={setSelectedMeetingId}
+          onDeadlineClick={setSelectedDeadline}
           onDayClick={openDay}
         />
       ) : (
         <TimeGridView
           days={days}
           meetings={filteredMeetings}
+          deadlines={filteredDeadlines}
           projects={projects}
           onMeetingClick={setSelectedMeetingId}
+          onDeadlineClick={setSelectedDeadline}
           onDayClick={openDay}
+        />
+      )}
+
+      {selectedDeadline && (
+        <DeadlineDetailsModal
+          deadline={selectedDeadline}
+          onClose={() => setSelectedDeadline(null)}
         />
       )}
 

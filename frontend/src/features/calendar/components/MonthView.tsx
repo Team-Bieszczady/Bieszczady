@@ -4,19 +4,22 @@ import {
   todayIso,
 } from '../../projects/utils/isoDate';
 import { meetingColors } from '../meetingColors';
-import type { CalendarProject, Meeting } from '../types';
+import type { CalendarProject, Deadline, Meeting } from '../types';
 import { WEEKDAY_SHORT_NAMES } from '../utils/calendarView';
 import {
   dayNumber,
   getMonthGridDays,
-  monthCellMeetings,
+  monthCellEntries,
 } from '../utils/monthGrid';
+import { DeadlineChip } from './DeadlineChip';
 
 interface Props {
   anchor: string;
   meetings: Meeting[];
+  deadlines: Deadline[];
   projects: CalendarProject[];
   onMeetingClick: (meetingId: string) => void;
+  onDeadlineClick: (deadline: Deadline) => void;
   onDayClick: (day: string) => void;
 }
 
@@ -58,8 +61,10 @@ function MeetingChip({ meeting, project, onClick }: MeetingChipProps) {
 export function MonthView({
   anchor,
   meetings,
+  deadlines,
   projects,
   onMeetingClick,
+  onDeadlineClick,
   onDayClick,
 }: Props) {
   const gridDays = getMonthGridDays(anchor);
@@ -67,8 +72,8 @@ export function MonthView({
   const firstDay = startOfMonthIso(anchor);
   const lastDay = endOfMonthIso(anchor);
 
-  const projectOf = (meeting: Meeting) =>
-    projects.find((project) => project.id === meeting.projectId);
+  const projectOf = (entry: { projectId: string }) =>
+    projects.find((project) => project.id === entry.projectId);
 
   return (
     <div className="grid grid-cols-7 gap-px overflow-hidden rounded-lg border border-gray-200 bg-gray-200 font-calendar">
@@ -84,10 +89,8 @@ export function MonthView({
       ))}
 
       {gridDays.map((day, index) => {
-        const { visibleMeetings, hiddenCount } = monthCellMeetings(
-          meetings,
-          day,
-        );
+        const { visibleDeadlines, visibleMeetings, hiddenCount } =
+          monthCellEntries(meetings, deadlines, day);
         const isToday = day === today;
         const isOutsideMonth = day < firstDay || day > lastDay;
         const isWeekend = index % 7 === 5 || index % 7 === 6;
@@ -106,6 +109,15 @@ export function MonthView({
               {dayNumber(day)}
             </button>
             <div className="mt-1 flex flex-col gap-1">
+              {visibleDeadlines.map((deadline) => (
+                <DeadlineChip
+                  key={deadline.id}
+                  deadline={deadline}
+                  project={projectOf(deadline)}
+                  size="month"
+                  onClick={() => onDeadlineClick(deadline)}
+                />
+              ))}
               {visibleMeetings.map((meeting) => (
                 <MeetingChip
                   key={meeting.id}
