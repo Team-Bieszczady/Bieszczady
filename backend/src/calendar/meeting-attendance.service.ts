@@ -12,6 +12,7 @@ import { ProjectAccessService } from '../projects/project-access.service';
 import {
   ATTENDANCE_FILE_FIELDS,
   ATTENDANCE_FOLDER_NAME,
+  isLockedDocument,
   toAttendanceFile,
 } from './attendance-files';
 import { MeetingsService } from './meetings.service';
@@ -107,7 +108,7 @@ export class MeetingAttendanceService {
         throw error;
       });
 
-    return toAttendanceFile(saved);
+    return toAttendanceFile(saved, actor);
   }
 
   async download(meetingId: string, fileId: string, actor: AuthenticatedUser) {
@@ -125,7 +126,7 @@ export class MeetingAttendanceService {
     await this.meetings.findManageable(meetingId, actor);
     const file = await this.findFile(meetingId, fileId);
 
-    const locked = file.status === 'APPROVED' || file.status === 'SIGNED';
+    const locked = isLockedDocument(file.status);
     if (locked && !actor.isDirector) {
       throw new ForbiddenException(
         'Zatwierdzoną listę obecności może usunąć tylko dyrektor',

@@ -94,7 +94,7 @@ export class MeetingsService {
     return {
       ...meeting,
       attendanceFiles: isManager
-        ? meeting.attendanceFiles.map(toAttendanceFile)
+        ? meeting.attendanceFiles.map((file) => toAttendanceFile(file, viewer))
         : [],
       canManage: isManager && !meeting.project.archivedAt,
     };

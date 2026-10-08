@@ -7,6 +7,7 @@ export const ATTENDANCE_FILE_FIELDS = {
   document: {
     select: {
       name: true,
+      status: true,
       versions: {
         orderBy: { versionNo: 'desc' },
         take: 1,
@@ -20,12 +21,20 @@ type StoredAttendanceFile = Prisma.MeetingAttendanceFileGetPayload<{
   select: typeof ATTENDANCE_FILE_FIELDS;
 }>;
 
-export function toAttendanceFile(file: StoredAttendanceFile) {
+export function isLockedDocument(status: string) {
+  return status === 'APPROVED' || status === 'SIGNED';
+}
+
+export function toAttendanceFile(
+  file: StoredAttendanceFile,
+  viewer: { isDirector: boolean },
+) {
   const latest = file.document.versions[0];
   return {
     id: file.id,
     name: file.document.name,
     fileName: latest?.fileName ?? '',
     sizeBytes: latest?.sizeBytes ?? 0,
+    canDelete: viewer.isDirector || !isLockedDocument(file.document.status),
   };
 }

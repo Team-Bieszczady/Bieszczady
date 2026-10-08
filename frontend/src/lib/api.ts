@@ -13,6 +13,8 @@ export interface AuthenticatedUser {
   mustChangePassword: boolean;
   modules: ModuleKey[];
 }
+export type MeetingStatus = 'PLANNED' | 'HELD' | 'CANCELLED';
+
 export interface BackendMeeting {
   id: string;
   projectId: string;
@@ -20,6 +22,20 @@ export interface BackendMeeting {
   date: string;
   startTime: string;
   endTime: string;
+  status: MeetingStatus;
+}
+
+export interface MeetingOutcome {
+  status: Exclude<MeetingStatus, 'PLANNED'>;
+  attendeeCount?: number;
+}
+
+export interface AttendanceFile {
+  id: string;
+  name: string;
+  fileName: string;
+  sizeBytes: number;
+  canDelete: boolean;
 }
 
 export interface BackendUser {
@@ -67,6 +83,10 @@ export interface BackendMeetingDetails extends BackendMeeting {
   project: { name: string };
   createdBy: MeetingPerson;
   invitees: { user: MeetingPerson }[];
+  attendeeCount: number | null;
+  confirmedAt: string | null;
+  confirmedBy: Omit<MeetingPerson, 'id'> | null;
+  attendanceFiles: AttendanceFile[];
   canManage: boolean;
 }
 
@@ -883,6 +903,67 @@ export const api = {
       accessToken,
       fallbackMessage: 'Nie udało się usunąć spotkania',
     });
+  },
+  async setMeetingOutcome(
+    accessToken: string,
+    id: string,
+    outcome: MeetingOutcome,
+  ): Promise<BackendMeeting> {
+    return request<BackendMeeting>(`/api/v1/meetings/${id}/outcome`, {
+      method: 'PATCH',
+      accessToken,
+      body: outcome,
+      fallbackMessage: 'Nie udało się zatwierdzić spotkania',
+    });
+  },
+  async uploadAttendanceFile(
+    accessToken: string,
+    meetingId: string,
+    file: File,
+  ): Promise<AttendanceFile> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await sendWithRefresh(
+      `/api/v1/meetings/${meetingId}/attendance-files`,
+      { method: 'POST', credentials: 'include', body: formData },
+      accessToken,
+    );
+    if (!response.ok) {
+      await throwFromResponse(response, 'Nie udało się wgrać skanu');
+    }
+
+    return response.json();
+  },
+  async downloadAttendanceFile(
+    accessToken: string,
+    meetingId: string,
+    fileId: string,
+  ): Promise<Blob> {
+    const response = await sendWithRefresh(
+      `/api/v1/meetings/${meetingId}/attendance-files/${fileId}/download`,
+      { method: 'GET', credentials: 'include' },
+      accessToken,
+    );
+    if (!response.ok) {
+      await throwFromResponse(response, 'Nie udało się pobrać skanu');
+    }
+
+    return response.blob();
+  },
+  async deleteAttendanceFile(
+    accessToken: string,
+    meetingId: string,
+    fileId: string,
+  ): Promise<void> {
+    return request<void>(
+      `/api/v1/meetings/${meetingId}/attendance-files/${fileId}`,
+      {
+        method: 'DELETE',
+        accessToken,
+        fallbackMessage: 'Nie udało się usunąć skanu',
+      },
+    );
   },
 };
 

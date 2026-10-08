@@ -76,9 +76,18 @@ export function MonthView({
                     key={meeting.id}
                     type="button"
                     onClick={() => onMeetingClick(meeting.id)}
-                    className={`h-5 w-full cursor-pointer truncate rounded border-l-2 px-1.5 text-left text-[11px] leading-5 font-medium text-dark hover:brightness-95 ${colorClass}`}
+                    title={
+                      meeting.status === 'CANCELLED'
+                        ? 'Spotkanie odwołane'
+                        : undefined
+                    }
+                    className={`h-5 w-full cursor-pointer truncate rounded border-l-2 px-1.5 text-left text-[11px] leading-5 font-medium text-dark hover:brightness-95 ${colorClass} ${
+                      meeting.status === 'CANCELLED'
+                        ? 'line-through opacity-60'
+                        : ''
+                    }`}
                   >
-                    {`${meeting.startTime} ${meeting.title}`}
+                    {`${meeting.status === 'HELD' ? '✓ ' : ''}${meeting.startTime} ${meeting.title}`}
                   </button>
                 );
               })}

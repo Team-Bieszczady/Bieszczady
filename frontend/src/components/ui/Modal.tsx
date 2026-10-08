@@ -7,14 +7,15 @@ interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
-  size?: 'md' | 'lg';
+  size?: 'md' | 'lg' | 'xl';
   header?: ReactNode;
   children: ReactNode;
 }
 
-const SIZE: Record<'md' | 'lg', string> = {
+const SIZE: Record<'md' | 'lg' | 'xl', string> = {
   md: 'max-w-xl',
   lg: 'max-w-2xl',
+  xl: 'max-w-4xl',
 };
 
 export function Modal({

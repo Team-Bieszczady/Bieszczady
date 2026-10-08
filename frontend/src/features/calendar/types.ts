@@ -1,3 +1,5 @@
+import type { MeetingStatus } from '../../lib/api';
+
 export interface Meeting {
   id: string;
   title: string;
@@ -5,6 +7,7 @@ export interface Meeting {
   startTime: string;
   endTime: string;
   projectId: string;
+  status: MeetingStatus;
 }
 export interface CalendarProject {
   id: string;
