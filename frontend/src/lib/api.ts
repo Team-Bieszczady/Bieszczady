@@ -957,6 +957,16 @@ export const api = {
       fallbackMessage: 'Nie udało się zatwierdzić spotkania',
     });
   },
+  async restoreMeeting(
+    accessToken: string,
+    id: string,
+  ): Promise<BackendMeeting> {
+    return request<BackendMeeting>(`/api/v1/meetings/${id}/restore`, {
+      method: 'PATCH',
+      accessToken,
+      fallbackMessage: 'Nie udało się przywrócić spotkania',
+    });
+  },
   async uploadAttendanceFile(
     accessToken: string,
     meetingId: string,

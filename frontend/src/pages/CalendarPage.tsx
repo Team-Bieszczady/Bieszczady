@@ -37,7 +37,7 @@ function toMeetingChanges(values: MeetingFormInputs): MeetingChanges {
     startTime: values.startTime,
     endTime: values.endTime,
     place: values.place || undefined,
-    meetingUrl: values.meetingUrl || undefined,
+    meetingUrl: values.meetingUrl.trim() || undefined,
     note: values.note || undefined,
     inviteeIds: values.inviteeIds,
   };

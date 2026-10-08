@@ -20,7 +20,8 @@ interface CompactMonthCellProps {
   deadlines: Deadline[];
   projects: CalendarProject[];
   isToday: boolean;
-  isMuted: boolean;
+  isWeekend: boolean;
+  isOutsideMonth: boolean;
   onDayClick: (day: string) => void;
 }
 
@@ -37,7 +38,8 @@ export function CompactMonthCell({
   deadlines,
   projects,
   isToday,
-  isMuted,
+  isWeekend,
+  isOutsideMonth,
   onDayClick,
 }: CompactMonthCellProps) {
   const dayDeadlines = deadlinesOnDay(deadlines, day);
@@ -65,7 +67,7 @@ export function CompactMonthCell({
       className={`flex h-16 cursor-pointer flex-col items-center gap-1.5 pt-1.5 active:bg-gray-100 ${isToday ? 'bg-gray-50' : 'bg-white'}`}
     >
       <span
-        className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs ${dayNumberClasses(isToday, isMuted)}`}
+        className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs ${dayNumberClasses(isToday, isWeekend, isOutsideMonth)}`}
       >
         {dayNumber(day)}
       </span>

@@ -20,7 +20,9 @@ import { useSetMeetingOutcome } from '../hooks/useSetMeetingOutcome';
 import { formatWeekday } from '../utils/calendarView';
 import { formatLongDate } from '../utils/formatLongDate';
 import { AttendanceFilesSection } from './AttendanceFilesSection';
+import { useRestoreMeeting } from '../hooks/useRestoreMeeting';
 import {
+  ConfirmedByNote,
   MEETING_OUTCOME_FORM_ID,
   MeetingOutcomeForm,
 } from './MeetingOutcomeForm';
@@ -48,6 +50,10 @@ const STATUS_BADGES = {
 
 function isUpcoming(meeting: BackendMeetingDetails) {
   return meeting.status === 'PLANNED' && meeting.date > todayIso();
+}
+
+function isCancelledAhead(meeting: BackendMeetingDetails) {
+  return meeting.status === 'CANCELLED' && meeting.date > todayIso();
 }
 
 function statusBadgeOf(meeting: BackendMeetingDetails) {
@@ -91,12 +97,7 @@ function OutcomeSummary({ meeting }: { meeting: BackendMeetingDetails }) {
           editable={false}
         />
       )}
-      {meeting.confirmedBy && meeting.confirmedAt && (
-        <p className="text-xs text-grayText">
-          Zatwierdził(a): {meeting.confirmedBy.firstName}{' '}
-          {meeting.confirmedBy.lastName}, {formatLongDate(meeting.confirmedAt)}
-        </p>
-      )}
+      <ConfirmedByNote meeting={meeting} />
     </div>
   );
 }
@@ -105,10 +106,41 @@ interface OutcomePanelProps {
   meeting: BackendMeetingDetails;
   onSubmit: (outcome: MeetingOutcome) => void;
   isPending: boolean;
+  onRestore: () => void;
+  isRestoring: boolean;
 }
 
-function OutcomePanel({ meeting, onSubmit, isPending }: OutcomePanelProps) {
+function OutcomePanel({
+  meeting,
+  onSubmit,
+  isPending,
+  onRestore,
+  isRestoring,
+}: OutcomePanelProps) {
   if (!meeting.canManage) return <OutcomeSummary meeting={meeting} />;
+
+  if (isCancelledAhead(meeting)) {
+    return (
+      <div className="space-y-3">
+        <p className="text-sm text-dark/80">Potwierdzenie realizacji</p>
+        <p className="text-xs leading-relaxed text-grayText">
+          Spotkanie jest odwołane. Jeśli jednak się odbędzie, przywróć je, a
+          wróci do kalendarza jako zaplanowane.
+        </p>
+        <Button
+          variant="outline"
+          size="small"
+          type="button"
+          onClick={onRestore}
+          isPending={isRestoring}
+          className="font-medium!"
+        >
+          Przywróć spotkanie
+        </Button>
+        <ConfirmedByNote meeting={meeting} />
+      </div>
+    );
+  }
 
   if (isUpcoming(meeting)) {
     return (
@@ -144,6 +176,7 @@ export default function MeetingDetailsModal({
   const meetingQuery = useMeeting(meetingId);
   const meeting = meetingQuery.data;
   const setOutcome = useSetMeetingOutcome();
+  const restoreMeeting = useRestoreMeeting();
   const { user } = useAuth();
   const openProjectPage = useOpenProjectPage(onClose);
 
@@ -165,6 +198,13 @@ export default function MeetingDetailsModal({
         onError: (error) => toast.error(error.message),
       },
     );
+  };
+
+  const restore = () => {
+    restoreMeeting.mutate(meetingId, {
+      onSuccess: () => toast.success('Spotkanie przywrócone'),
+      onError: (error) => toast.error(error.message),
+    });
   };
 
   const header = (
@@ -289,6 +329,8 @@ export default function MeetingDetailsModal({
                 meeting={meeting}
                 onSubmit={submitOutcome}
                 isPending={setOutcome.isPending}
+                onRestore={restore}
+                isRestoring={restoreMeeting.isPending}
               />
             </div>
           )}
@@ -318,7 +360,7 @@ export default function MeetingDetailsModal({
               <LuPencil size={14} aria-hidden="true" />
               Edytuj
             </Button>
-            {!isUpcoming(meeting) && (
+            {!isUpcoming(meeting) && !isCancelledAhead(meeting) && (
               <Button
                 variant="primary"
                 size="small"

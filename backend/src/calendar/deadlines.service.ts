@@ -62,11 +62,13 @@ export class DeadlinesService {
   }
 
   private openStageVisibleTo(viewer: Viewer): Prisma.StageWhereInput {
-    if (viewer.isDirector) return { archivedAt: null };
+    if (viewer.isDirector) {
+      return { archivedAt: null, project: { archivedAt: null } };
+    }
 
     return {
       archivedAt: null,
-      project: { members: { some: { userId: viewer.id } } },
+      project: { archivedAt: null, members: { some: { userId: viewer.id } } },
     };
   }
 }

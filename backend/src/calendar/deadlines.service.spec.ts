@@ -46,7 +46,9 @@ describe('DeadlinesService', () => {
           gte: new Date('2026-10-01'),
           lte: new Date('2026-10-31'),
         },
-        activity: { stage: { archivedAt: null } },
+        activity: {
+          stage: { archivedAt: null, project: { archivedAt: null } },
+        },
       },
     });
   });
@@ -60,7 +62,10 @@ describe('DeadlinesService', () => {
         activity: {
           stage: {
             archivedAt: null,
-            project: { members: { some: { userId: 'member-1' } } },
+            project: {
+              archivedAt: null,
+              members: { some: { userId: 'member-1' } },
+            },
           },
         },
       },

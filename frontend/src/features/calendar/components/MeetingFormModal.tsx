@@ -8,6 +8,7 @@ import { Select, type SelectOption } from '../../../components/ui/Select';
 import { TimeInput } from '../../../components/ui/TimeInput';
 import { INPUT_CLASSES } from '../../../components/ui/formStyles';
 import type { BackendMeetingDetails } from '../../../lib/api';
+import { todayIso } from '../../projects/utils/isoDate';
 import { InviteeCheckboxes } from './InviteeCheckboxes';
 
 export interface MeetingFormInputs {
@@ -45,6 +46,14 @@ function linkOrEmpty(value: string) {
   }
 
   return 'Link musi zaczynać się od http:// albo https://';
+}
+
+function heldMeetingDate(value: string, meeting?: BackendMeetingDetails) {
+  if (meeting && meeting.status === 'HELD' && value > todayIso()) {
+    return 'Spotkanie już się odbyło, więc nie może mieć daty w przyszłości';
+  }
+
+  return true;
 }
 
 const LABEL_CLASSES = 'mb-2 flex items-center gap-1.5 text-sm text-dark/80';
@@ -108,6 +117,7 @@ export default function MeetingFormModal({
             })}
             id={titleId}
             type="text"
+            maxLength={200}
             autoFocus
             placeholder="Podaj nazwę, np. Spotkanie zespołu"
             aria-invalid={!!errors.title}
@@ -155,7 +165,10 @@ export default function MeetingFormModal({
           </legend>
           <div className="flex flex-wrap items-center gap-2">
             <input
-              {...register('date', { required: 'Podaj datę spotkania' })}
+              {...register('date', {
+                required: 'Podaj datę spotkania',
+                validate: (value) => heldMeetingDate(value, meeting),
+              })}
               type="date"
               aria-label="Data"
               aria-invalid={!!errors.date}
@@ -243,9 +256,11 @@ export default function MeetingFormModal({
             {...register('place')}
             id={placeId}
             type="text"
+            maxLength={200}
             placeholder="np. Urząd Gminy, sala nr 3"
             className={INPUT_CLASSES}
           />
+          <FieldError />
         </div>
 
         <div>
@@ -256,6 +271,7 @@ export default function MeetingFormModal({
             {...register('meetingUrl', { validate: linkOrEmpty })}
             id={linkId}
             type="url"
+            maxLength={1000}
             placeholder="wklej link do Google Meet / Zoom"
             aria-invalid={!!errors.meetingUrl}
             className={INPUT_CLASSES}
@@ -271,6 +287,7 @@ export default function MeetingFormModal({
             {...register('note')}
             id={noteId}
             rows={2}
+            maxLength={2000}
             placeholder="dodaj notatkę"
             className={TEXTAREA_CLASSES}
           />
