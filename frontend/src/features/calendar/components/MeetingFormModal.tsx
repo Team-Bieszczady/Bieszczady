@@ -9,6 +9,7 @@ import { TimeInput } from '../../../components/ui/TimeInput';
 import { INPUT_CLASSES } from '../../../components/ui/formStyles';
 import type { BackendMeetingDetails } from '../../../lib/api';
 import { todayIso } from '../../projects/utils/isoDate';
+import type { NewMeetingSlot } from '../types';
 import { InviteeCheckboxes } from './InviteeCheckboxes';
 
 export interface MeetingFormInputs {
@@ -25,6 +26,7 @@ export interface MeetingFormInputs {
 
 interface MeetingFormModalProps {
   meeting?: BackendMeetingDetails;
+  slot?: NewMeetingSlot | null;
   projectOptions: SelectOption[];
   onClose: () => void;
   onSubmit: (values: MeetingFormInputs) => void;
@@ -48,6 +50,25 @@ function linkOrEmpty(value: string) {
   return 'Link musi zaczynać się od http:// albo https://';
 }
 
+function startingTimes(
+  meeting: BackendMeetingDetails | undefined,
+  slot: NewMeetingSlot | null | undefined,
+): NewMeetingSlot {
+  if (meeting) {
+    return {
+      date: meeting.date,
+      startTime: meeting.startTime,
+      endTime: meeting.endTime,
+    };
+  }
+
+  if (slot) {
+    return slot;
+  }
+
+  return { date: '', startTime: '', endTime: '' };
+}
+
 function heldMeetingDate(value: string, meeting?: BackendMeetingDetails) {
   if (meeting && meeting.status === 'HELD' && value > todayIso()) {
     return 'Spotkanie już się odbyło, więc nie może mieć daty w przyszłości';
@@ -62,6 +83,7 @@ const TEXTAREA_CLASSES =
 
 export default function MeetingFormModal({
   meeting,
+  slot,
   projectOptions,
   onClose,
   onSubmit,
@@ -71,6 +93,8 @@ export default function MeetingFormModal({
   const placeId = useId();
   const linkId = useId();
   const noteId = useId();
+
+  const times = startingTimes(meeting, slot);
 
   const {
     register,
@@ -82,9 +106,9 @@ export default function MeetingFormModal({
     defaultValues: {
       projectId: meeting?.projectId ?? '',
       title: meeting?.title ?? '',
-      date: meeting?.date ?? '',
-      startTime: meeting?.startTime ?? '',
-      endTime: meeting?.endTime ?? '',
+      date: times.date,
+      startTime: times.startTime,
+      endTime: times.endTime,
       place: meeting?.place ?? '',
       meetingUrl: meeting?.meetingUrl ?? '',
       note: meeting?.note ?? '',

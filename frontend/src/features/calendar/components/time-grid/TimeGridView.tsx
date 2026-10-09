@@ -1,6 +1,11 @@
 import { todayIso } from '../../../projects/utils/isoDate';
 import { useNow } from '../../hooks/useNow';
-import type { CalendarProject, Deadline, Meeting } from '../../types';
+import type {
+  CalendarProject,
+  Deadline,
+  Meeting,
+  NewMeetingSlot,
+} from '../../types';
 import { meetingsOnDay } from '../../utils/monthGrid';
 import {
   gridHeight,
@@ -21,6 +26,7 @@ interface TimeGridViewProps {
   onMeetingClick: (meetingId: string) => void;
   onDeadlineClick: (deadline: Deadline) => void;
   onDayClick: (day: string) => void;
+  onSlotClick?: (slot: NewMeetingSlot) => void;
 }
 
 export function TimeGridView({
@@ -31,6 +37,7 @@ export function TimeGridView({
   onMeetingClick,
   onDeadlineClick,
   onDayClick,
+  onSlotClick,
 }: TimeGridViewProps) {
   const currentTime = useNow();
   const today = todayIso(currentTime);
@@ -67,6 +74,7 @@ export function TimeGridView({
           {days.map((day) => (
             <DayColumn
               key={day}
+              day={day}
               meetings={meetingsOnDay(shownMeetings, day)}
               projects={projects}
               hours={hours}
@@ -76,6 +84,7 @@ export function TimeGridView({
               nowTop={day === today && now ? now.top : null}
               detailed={isSingleDay}
               onMeetingClick={onMeetingClick}
+              onSlotClick={onSlotClick}
             />
           ))}
         </div>

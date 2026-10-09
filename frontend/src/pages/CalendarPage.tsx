@@ -33,7 +33,7 @@ import { useUpdateMeeting } from '../features/calendar/hooks/useUpdateMeeting';
 import { useDeleteMeeting } from '../features/calendar/hooks/useDeleteMeeting';
 import { useMeetingProjectOptions } from '../features/calendar/hooks/useMeetingProjectOptions';
 import { useProjects } from '../features/projects/hooks/useProjectsApi';
-import type { Deadline } from '../features/calendar/types';
+import type { Deadline, NewMeetingSlot } from '../features/calendar/types';
 import type { BackendMeetingDetails, MeetingChanges } from '../lib/api';
 
 function toMeetingChanges(values: MeetingFormInputs): MeetingChanges {
@@ -72,6 +72,9 @@ export default function CalendarPage() {
     });
   }, [userId, view, hiddenProjectIds, showMeetings, showDeadlines]);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [newMeetingSlot, setNewMeetingSlot] = useState<NewMeetingSlot | null>(
+    null,
+  );
   const [editedMeeting, setEditedMeeting] =
     useState<BackendMeetingDetails | null>(null);
   const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(
@@ -141,6 +144,13 @@ export default function CalendarPage() {
 
   const openAddForm = () => {
     setEditedMeeting(null);
+    setNewMeetingSlot(null);
+    setIsFormOpen(true);
+  };
+
+  const openAddFormAt = (slot: NewMeetingSlot) => {
+    setEditedMeeting(null);
+    setNewMeetingSlot(slot);
     setIsFormOpen(true);
   };
 
@@ -153,6 +163,7 @@ export default function CalendarPage() {
   const closeForm = () => {
     setIsFormOpen(false);
     setEditedMeeting(null);
+    setNewMeetingSlot(null);
   };
 
   const afterSave = (message: string) => ({
@@ -269,7 +280,11 @@ export default function CalendarPage() {
         <WeekAgenda days={days} {...entryProps} />
       )}
       {view !== 'month' && !showAgenda && (
-        <TimeGridView days={days} {...entryProps} />
+        <TimeGridView
+          days={days}
+          {...entryProps}
+          onSlotClick={canAddMeetings ? openAddFormAt : undefined}
+        />
       )}
 
       {selectedDeadline && (
@@ -302,6 +317,7 @@ export default function CalendarPage() {
       {isFormOpen && (
         <MeetingFormModal
           meeting={editedMeeting ?? undefined}
+          slot={newMeetingSlot}
           projectOptions={projectOptions}
           onClose={closeForm}
           onSubmit={submitMeeting}
