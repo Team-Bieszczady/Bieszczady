@@ -110,7 +110,6 @@ interface OutcomePanelProps {
   meeting: BackendMeetingDetails;
   onSubmit: (outcome: MeetingOutcome) => void;
   isPending: boolean;
-  canListParticipants: boolean;
   onRestore: () => void;
   isRestoring: boolean;
 }
@@ -119,7 +118,6 @@ function OutcomePanel({
   meeting,
   onSubmit,
   isPending,
-  canListParticipants,
   onRestore,
   isRestoring,
 }: OutcomePanelProps) {
@@ -170,19 +168,7 @@ function OutcomePanel({
     );
   }
 
-  const showParticipants =
-    canListParticipants && meeting.status !== 'CANCELLED';
-
-  return (
-    <>
-      <MeetingOutcomeForm meeting={meeting} onSubmit={onSubmit} />
-      {showParticipants && (
-        <div className="mt-6 border-t border-gray-200 pt-6">
-          <MeetingParticipantsSection meetingId={meeting.id} />
-        </div>
-      )}
-    </>
-  );
+  return <MeetingOutcomeForm meeting={meeting} onSubmit={onSubmit} />;
 }
 
 export default function MeetingDetailsModal({
@@ -202,6 +188,12 @@ export default function MeetingDetailsModal({
     !!meeting && (meeting.canManage || meeting.status !== 'PLANNED');
   const canOpenProject =
     hasModule(user, 'PROJECTS') && hasModule(user, 'OVERVIEW');
+  const showParticipants =
+    !!meeting &&
+    meeting.canManage &&
+    !isUpcoming(meeting) &&
+    meeting.status !== 'CANCELLED' &&
+    hasModule(user, 'PARTICIPANTS');
 
   const submitOutcome = (outcome: MeetingOutcome) => {
     let message = 'Zmiany zapisane';
@@ -348,6 +340,12 @@ export default function MeetingDetailsModal({
               </div>
             )}
 
+            {showParticipants && (
+              <div className="border-t border-gray-200 pt-5">
+                <MeetingParticipantsSection meetingId={meeting.id} />
+              </div>
+            )}
+
             <p className="mt-auto text-xs text-grayText">
               Utworzył(a): {meeting.createdBy.firstName}{' '}
               {meeting.createdBy.lastName}, {formatLongDate(meeting.createdAt)}
@@ -360,7 +358,6 @@ export default function MeetingDetailsModal({
                 meeting={meeting}
                 onSubmit={submitOutcome}
                 isPending={setOutcome.isPending}
-                canListParticipants={hasModule(user, 'PARTICIPANTS')}
                 onRestore={restore}
                 isRestoring={restoreMeeting.isPending}
               />
