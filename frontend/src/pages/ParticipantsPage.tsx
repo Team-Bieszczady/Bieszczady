@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { AiOutlineSearch } from 'react-icons/ai';
-import { HiOutlinePlus } from 'react-icons/hi';
+import { HiOutlineDownload, HiOutlinePlus } from 'react-icons/hi';
 import { Button } from '../components/ui/Button';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import Pagination from '../features/people/components/Pagination';
@@ -9,6 +9,7 @@ import ParticipantFormModal from '../features/participants/components/Participan
 import ParticipantsTable from '../features/participants/components/ParticipantsTable';
 import { useCreateParticipant } from '../features/participants/hooks/useCreateParticipant';
 import { useDeleteParticipant } from '../features/participants/hooks/useDeleteParticipant';
+import { useNewsletterExport } from '../features/participants/hooks/useNewsletterExport';
 import { useParticipants } from '../features/participants/hooks/useParticipants';
 import { useUpdateParticipant } from '../features/participants/hooks/useUpdateParticipant';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
@@ -48,6 +49,7 @@ export default function ParticipantsPage() {
   const createParticipant = useCreateParticipant();
   const updateParticipant = useUpdateParticipant();
   const deleteParticipant = useDeleteParticipant();
+  const { exportNewsletter, isExporting } = useNewsletterExport();
   const isWideLayout = useMediaQuery('(min-width: 640px)');
 
   const participants = participantsQuery.data || [];
@@ -164,16 +166,29 @@ export default function ParticipantsPage() {
             </p>
           )}
         </div>
-        <Button
-          variant="primary"
-          size="small"
-          type="button"
-          onClick={openAddForm}
-          className="flex shrink-0 items-center gap-2 max-lg:h-7 max-lg:gap-1.5 max-lg:px-4 max-lg:py-1 max-lg:text-xs"
-        >
-          <HiOutlinePlus className="h-4 w-4" aria-hidden="true" />
-          Dodaj uczestnika
-        </Button>
+        <div className="flex shrink-0 items-center gap-2">
+          <Button
+            variant="outline"
+            size="small"
+            type="button"
+            onClick={() => void exportNewsletter()}
+            isPending={isExporting}
+            className="flex shrink-0 items-center gap-2 max-lg:h-7 max-lg:gap-1.5 max-lg:px-4 max-lg:py-1 max-lg:text-xs max-sm:px-2"
+          >
+            <HiOutlineDownload className="h-4 w-4" aria-hidden="true" />
+            <span className="max-sm:sr-only">Eksportuj do newslettera</span>
+          </Button>
+          <Button
+            variant="primary"
+            size="small"
+            type="button"
+            onClick={openAddForm}
+            className="flex shrink-0 items-center gap-2 max-lg:h-7 max-lg:gap-1.5 max-lg:px-4 max-lg:py-1 max-lg:text-xs"
+          >
+            <HiOutlinePlus className="h-4 w-4" aria-hidden="true" />
+            Dodaj uczestnika
+          </Button>
+        </div>
       </div>
 
       <div className="relative mb-4">
