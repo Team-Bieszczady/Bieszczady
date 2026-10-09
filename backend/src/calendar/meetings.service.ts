@@ -6,13 +6,15 @@ import {
 } from '@nestjs/common';
 
 import { Prisma } from '@prisma/client';
+import { MailService } from '../mail/mail.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ListMeetingsQueryDto } from './dto/list-meetings-query.dto';
 import { CreateMeetingDto } from './dto/create-meeting.dto';
 import { UpdateMeetingDto } from './dto/update-meeting.dto';
 import { MeetingOutcomeDto } from './dto/meeting-outcome.dto';
-import { isoDay, todayInPoland } from './dates';
+import { isoDay, todayInPoland, warsawLocalToUtc } from './dates';
 import { ATTENDANCE_FILE_FIELDS, toAttendanceFile } from './attendance-files';
+import { buildMeetingIcs } from './meeting-invite.ics';
 
 type Viewer = { id: string; isDirector: boolean };
 
@@ -35,7 +37,10 @@ const SAVED_MEETING_FIELDS = {
 
 @Injectable()
 export class MeetingsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mail: MailService,
+  ) {}
 
   async findInRange(query: ListMeetingsQueryDto, viewer: Viewer) {
     if (query.from > query.to) {
@@ -141,7 +146,7 @@ export class MeetingsService {
   async create(dto: CreateMeetingDto, creator: Viewer) {
     const project = await this.prisma.project.findUnique({
       where: { id: dto.projectId },
-      select: { id: true, archivedAt: true },
+      select: { id: true, archivedAt: true, name: true },
     });
     if (!project) throw new NotFoundException('Projekt nie istnieje');
     if (project.archivedAt)
@@ -164,7 +169,7 @@ export class MeetingsService {
     const inviteeIds = dto.inviteeIds ?? [];
     await this.assertInviteesOnTeam(dto.projectId, inviteeIds);
 
-    return this.prisma.meeting.create({
+    const meeting = await this.prisma.meeting.create({
       data: {
         projectId: dto.projectId,
         title: dto.title,
@@ -179,6 +184,12 @@ export class MeetingsService {
       },
       select: SAVED_MEETING_FIELDS,
     });
+
+    await this.notifyInvitees(meeting, project.name, inviteeIds, {
+      isCancelled: false,
+    });
+
+    return meeting;
   }
 
   async update(id: string, dto: UpdateMeetingDto, editor: Viewer) {
@@ -197,12 +208,21 @@ export class MeetingsService {
       where: { meetingId: id },
       select: { userId: true },
     });
+    const alreadyInvitedIds = alreadyInvited.map((invitee) => invitee.userId);
     const newInviteeIds = inviteeIds.filter(
-      (userId) => !alreadyInvited.some((invitee) => invitee.userId === userId),
+      (userId) => !alreadyInvitedIds.includes(userId),
     );
     await this.assertInviteesOnTeam(meeting.projectId, newInviteeIds);
 
-    return this.prisma.meeting.update({
+    const detailsChanged =
+      dto.title !== meeting.title ||
+      dto.date !== isoDay(meeting.date) ||
+      dto.startTime !== meeting.startTime ||
+      dto.endTime !== meeting.endTime ||
+      (dto.place || null) !== meeting.place ||
+      (dto.meetingUrl || null) !== meeting.meetingUrl;
+
+    const updated = await this.prisma.meeting.update({
       where: { id },
       data: {
         title: dto.title,
@@ -219,6 +239,13 @@ export class MeetingsService {
       },
       select: SAVED_MEETING_FIELDS,
     });
+
+    const toNotifyIds = detailsChanged ? inviteeIds : newInviteeIds;
+    await this.notifyInvitees(updated, meeting.project.name, toNotifyIds, {
+      isCancelled: false,
+    });
+
+    return updated;
   }
 
   async setOutcome(id: string, dto: MeetingOutcomeDto, editor: Viewer) {
@@ -287,9 +314,14 @@ export class MeetingsService {
         projectId: true,
         title: true,
         date: true,
+        startTime: true,
+        endTime: true,
+        place: true,
+        meetingUrl: true,
+        note: true,
         status: true,
         createdById: true,
-        project: { select: { archivedAt: true } },
+        project: { select: { archivedAt: true, name: true } },
       },
     });
     if (!meeting) throw new NotFoundException('Nie znaleziono spotkania');
@@ -368,6 +400,102 @@ export class MeetingsService {
       membership?.projectRole === 'EXECUTOR' &&
       meeting.createdById === viewer.id
     );
+  }
+
+  private async notifyInvitees(
+    meeting: {
+      id: string;
+      title: string;
+      date: Date;
+      startTime: string;
+      endTime: string;
+      place: string | null;
+      meetingUrl: string | null;
+      note: string;
+    },
+    projectName: string,
+    inviteeIds: string[],
+    options: { isCancelled: boolean },
+  ) {
+    if (inviteeIds.length === 0) return;
+
+    const invitees = await this.prisma.user.findMany({
+      where: { id: { in: inviteeIds } },
+      select: { firstName: true, lastName: true, email: true },
+    });
+
+    const day = isoDay(meeting.date);
+    const startsAt = warsawLocalToUtc(day, meeting.startTime);
+    const endsAt = warsawLocalToUtc(day, meeting.endTime);
+    const dayText = new Date(`${day}T00:00:00`).toLocaleDateString('pl-PL', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+    const whenText = `${dayText}, ${meeting.startTime}–${meeting.endTime}`;
+    const sequence = Math.floor(Date.now() / 1000);
+
+    await Promise.allSettled(
+      invitees.map((invitee) =>
+        this.sendInviteEmail(
+          meeting,
+          projectName,
+          whenText,
+          startsAt,
+          endsAt,
+          sequence,
+          invitee,
+          options.isCancelled,
+        ),
+      ),
+    );
+  }
+
+  private async sendInviteEmail(
+    meeting: {
+      id: string;
+      title: string;
+      place: string | null;
+      meetingUrl: string | null;
+      note: string;
+    },
+    projectName: string,
+    whenText: string,
+    startsAt: Date,
+    endsAt: Date,
+    sequence: number,
+    invitee: { firstName: string; lastName: string; email: string },
+    isCancelled: boolean,
+  ) {
+    try {
+      const ics = buildMeetingIcs({
+        meetingId: meeting.id,
+        title: meeting.title,
+        note: meeting.note,
+        place: meeting.place,
+        meetingUrl: meeting.meetingUrl,
+        startsAt,
+        endsAt,
+        organizerEmail: this.mail.senderEmail(),
+        attendeeEmail: invitee.email,
+        attendeeName: `${invitee.firstName} ${invitee.lastName}`,
+        sequence,
+        isCancelled,
+      });
+
+      await this.mail.sendMeetingInvite({
+        to: invitee.email,
+        title: meeting.title,
+        projectName,
+        whenText,
+        place: meeting.place,
+        meetingUrl: meeting.meetingUrl,
+        ics,
+        isCancelled,
+      });
+    } catch (error) {
+      console.error('Nie udało się wysłać zaproszenia na spotkanie', error);
+    }
   }
 
   private assertEndsAfterStart(times: { startTime: string; endTime: string }) {
