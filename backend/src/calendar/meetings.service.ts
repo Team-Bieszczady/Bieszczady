@@ -48,6 +48,7 @@ export class MeetingsService {
       where: {
         deletedAt: null,
         date: { gte: new Date(query.from), lte: new Date(query.to) },
+        project: { archivedAt: null },
         ...this.visibleTo(viewer),
       },
       orderBy: [{ date: 'asc' }, { startTime: 'asc' }],
@@ -171,8 +172,21 @@ export class MeetingsService {
 
     this.assertEndsAfterStart(dto);
 
+    if (meeting.status === 'HELD' && dto.date > todayInPoland()) {
+      throw new BadRequestException(
+        'Spotkanie już się odbyło, więc nie może mieć daty w przyszłości',
+      );
+    }
+
     const inviteeIds = dto.inviteeIds ?? [];
-    await this.assertInviteesOnTeam(meeting.projectId, inviteeIds);
+    const alreadyInvited = await this.prisma.meetingInvitee.findMany({
+      where: { meetingId: id },
+      select: { userId: true },
+    });
+    const newInviteeIds = inviteeIds.filter(
+      (userId) => !alreadyInvited.some((invitee) => invitee.userId === userId),
+    );
+    await this.assertInviteesOnTeam(meeting.projectId, newInviteeIds);
 
     return this.prisma.meeting.update({
       where: { id },
@@ -213,6 +227,27 @@ export class MeetingsService {
         attendeeCount: held ? dto.attendeeCount : null,
         confirmedAt: new Date(),
         confirmedById: editor.id,
+      },
+      select: SAVED_MEETING_FIELDS,
+    });
+  }
+
+  async restore(id: string, editor: Viewer) {
+    const meeting = await this.findManageable(id, editor);
+
+    if (meeting.status !== 'CANCELLED') {
+      throw new BadRequestException(
+        'Przywrócić można tylko odwołane spotkanie',
+      );
+    }
+
+    return this.prisma.meeting.update({
+      where: { id },
+      data: {
+        status: 'PLANNED',
+        attendeeCount: null,
+        confirmedAt: null,
+        confirmedById: null,
       },
       select: SAVED_MEETING_FIELDS,
     });

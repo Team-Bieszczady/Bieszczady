@@ -17,6 +17,7 @@ describe('MeetingsService', () => {
       create: jest.fn(),
       update: jest.fn(),
     },
+    meetingInvitee: { findMany: jest.fn() },
     projectMember: { findUnique: jest.fn(), findMany: jest.fn() },
     project: { findMany: jest.fn(), findUnique: jest.fn() },
   };
@@ -25,6 +26,7 @@ describe('MeetingsService', () => {
   const inOctober = {
     deletedAt: null,
     date: { gte: new Date('2026-10-01'), lte: new Date('2026-10-31') },
+    project: { archivedAt: null },
   };
 
   const executor = { id: 'executor-1', isDirector: false };
@@ -56,6 +58,7 @@ describe('MeetingsService', () => {
     prisma.meeting.findFirst.mockResolvedValue(storedMeeting);
     prisma.meeting.update.mockResolvedValue({});
     prisma.projectMember.findMany.mockResolvedValue([{ userId: 'member-1' }]);
+    prisma.meetingInvitee.findMany.mockResolvedValue([]);
   });
 
   describe('projectOptions', () => {
@@ -330,6 +333,85 @@ describe('MeetingsService', () => {
           isDirector: false,
         }),
       ).rejects.toThrow(BadRequestException);
+      expect(prisma.meeting.update).not.toHaveBeenCalled();
+    });
+
+    it('keeps someone who was invited before they left the team', async () => {
+      prisma.projectMember.findUnique.mockResolvedValue({
+        projectRole: 'COORDINATOR',
+      });
+      prisma.meetingInvitee.findMany.mockResolvedValue([
+        { userId: 'former-member' },
+      ]);
+      prisma.projectMember.findMany.mockResolvedValue([]);
+
+      await service.update(
+        'meeting-1',
+        { ...changes, inviteeIds: ['former-member'] },
+        { id: 'coordinator-1', isDirector: false },
+      );
+
+      expect(prisma.projectMember.findMany).not.toHaveBeenCalled();
+      expect(prisma.meeting.update).toHaveBeenCalled();
+    });
+
+    it('does not move a held meeting into the future', async () => {
+      prisma.meeting.findFirst.mockResolvedValue({
+        ...storedMeeting,
+        status: 'HELD',
+      });
+      prisma.projectMember.findUnique.mockResolvedValue({
+        projectRole: 'COORDINATOR',
+      });
+
+      await expect(
+        service.update(
+          'meeting-1',
+          { ...changes, date: '2099-05-04' },
+          { id: 'coordinator-1', isDirector: false },
+        ),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.meeting.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('restore', () => {
+    const coordinator = { id: 'coordinator-1', isDirector: false };
+
+    beforeEach(() => {
+      prisma.projectMember.findUnique.mockResolvedValue({
+        projectRole: 'COORDINATOR',
+      });
+    });
+
+    it('brings a cancelled meeting back and forgets who cancelled it', async () => {
+      prisma.meeting.findFirst.mockResolvedValue({
+        ...storedMeeting,
+        status: 'CANCELLED',
+      });
+
+      await service.restore('meeting-1', coordinator);
+
+      const [updateArgs] = prisma.meeting.update.mock.calls[0] as [
+        { data: Record<string, unknown> },
+      ];
+      expect(updateArgs.data).toEqual({
+        status: 'PLANNED',
+        attendeeCount: null,
+        confirmedAt: null,
+        confirmedById: null,
+      });
+    });
+
+    it('refuses a meeting that was not cancelled', async () => {
+      prisma.meeting.findFirst.mockResolvedValue({
+        ...storedMeeting,
+        status: 'HELD',
+      });
+
+      await expect(service.restore('meeting-1', coordinator)).rejects.toThrow(
+        BadRequestException,
+      );
       expect(prisma.meeting.update).not.toHaveBeenCalled();
     });
   });

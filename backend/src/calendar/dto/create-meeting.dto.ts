@@ -37,8 +37,9 @@ export class CreateMeetingDto {
   place?: string;
 
   @IsOptional()
+  @TrimmedString()
   @IsUrl(
-    { require_protocol: true },
+    { require_protocol: true, protocols: ['http', 'https'] },
     { message: 'Link musi zaczynać się od http:// albo https://' },
   )
   @MaxLength(1000)

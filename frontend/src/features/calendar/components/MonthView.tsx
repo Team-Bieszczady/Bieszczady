@@ -100,7 +100,8 @@ export function MonthView({
               deadlines={deadlines}
               projects={projects}
               isToday={isToday}
-              isMuted={isOutsideMonth || isWeekend}
+              isWeekend={isWeekend}
+              isOutsideMonth={isOutsideMonth}
               onDayClick={onDayClick}
             />
           );
@@ -118,7 +119,7 @@ export function MonthView({
               type="button"
               onClick={() => onDayClick(day)}
               aria-label={`Pokaż dzień ${day}`}
-              className={`inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-full transition-colors ${dayNumberClasses(isToday, isOutsideMonth || isWeekend)}`}
+              className={`inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-full transition-colors ${dayNumberClasses(isToday, isWeekend, isOutsideMonth)}`}
             >
               {dayNumber(day)}
             </button>

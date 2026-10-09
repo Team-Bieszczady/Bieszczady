@@ -37,9 +37,14 @@ export const dayNumber = (date: string) => {
   }
 };
 
-export function dayNumberClasses(isToday: boolean, isMuted: boolean) {
+export function dayNumberClasses(
+  isToday: boolean,
+  isWeekend: boolean,
+  isOutsideMonth = false,
+) {
   if (isToday) return 'bg-dark font-semibold text-white';
-  if (isMuted) return 'text-gray-400 hover:bg-gray-100';
+  if (isOutsideMonth) return 'text-gray-300 hover:bg-gray-100';
+  if (isWeekend) return 'text-gray-400 hover:bg-gray-100';
   return 'text-dark hover:bg-gray-100';
 }
 

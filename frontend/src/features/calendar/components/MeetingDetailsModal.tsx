@@ -6,6 +6,7 @@ import {
   LuMapPin,
   LuPencil,
   LuTrash2,
+  LuStickyNote,
   LuUsers,
 } from 'react-icons/lu';
 import { Button } from '../../../components/ui/Button';
@@ -20,7 +21,9 @@ import { useSetMeetingOutcome } from '../hooks/useSetMeetingOutcome';
 import { formatWeekday } from '../utils/calendarView';
 import { formatLongDate } from '../utils/formatLongDate';
 import { AttendanceFilesSection } from './AttendanceFilesSection';
+import { useRestoreMeeting } from '../hooks/useRestoreMeeting';
 import {
+  ConfirmedByNote,
   MEETING_OUTCOME_FORM_ID,
   MeetingOutcomeForm,
 } from './MeetingOutcomeForm';
@@ -33,6 +36,8 @@ interface MeetingDetailsModalProps {
   onEdit: (meeting: BackendMeetingDetails) => void;
   onDelete: (meeting: BackendMeetingDetails) => void;
 }
+
+const OUTCOME_TOAST_ID = 'meeting-outcome';
 
 const ROW_CLASSES = 'flex items-start gap-3 text-sm text-dark';
 const ICON_CLASSES = 'mt-0.5 shrink-0 text-grayText';
@@ -49,6 +54,10 @@ const STATUS_BADGES = {
 
 function isUpcoming(meeting: BackendMeetingDetails) {
   return meeting.status === 'PLANNED' && meeting.date > todayIso();
+}
+
+function isCancelledAhead(meeting: BackendMeetingDetails) {
+  return meeting.status === 'CANCELLED' && meeting.date > todayIso();
 }
 
 function statusBadgeOf(meeting: BackendMeetingDetails) {
@@ -92,12 +101,7 @@ function OutcomeSummary({ meeting }: { meeting: BackendMeetingDetails }) {
           editable={false}
         />
       )}
-      {meeting.confirmedBy && meeting.confirmedAt && (
-        <p className="text-xs text-grayText">
-          Zatwierdził(a): {meeting.confirmedBy.firstName}{' '}
-          {meeting.confirmedBy.lastName}, {formatLongDate(meeting.confirmedAt)}
-        </p>
-      )}
+      <ConfirmedByNote meeting={meeting} />
     </div>
   );
 }
@@ -107,6 +111,8 @@ interface OutcomePanelProps {
   onSubmit: (outcome: MeetingOutcome) => void;
   isPending: boolean;
   canListParticipants: boolean;
+  onRestore: () => void;
+  isRestoring: boolean;
 }
 
 function OutcomePanel({
@@ -114,8 +120,33 @@ function OutcomePanel({
   onSubmit,
   isPending,
   canListParticipants,
+  onRestore,
+  isRestoring,
 }: OutcomePanelProps) {
   if (!meeting.canManage) return <OutcomeSummary meeting={meeting} />;
+
+  if (isCancelledAhead(meeting)) {
+    return (
+      <div className="space-y-3">
+        <p className="text-sm text-dark/80">Potwierdzenie realizacji</p>
+        <p className="text-xs leading-relaxed text-grayText">
+          Spotkanie jest odwołane. Jeśli jednak się odbędzie, przywróć je, a
+          wróci do kalendarza jako zaplanowane.
+        </p>
+        <Button
+          variant="outline"
+          size="small"
+          type="button"
+          onClick={onRestore}
+          isPending={isRestoring}
+          className="font-medium!"
+        >
+          Przywróć spotkanie
+        </Button>
+        <ConfirmedByNote meeting={meeting} />
+      </div>
+    );
+  }
 
   if (isUpcoming(meeting)) {
     return (
@@ -163,6 +194,7 @@ export default function MeetingDetailsModal({
   const meetingQuery = useMeeting(meetingId);
   const meeting = meetingQuery.data;
   const setOutcome = useSetMeetingOutcome();
+  const restoreMeeting = useRestoreMeeting();
   const { user } = useAuth();
   const openProjectPage = useOpenProjectPage(onClose);
 
@@ -172,18 +204,30 @@ export default function MeetingDetailsModal({
     hasModule(user, 'PROJECTS') && hasModule(user, 'OVERVIEW');
 
   const submitOutcome = (outcome: MeetingOutcome) => {
+    let message = 'Zmiany zapisane';
+    if (meeting && meeting.status === 'PLANNED') {
+      if (outcome.status === 'HELD') {
+        message = 'Spotkanie zatwierdzone';
+      } else {
+        message = 'Spotkanie oznaczone jako odwołane';
+      }
+    }
+
     setOutcome.mutate(
       { id: meetingId, outcome },
       {
-        onSuccess: () =>
-          toast.success(
-            outcome.status === 'HELD'
-              ? 'Spotkanie zatwierdzone'
-              : 'Spotkanie oznaczone jako odwołane',
-          ),
-        onError: (error) => toast.error(error.message),
+        onSuccess: () => toast.success(message, { id: OUTCOME_TOAST_ID }),
+        onError: (error) =>
+          toast.error(error.message, { id: OUTCOME_TOAST_ID }),
       },
     );
+  };
+
+  const restore = () => {
+    restoreMeeting.mutate(meetingId, {
+      onSuccess: () => toast.success('Spotkanie przywrócone'),
+      onError: (error) => toast.error(error.message),
+    });
   };
 
   const header = (
@@ -216,7 +260,7 @@ export default function MeetingDetailsModal({
 
       {meeting && (
         <div className={showOutcome ? 'grid gap-8 md:grid-cols-2' : ''}>
-          <div className="space-y-5 pb-2">
+          <div className="flex flex-col gap-5 pb-2 md:pb-0">
             <div className={ROW_CLASSES}>
               <LuClock size={18} className={ICON_CLASSES} aria-hidden="true" />
               <div>
@@ -291,12 +335,20 @@ export default function MeetingDetailsModal({
             </div>
 
             {meeting.note && (
-              <p className="rounded-lg bg-gray-100 px-4 py-3 text-xs leading-relaxed wrap-break-word whitespace-pre-line text-grayText">
-                {meeting.note}
-              </p>
+              <div className={ROW_CLASSES}>
+                <LuStickyNote
+                  size={18}
+                  className={ICON_CLASSES}
+                  aria-hidden="true"
+                />
+                <p className="min-w-0 flex-1 rounded-lg bg-gray-100 px-4 py-3 text-xs leading-relaxed wrap-break-word whitespace-pre-line text-grayText">
+                  <span className="sr-only">Notatka: </span>
+                  {meeting.note}
+                </p>
+              </div>
             )}
 
-            <p className="text-xs text-grayText">
+            <p className="mt-auto text-xs text-grayText">
               Utworzył(a): {meeting.createdBy.firstName}{' '}
               {meeting.createdBy.lastName}, {formatLongDate(meeting.createdAt)}
             </p>
@@ -309,6 +361,8 @@ export default function MeetingDetailsModal({
                 onSubmit={submitOutcome}
                 isPending={setOutcome.isPending}
                 canListParticipants={hasModule(user, 'PARTICIPANTS')}
+                onRestore={restore}
+                isRestoring={restoreMeeting.isPending}
               />
             </div>
           )}
@@ -338,7 +392,7 @@ export default function MeetingDetailsModal({
               <LuPencil size={14} aria-hidden="true" />
               Edytuj
             </Button>
-            {!isUpcoming(meeting) && (
+            {!isUpcoming(meeting) && !isCancelledAhead(meeting) && (
               <Button
                 variant="primary"
                 size="small"

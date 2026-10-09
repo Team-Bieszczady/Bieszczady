@@ -11,6 +11,7 @@ import { AttendanceFilesSection } from './AttendanceFilesSection';
 export const MEETING_OUTCOME_FORM_ID = 'meeting-outcome-form';
 
 const LABEL_CLASSES = 'mb-2 block text-sm text-dark/80';
+const MAX_ATTENDEES = 100000;
 
 const OUTCOME_OPTIONS = [
   { value: 'HELD', label: '✓ Odbyło się' },
@@ -25,6 +26,44 @@ interface OutcomeInputs {
 interface MeetingOutcomeFormProps {
   meeting: BackendMeetingDetails;
   onSubmit: (outcome: MeetingOutcome) => void;
+}
+
+function attendeeCountProblem(value: string, status: OutcomeInputs['status']) {
+  if (status !== 'HELD') {
+    return true;
+  }
+
+  if (!/^\d+$/.test(value.trim())) {
+    return 'Podaj liczbę uczestników';
+  }
+
+  if (Number(value) > MAX_ATTENDEES) {
+    return 'Liczba uczestników może wynosić najwyżej 100 000';
+  }
+
+  return true;
+}
+
+export function ConfirmedByNote({
+  meeting,
+}: {
+  meeting: BackendMeetingDetails;
+}) {
+  if (!meeting.confirmedBy || !meeting.confirmedAt) {
+    return null;
+  }
+
+  let label = 'Zatwierdził(a)';
+  if (meeting.status === 'CANCELLED') {
+    label = 'Odwołał(a)';
+  }
+
+  return (
+    <p className="text-xs text-grayText">
+      {label}: {meeting.confirmedBy.firstName} {meeting.confirmedBy.lastName},{' '}
+      {formatLongDate(meeting.confirmedAt)}
+    </p>
+  );
 }
 
 function AttendanceScans({
@@ -88,6 +127,7 @@ export function MeetingOutcomeForm({
     <form
       id={MEETING_OUTCOME_FORM_ID}
       onSubmit={handleSubmit(submit)}
+      noValidate
       className="space-y-5"
     >
       <div>
@@ -117,9 +157,7 @@ export function MeetingOutcomeForm({
           <input
             {...register('attendeeCount', {
               validate: (value, values) =>
-                values.status !== 'HELD' ||
-                /^\d+$/.test(value.trim()) ||
-                'Podaj liczbę uczestników',
+                attendeeCountProblem(value, values.status),
             })}
             id={countId}
             type="number"
@@ -137,12 +175,7 @@ export function MeetingOutcomeForm({
         <AttendanceScans meeting={meeting} hasStarted={hasStarted} />
       )}
 
-      {meeting.confirmedBy && meeting.confirmedAt && (
-        <p className="text-xs text-grayText">
-          Zatwierdził(a): {meeting.confirmedBy.firstName}{' '}
-          {meeting.confirmedBy.lastName}, {formatLongDate(meeting.confirmedAt)}
-        </p>
-      )}
+      <ConfirmedByNote meeting={meeting} />
     </form>
   );
 }

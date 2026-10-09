@@ -77,6 +77,14 @@ export class MeetingsController {
     return this.meetingsService.setOutcome(id, dto, user);
   }
 
+  @Patch(':id/restore')
+  restore(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.meetingsService.restore(id, user);
+  }
+
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(
