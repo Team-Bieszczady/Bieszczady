@@ -165,6 +165,24 @@ describe('ParticipantsService', () => {
       });
     });
 
+    it('counts only meetings that were not deleted or cancelled', async () => {
+      await service.findAll({});
+
+      expect(findManyArgs()).toMatchObject({
+        select: {
+          _count: {
+            select: {
+              meetings: {
+                where: {
+                  meeting: { deletedAt: null, status: { not: 'CANCELLED' } },
+                },
+              },
+            },
+          },
+        },
+      });
+    });
+
     it('tells how many meetings each person attended', async () => {
       prisma.participant.findMany.mockResolvedValue([
         {

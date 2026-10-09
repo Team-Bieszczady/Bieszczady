@@ -36,6 +36,21 @@ export interface MeetingParticipant {
   consentAt: string | null;
 }
 
+export interface ParticipantMeeting {
+  id: string;
+  title: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  status: MeetingStatus;
+  projectName: string;
+}
+
+export interface ParticipantHistory {
+  meetings: ParticipantMeeting[];
+  hiddenCount: number;
+}
+
 export interface ParticipantChanges {
   firstName: string;
   lastName: string;
@@ -408,6 +423,20 @@ export const api = {
       accessToken,
       fallbackMessage: 'Nie udało się usunąć uczestnika',
     });
+  },
+
+  async getParticipantHistory(
+    accessToken: string,
+    participantId: string,
+  ): Promise<ParticipantHistory> {
+    return request<ParticipantHistory>(
+      `/api/v1/participants/${participantId}/meetings`,
+      {
+        method: 'GET',
+        accessToken,
+        fallbackMessage: 'Nie udało się pobrać historii spotkań',
+      },
+    );
   },
 
   async getMeetingParticipants(

@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { ATTENDED_MEETING } from './attended-meeting';
 import { ListParticipantsQueryDto } from './dto/list-participants-query.dto';
 import {
   CreateParticipantDto,
@@ -38,7 +39,7 @@ export class ParticipantsService {
         note: true,
         consentAt: true,
         _count: {
-          select: { meetings: { where: { meeting: { deletedAt: null } } } },
+          select: { meetings: { where: { meeting: ATTENDED_MEETING } } },
         },
       },
     });

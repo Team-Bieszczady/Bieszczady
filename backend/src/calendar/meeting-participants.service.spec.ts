@@ -13,10 +13,11 @@ describe('MeetingParticipantsService', () => {
       findUnique: jest.fn(),
       create: jest.fn(),
       deleteMany: jest.fn(),
+      count: jest.fn(),
     },
     participant: { findFirst: jest.fn() },
   };
-  const meetings = { findManageable: jest.fn() };
+  const meetings = { findManageable: jest.fn(), visibleTo: jest.fn() };
 
   const coordinator = { id: 'coordinator-1', isDirector: false };
   const pastMeeting = { date: new Date('2020-05-04'), status: 'HELD' };
@@ -37,6 +38,8 @@ describe('MeetingParticipantsService', () => {
     prisma.meetingParticipant.findMany.mockResolvedValue([]);
     prisma.meetingParticipant.findUnique.mockResolvedValue(null);
     prisma.participant.findFirst.mockResolvedValue({ id: 'participant-1' });
+    prisma.meetingParticipant.count.mockResolvedValue(0);
+    meetings.visibleTo.mockReturnValue({});
   });
 
   describe('list', () => {
@@ -135,6 +138,87 @@ describe('MeetingParticipantsService', () => {
       expect(prisma.meetingParticipant.deleteMany).toHaveBeenCalledWith({
         where: { meetingId: 'meeting-1', participantId: 'participant-1' },
       });
+    });
+  });
+
+  describe('history', () => {
+    const storedMeeting = {
+      id: 'meeting-1',
+      title: 'Warsztat',
+      date: new Date('2026-10-05'),
+      startTime: '12:00',
+      endTime: '13:00',
+      status: 'HELD',
+      project: { name: 'Warsztaty ekologiczne' },
+    };
+
+    it('answers 404 for someone who is not in the base', async () => {
+      prisma.participant.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.history('participant-1', coordinator),
+      ).rejects.toThrow(NotFoundException);
+      expect(prisma.meetingParticipant.findMany).not.toHaveBeenCalled();
+    });
+
+    it('lists the meetings the viewer may see, newest first', async () => {
+      meetings.visibleTo.mockReturnValue({ OR: [] });
+      prisma.meetingParticipant.count.mockResolvedValue(1);
+      prisma.meetingParticipant.findMany.mockResolvedValue([
+        { meeting: storedMeeting },
+      ]);
+
+      const result = await service.history('participant-1', coordinator);
+
+      expect(meetings.visibleTo).toHaveBeenCalledWith(coordinator);
+      expect(prisma.meetingParticipant.count).toHaveBeenCalledWith({
+        where: {
+          participantId: 'participant-1',
+          meeting: { deletedAt: null, status: { not: 'CANCELLED' } },
+        },
+      });
+      expect(prisma.meetingParticipant.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            participantId: 'participant-1',
+            meeting: {
+              deletedAt: null,
+              status: { not: 'CANCELLED' },
+              OR: [],
+            },
+          },
+          orderBy: [
+            { meeting: { date: 'desc' } },
+            { meeting: { startTime: 'desc' } },
+          ],
+        }),
+      );
+      expect(result).toEqual({
+        meetings: [
+          {
+            id: 'meeting-1',
+            title: 'Warsztat',
+            date: new Date('2026-10-05'),
+            startTime: '12:00',
+            endTime: '13:00',
+            status: 'HELD',
+            projectName: 'Warsztaty ekologiczne',
+          },
+        ],
+        hiddenCount: 0,
+      });
+    });
+
+    it('counts meetings from projects the viewer cannot see without naming them', async () => {
+      prisma.meetingParticipant.count.mockResolvedValue(3);
+      prisma.meetingParticipant.findMany.mockResolvedValue([
+        { meeting: storedMeeting },
+      ]);
+
+      const result = await service.history('participant-1', coordinator);
+
+      expect(result.meetings).toHaveLength(1);
+      expect(result.hiddenCount).toBe(2);
     });
   });
 });

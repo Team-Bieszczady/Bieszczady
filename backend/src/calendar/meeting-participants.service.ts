@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { ATTENDED_MEETING } from '../participants/attended-meeting';
 import { MeetingsService } from './meetings.service';
 import { isoDay, todayInPoland } from './dates';
 
@@ -72,6 +73,56 @@ export class MeetingParticipantsService {
     await this.prisma.meetingParticipant.deleteMany({
       where: { meetingId, participantId },
     });
+  }
+
+  async history(participantId: string, viewer: Viewer) {
+    const participant = await this.prisma.participant.findFirst({
+      where: { id: participantId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!participant) {
+      throw new NotFoundException('Nie znaleziono uczestnika');
+    }
+
+    const allCount = await this.prisma.meetingParticipant.count({
+      where: { participantId, meeting: ATTENDED_MEETING },
+    });
+
+    const rows = await this.prisma.meetingParticipant.findMany({
+      where: {
+        participantId,
+        meeting: { ...ATTENDED_MEETING, ...this.meetings.visibleTo(viewer) },
+      },
+      orderBy: [
+        { meeting: { date: 'desc' } },
+        { meeting: { startTime: 'desc' } },
+      ],
+      select: {
+        meeting: {
+          select: {
+            id: true,
+            title: true,
+            date: true,
+            startTime: true,
+            endTime: true,
+            status: true,
+            project: { select: { name: true } },
+          },
+        },
+      },
+    });
+
+    const meetings = rows.map((row) => ({
+      id: row.meeting.id,
+      title: row.meeting.title,
+      date: row.meeting.date,
+      startTime: row.meeting.startTime,
+      endTime: row.meeting.endTime,
+      status: row.meeting.status,
+      projectName: row.meeting.project.name,
+    }));
+
+    return { meetings, hiddenCount: allCount - meetings.length };
   }
 
   private assertAttendanceCanBeRecorded(meeting: {
