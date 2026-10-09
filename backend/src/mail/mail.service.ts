@@ -83,14 +83,10 @@ function meetingInviteHtml(params: {
   whenText: string;
   place: string | null;
   meetingUrl: string | null;
-  isCancelled: boolean;
 }): string {
-  const heading = params.isCancelled
-    ? 'Spotkanie odwołane'
-    : 'Zaproszenie na spotkanie';
-  const intro = params.isCancelled
-    ? 'Poniższe spotkanie zostało odwołane.'
-    : 'Zostałeś(-aś) zaproszony(-a) na spotkanie w Wirtualnym Biurze. W załączniku znajdziesz plik, który doda je do Twojego kalendarza (Gmail, Outlook).';
+  const heading = 'Zaproszenie na spotkanie';
+  const intro =
+    'Zostałeś(-aś) zaproszony(-a) na spotkanie w Wirtualnym Biurze. W załączniku znajdziesz plik, który doda je do Twojego kalendarza (Gmail, Outlook).';
 
   let placeLine = '';
   if (params.place) {
@@ -207,11 +203,8 @@ Jeśli to nie Ty prosiłeś o reset, zignoruj tę wiadomość. Twoje hasło pozo
     place: string | null;
     meetingUrl: string | null;
     ics: string;
-    isCancelled: boolean;
   }): Promise<void> {
-    const subject = params.isCancelled
-      ? `Odwołane: ${params.title}`
-      : `Zaproszenie: ${params.title}`;
+    const subject = `Zaproszenie: ${params.title}`;
 
     await this.transporter.sendMail({
       from: this.config.getOrThrow<string>('SMTP_FROM'),
@@ -228,7 +221,7 @@ Jeśli to nie Ty prosiłeś o reset, zignoruj tę wiadomość. Twoje hasło pozo
         {
           filename: 'zaproszenie.ics',
           content: params.ics,
-          contentType: `text/calendar; charset=utf-8; method=${params.isCancelled ? 'CANCEL' : 'REQUEST'}`,
+          contentType: 'text/calendar; charset=utf-8; method=REQUEST',
         },
       ],
     });
