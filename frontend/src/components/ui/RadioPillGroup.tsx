@@ -11,6 +11,7 @@ interface RadioPillGroupProps {
   options: RadioPillOption[];
   value: string;
   registration: UseFormRegisterReturn;
+  legendClassName?: string;
 }
 
 export function RadioPillGroup({
@@ -18,10 +19,11 @@ export function RadioPillGroup({
   options,
   value,
   registration,
+  legendClassName = FIELD_LABEL_CLASSES,
 }: RadioPillGroupProps) {
   return (
     <fieldset>
-      <legend className={FIELD_LABEL_CLASSES}>{legend}</legend>
+      <legend className={legendClassName}>{legend}</legend>
       <div className="flex flex-wrap gap-2">
         {options.map((option) => {
           const isSelected = option.value === value;
