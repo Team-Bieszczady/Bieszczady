@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { LuPlus } from 'react-icons/lu';
+import { useSearchParams } from 'react-router';
 import {
   shiftAnchor,
   visibleDays,
@@ -55,9 +56,24 @@ export default function CalendarPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editedMeeting, setEditedMeeting] =
     useState<BackendMeetingDetails | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(
-    null,
+    () => searchParams.get('meeting'),
   );
+
+  useEffect(() => {
+    setSearchParams(
+      (params) => {
+        if (!params.has('meeting')) {
+          return params;
+        }
+
+        params.delete('meeting');
+        return params;
+      },
+      { replace: true },
+    );
+  }, [setSearchParams]);
   const [meetingToDelete, setMeetingToDelete] =
     useState<BackendMeetingDetails | null>(null);
   const [selectedDeadline, setSelectedDeadline] = useState<Deadline | null>(

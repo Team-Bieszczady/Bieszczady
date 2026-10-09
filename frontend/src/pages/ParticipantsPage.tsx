@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { AiOutlineSearch } from 'react-icons/ai';
 import { HiOutlineDownload, HiOutlinePlus } from 'react-icons/hi';
 import { LuFolderDown } from 'react-icons/lu';
+import { useNavigate } from 'react-router';
 import { Button } from '../components/ui/Button';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import Pagination from '../features/people/components/Pagination';
@@ -46,6 +47,7 @@ function summaryOf(
 }
 
 export default function ParticipantsPage() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [onlyWithConsent, setOnlyWithConsent] = useState(false);
   const [page, setPage] = useState(1);
@@ -116,6 +118,11 @@ export default function ParticipantsPage() {
   const closeForm = () => {
     setIsFormOpen(false);
     setEditedParticipant(null);
+  };
+
+  const openMeetingInCalendar = (meetingId: string) => {
+    closeForm();
+    void navigate(`/calendar?meeting=${meetingId}`);
   };
 
   const afterSave = (message: string) => ({
@@ -298,6 +305,7 @@ export default function ParticipantsPage() {
           onClose={closeForm}
           onSubmit={submitParticipant}
           onDelete={editedParticipant ? askToDelete : undefined}
+          onOpenMeeting={openMeetingInCalendar}
           isPending={createParticipant.isPending || updateParticipant.isPending}
         />
       )}

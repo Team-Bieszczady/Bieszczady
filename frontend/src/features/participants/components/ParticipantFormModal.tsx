@@ -17,6 +17,7 @@ interface ParticipantFormModalProps {
   onClose: () => void;
   onSubmit: (values: ParticipantChanges) => void;
   onDelete?: () => void;
+  onOpenMeeting: (meetingId: string) => void;
   isPending: boolean;
 }
 
@@ -55,6 +56,7 @@ export default function ParticipantFormModal({
   onClose,
   onSubmit,
   onDelete,
+  onOpenMeeting,
   isPending,
 }: ParticipantFormModalProps) {
   const firstNameId = useId();
@@ -244,7 +246,10 @@ export default function ParticipantFormModal({
 
         {participant && (
           <div className="border-t border-gray-200 pt-4">
-            <ParticipantHistorySection participantId={participant.id} />
+            <ParticipantHistorySection
+              participantId={participant.id}
+              onOpenMeeting={onOpenMeeting}
+            />
           </div>
         )}
 
