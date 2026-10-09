@@ -56,15 +56,18 @@ describe('MeetingsService', () => {
     endTime: '11:00',
     inviteeIds: ['member-1'],
   };
+  // Data w odległej przyszłości, żeby testy zaproszeń nie zaczęły padać,
+  // gdy spotkanie z 2026 roku stanie się przeszłością.
   const savedMeeting = {
     id: 'meeting-1',
     title: 'Rada gminy',
-    date: new Date('2026-10-20'),
+    date: new Date('2099-05-04'),
     startTime: '10:00',
     endTime: '11:00',
     place: null,
     meetingUrl: null,
     note: '',
+    status: 'PLANNED',
   };
 
   beforeEach(async () => {
@@ -290,10 +293,9 @@ describe('MeetingsService', () => {
       );
       expect(mail.sendMeetingInvite).toHaveBeenCalledTimes(1);
       const [sent] = mail.sendMeetingInvite.mock.calls[0] as [
-        { to: string; ics: string; isCancelled: boolean },
+        { to: string; ics: string },
       ];
       expect(sent.to).toBe('ewa@bieszczady.local');
-      expect(sent.isCancelled).toBe(false);
       expect(sent.ics).toContain('METHOD:REQUEST');
     });
 
@@ -301,6 +303,24 @@ describe('MeetingsService', () => {
       await service.create({ ...newMeeting, inviteeIds: [] }, executor);
 
       expect(prisma.user.findMany).not.toHaveBeenCalled();
+      expect(mail.sendMeetingInvite).not.toHaveBeenCalled();
+    });
+
+    it('does not invite anyone to a meeting that already took place', async () => {
+      prisma.meeting.create.mockResolvedValue({
+        ...savedMeeting,
+        date: new Date('2020-05-04'),
+      });
+      prisma.user.findMany.mockResolvedValue([
+        {
+          firstName: 'Ewa',
+          lastName: 'Kowalska',
+          email: 'ewa@bieszczady.local',
+        },
+      ]);
+
+      await service.create({ ...newMeeting, date: '2020-05-04' }, executor);
+
       expect(mail.sendMeetingInvite).not.toHaveBeenCalled();
     });
 
@@ -511,6 +531,21 @@ describe('MeetingsService', () => {
           }),
         );
         expect(mail.sendMeetingInvite).toHaveBeenCalledTimes(2);
+      });
+
+      it('sends nothing for a meeting that was cancelled', async () => {
+        prisma.meeting.update.mockResolvedValue({
+          ...savedMeeting,
+          status: 'CANCELLED',
+        });
+
+        await service.update(
+          'meeting-1',
+          { ...sameDetails, startTime: '11:00', endTime: '12:00' },
+          coordinator,
+        );
+
+        expect(mail.sendMeetingInvite).not.toHaveBeenCalled();
       });
 
       it('sends nothing when the invitee list and details are unchanged', async () => {

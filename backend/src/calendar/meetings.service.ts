@@ -18,6 +18,18 @@ import { buildMeetingIcs } from './meeting-invite.ics';
 
 type Viewer = { id: string; isDirector: boolean };
 
+type InvitedMeeting = {
+  id: string;
+  title: string;
+  date: Date;
+  startTime: string;
+  endTime: string;
+  place: string | null;
+  meetingUrl: string | null;
+  note: string;
+  status: string;
+};
+
 const ORGANIZER_ROLES = ['COORDINATOR', 'EXECUTOR'];
 
 const SAVED_MEETING_FIELDS = {
@@ -171,9 +183,7 @@ export class MeetingsService {
       select: SAVED_MEETING_FIELDS,
     });
 
-    await this.notifyInvitees(meeting, project.name, inviteeIds, {
-      isCancelled: false,
-    });
+    await this.notifyInvitees(meeting, project.name, inviteeIds);
 
     return meeting;
   }
@@ -227,9 +237,7 @@ export class MeetingsService {
     });
 
     const toNotifyIds = detailsChanged ? inviteeIds : newInviteeIds;
-    await this.notifyInvitees(updated, meeting.project.name, toNotifyIds, {
-      isCancelled: false,
-    });
+    await this.notifyInvitees(updated, meeting.project.name, toNotifyIds);
 
     return updated;
   }
@@ -367,70 +375,54 @@ export class MeetingsService {
   }
 
   private async notifyInvitees(
-    meeting: {
-      id: string;
-      title: string;
-      date: Date;
-      startTime: string;
-      endTime: string;
-      place: string | null;
-      meetingUrl: string | null;
-      note: string;
-    },
+    meeting: InvitedMeeting,
     projectName: string,
     inviteeIds: string[],
-    options: { isCancelled: boolean },
   ) {
     if (inviteeIds.length === 0) return;
+
+    // Zaproszenie ma sens tylko dla spotkania, które dopiero się odbędzie.
+    const day = isoDay(meeting.date);
+    if (meeting.status !== 'PLANNED' || day < todayInPoland()) return;
 
     const invitees = await this.prisma.user.findMany({
       where: { id: { in: inviteeIds } },
       select: { firstName: true, lastName: true, email: true },
     });
 
-    const day = isoDay(meeting.date);
-    const startsAt = warsawLocalToUtc(day, meeting.startTime);
-    const endsAt = warsawLocalToUtc(day, meeting.endTime);
     const dayText = new Date(`${day}T00:00:00`).toLocaleDateString('pl-PL', {
       day: 'numeric',
       month: 'long',
       year: 'numeric',
     });
-    const whenText = `${dayText}, ${meeting.startTime}–${meeting.endTime}`;
-    const sequence = Math.floor(Date.now() / 1000);
+
+    const invite = {
+      meeting,
+      projectName,
+      whenText: `${dayText}, ${meeting.startTime}–${meeting.endTime}`,
+      startsAt: warsawLocalToUtc(day, meeting.startTime),
+      endsAt: warsawLocalToUtc(day, meeting.endTime),
+      sequence: Math.floor(Date.now() / 1000),
+    };
 
     await Promise.allSettled(
-      invitees.map((invitee) =>
-        this.sendInviteEmail(
-          meeting,
-          projectName,
-          whenText,
-          startsAt,
-          endsAt,
-          sequence,
-          invitee,
-          options.isCancelled,
-        ),
-      ),
+      invitees.map((invitee) => this.sendInviteEmail(invite, invitee)),
     );
   }
 
   private async sendInviteEmail(
-    meeting: {
-      id: string;
-      title: string;
-      place: string | null;
-      meetingUrl: string | null;
-      note: string;
+    invite: {
+      meeting: InvitedMeeting;
+      projectName: string;
+      whenText: string;
+      startsAt: Date;
+      endsAt: Date;
+      sequence: number;
     },
-    projectName: string,
-    whenText: string,
-    startsAt: Date,
-    endsAt: Date,
-    sequence: number,
     invitee: { firstName: string; lastName: string; email: string },
-    isCancelled: boolean,
   ) {
+    const { meeting } = invite;
+
     try {
       const ics = buildMeetingIcs({
         meetingId: meeting.id,
@@ -438,24 +430,22 @@ export class MeetingsService {
         note: meeting.note,
         place: meeting.place,
         meetingUrl: meeting.meetingUrl,
-        startsAt,
-        endsAt,
+        startsAt: invite.startsAt,
+        endsAt: invite.endsAt,
         organizerEmail: this.mail.senderEmail(),
         attendeeEmail: invitee.email,
         attendeeName: `${invitee.firstName} ${invitee.lastName}`,
-        sequence,
-        isCancelled,
+        sequence: invite.sequence,
       });
 
       await this.mail.sendMeetingInvite({
         to: invitee.email,
         title: meeting.title,
-        projectName,
-        whenText,
+        projectName: invite.projectName,
+        whenText: invite.whenText,
         place: meeting.place,
         meetingUrl: meeting.meetingUrl,
         ics,
-        isCancelled,
       });
     } catch (error) {
       console.error('Nie udało się wysłać zaproszenia na spotkanie', error);

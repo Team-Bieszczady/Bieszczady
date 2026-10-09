@@ -26,7 +26,6 @@ export interface MeetingIcsInput {
   attendeeEmail: string;
   attendeeName: string;
   sequence: number;
-  isCancelled: boolean;
 }
 
 export function buildMeetingIcs(input: MeetingIcsInput) {
@@ -42,7 +41,7 @@ export function buildMeetingIcs(input: MeetingIcsInput) {
     'BEGIN:VCALENDAR',
     'PRODID:-//Bieszczadzki Uniwersytet Ludowy//Wirtualne Biuro//PL',
     'VERSION:2.0',
-    `METHOD:${input.isCancelled ? 'CANCEL' : 'REQUEST'}`,
+    'METHOD:REQUEST',
     'BEGIN:VEVENT',
     `UID:meeting-${input.meetingId}@bieszczadzki-ul`,
     `SEQUENCE:${input.sequence}`,
@@ -50,7 +49,7 @@ export function buildMeetingIcs(input: MeetingIcsInput) {
     `DTSTART:${toIcsUtc(input.startsAt)}`,
     `DTEND:${toIcsUtc(input.endsAt)}`,
     `SUMMARY:${escapeIcsText(input.title)}`,
-    `STATUS:${input.isCancelled ? 'CANCELLED' : 'CONFIRMED'}`,
+    'STATUS:CONFIRMED',
     `ORGANIZER;CN=Bieszczadzki Uniwersytet Ludowy:mailto:${input.organizerEmail}`,
     `ATTENDEE;CN=${escapeIcsText(input.attendeeName)};RSVP=FALSE:mailto:${input.attendeeEmail}`,
   ];
