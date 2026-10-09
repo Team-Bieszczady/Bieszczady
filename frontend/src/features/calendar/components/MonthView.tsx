@@ -6,6 +6,7 @@ import {
 import { meetingColors } from '../meetingColors';
 import type { CalendarProject, Deadline, Meeting } from '../types';
 import { WEEKDAY_SHORT_NAMES } from '../utils/calendarView';
+import { describeMeeting } from '../utils/describeMeeting';
 import {
   dayNumber,
   dayNumberClasses,
@@ -41,7 +42,8 @@ function MeetingChip({ meeting, project, onClick }: MeetingChipProps) {
     <button
       type="button"
       onClick={onClick}
-      title={isCancelled ? 'Spotkanie odwołane' : undefined}
+      aria-label={describeMeeting(meeting)}
+      title={describeMeeting(meeting)}
       className={`relative h-5 w-full cursor-pointer truncate rounded-r pr-1.5 pl-2.5 text-left text-[11px] leading-5 text-dark hover:brightness-95 ${colors.tint} ${
         isCancelled ? 'line-through opacity-60' : ''
       }`}
