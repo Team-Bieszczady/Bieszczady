@@ -945,6 +945,15 @@ export const api = {
       fallbackMessage: 'Nie udało się pobrać projektów',
     });
   },
+  async getWaitingMeetingCount(
+    accessToken: string,
+  ): Promise<{ count: number }> {
+    return request<{ count: number }>('/api/v1/meetings/waiting-count', {
+      method: 'GET',
+      accessToken,
+      fallbackMessage: 'Nie udało się pobrać liczby spotkań do zatwierdzenia',
+    });
+  },
   async setMeetingOutcome(
     accessToken: string,
     id: string,

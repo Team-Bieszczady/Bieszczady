@@ -43,6 +43,11 @@ export class MeetingsController {
     return this.meetingsService.projectOptions(user);
   }
 
+  @Get('waiting-count')
+  waitingCount(@CurrentUser() user: AuthenticatedUser) {
+    return this.meetingsService.waitingCount(user);
+  }
+
   @Get(':id')
   findOne(
     @Param('id', ParseUUIDPipe) id: string,
