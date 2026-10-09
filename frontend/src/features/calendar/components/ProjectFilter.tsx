@@ -96,9 +96,6 @@ export function ProjectFilter({
           </button>
         );
       })}
-      <span className="ml-auto hidden text-xs text-darkGreen sm:inline">
-        Kolory projektów
-      </span>
     </div>
   );
 }
