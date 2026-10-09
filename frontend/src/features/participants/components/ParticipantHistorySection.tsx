@@ -4,6 +4,8 @@ import {
   pluralizePl,
   type PluralForms,
 } from '../../../lib/pluralizePl';
+import { useAuth } from '../../../context/useAuth';
+import { hasModule } from '../../../lib/modules';
 import { formatNumericDate } from '../../projects/utils/isoDate';
 import { useParticipantHistory } from '../hooks/useParticipantHistory';
 
@@ -32,36 +34,46 @@ const HIDDEN_FORMS: PluralForms = [
 
 interface HistoryRowProps {
   meeting: ParticipantMeeting;
-  onOpenMeeting: (meetingId: string) => void;
+  onOpenMeeting: ((meetingId: string) => void) | null;
 }
+
+const ROW_CLASSES = 'flex w-full items-center gap-3 px-3 py-2.5 text-left';
 
 function HistoryRow({ meeting, onOpenMeeting }: HistoryRowProps) {
   const badge = badgeOf(meeting.status);
+
+  const content = (
+    <>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-dark">
+          {meeting.title}
+        </p>
+        <p className="mt-0.5 text-xs text-grayText">
+          {formatNumericDate(meeting.date)}, {meeting.startTime} –{' '}
+          {meeting.endTime}
+        </p>
+        <p className="truncate text-xs text-grayText">{meeting.projectName}</p>
+      </div>
+      <span
+        className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${badge.classes}`}
+      >
+        {badge.label}
+      </span>
+    </>
+  );
+
+  if (!onOpenMeeting) {
+    return <li className={ROW_CLASSES}>{content}</li>;
+  }
 
   return (
     <li>
       <button
         type="button"
         onClick={() => onOpenMeeting(meeting.id)}
-        className="flex w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-gray-50"
+        className={`${ROW_CLASSES} cursor-pointer transition-colors hover:bg-gray-50`}
       >
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-dark">
-            {meeting.title}
-          </p>
-          <p className="mt-0.5 text-xs text-grayText">
-            {formatNumericDate(meeting.date)}, {meeting.startTime} –{' '}
-            {meeting.endTime}
-          </p>
-          <p className="truncate text-xs text-grayText">
-            {meeting.projectName}
-          </p>
-        </div>
-        <span
-          className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${badge.classes}`}
-        >
-          {badge.label}
-        </span>
+        {content}
       </button>
     </li>
   );
@@ -75,6 +87,10 @@ export function ParticipantHistorySection({
   onOpenMeeting: (meetingId: string) => void;
 }) {
   const historyQuery = useParticipantHistory(participantId);
+  const { user } = useAuth();
+
+  // Bez modułu Kalendarz nie ma dokąd przejść, więc wiersz zostaje zwykłym tekstem.
+  const openMeeting = hasModule(user, 'CALENDAR') ? onOpenMeeting : null;
 
   if (historyQuery.isPending) {
     return <p className="text-xs text-grayText">Ładowanie historii…</p>;
@@ -113,7 +129,7 @@ export function ParticipantHistorySection({
             <HistoryRow
               key={meeting.id}
               meeting={meeting}
-              onOpenMeeting={onOpenMeeting}
+              onOpenMeeting={openMeeting}
             />
           ))}
         </ul>

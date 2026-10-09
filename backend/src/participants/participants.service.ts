@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import type { AuthenticatedUser } from '../auth/types/auth.types';
 import { PrismaService } from '../prisma/prisma.service';
+import { ProjectAccessService } from '../projects/project-access.service';
 import { ATTENDED_MEETING } from './attended-meeting';
 import { DuplicateParticipantsQueryDto } from './dto/duplicate-participants-query.dto';
 import { ListParticipantsQueryDto } from './dto/list-participants-query.dto';
@@ -22,7 +24,10 @@ const SAVED_FIELDS = {
 
 @Injectable()
 export class ParticipantsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly projectAccess: ProjectAccessService,
+  ) {}
 
   async findAll(query: ListParticipantsQueryDto) {
     const participants = await this.prisma.participant.findMany({
@@ -88,7 +93,9 @@ export class ParticipantsService {
     });
   }
 
-  async findByProject(projectId: string) {
+  async findByProject(projectId: string, viewer: AuthenticatedUser) {
+    await this.projectAccess.assertCanRead(viewer, projectId);
+
     const project = await this.prisma.project.findUnique({
       where: { id: projectId },
       select: { name: true },

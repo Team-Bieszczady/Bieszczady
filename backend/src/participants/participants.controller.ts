@@ -43,8 +43,11 @@ export class ParticipantsController {
   }
 
   @Get('by-project/:projectId')
-  findByProject(@Param('projectId', ParseUUIDPipe) projectId: string) {
-    return this.participantsService.findByProject(projectId);
+  findByProject(
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.participantsService.findByProject(projectId, user);
   }
 
   @Post()

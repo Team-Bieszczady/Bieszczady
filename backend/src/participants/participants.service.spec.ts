@@ -1,6 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service';
+import { ProjectAccessService } from '../projects/project-access.service';
 import { ParticipantsService } from './participants.service';
 
 describe('ParticipantsService', () => {
@@ -17,6 +18,10 @@ describe('ParticipantsService', () => {
       findUnique: jest.fn(),
     },
   };
+
+  const projectAccess = { assertCanRead: jest.fn() };
+
+  const viewer = { id: 'user-1', isDirector: false } as never;
 
   const person = {
     firstName: 'Jan',
@@ -55,6 +60,7 @@ describe('ParticipantsService', () => {
       providers: [
         ParticipantsService,
         { provide: PrismaService, useValue: prisma },
+        { provide: ProjectAccessService, useValue: projectAccess },
       ],
     }).compile();
 
@@ -290,7 +296,18 @@ describe('ParticipantsService', () => {
     it('answers 404 for a project that does not exist', async () => {
       prisma.project.findUnique.mockResolvedValue(null);
 
-      await expect(service.findByProject('project-1')).rejects.toThrow(
+      await expect(service.findByProject('project-1', viewer)).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(prisma.participant.findMany).not.toHaveBeenCalled();
+    });
+
+    it('refuses someone who cannot see the project', async () => {
+      projectAccess.assertCanRead.mockRejectedValue(
+        new NotFoundException('Nie znaleziono projektu'),
+      );
+
+      await expect(service.findByProject('project-1', viewer)).rejects.toThrow(
         NotFoundException,
       );
       expect(prisma.participant.findMany).not.toHaveBeenCalled();
@@ -310,20 +327,22 @@ describe('ParticipantsService', () => {
         },
       ]);
 
-      await expect(service.findByProject('project-1')).resolves.toEqual({
-        projectName: 'Szlak rowerowy',
-        participants: [
-          {
-            id: 'participant-1',
-            firstName: 'Jan',
-            lastName: 'Kowalski',
-            email: null,
-            phone: null,
-            address: 'Lesko',
-            meetingCount: 2,
-          },
-        ],
-      });
+      await expect(service.findByProject('project-1', viewer)).resolves.toEqual(
+        {
+          projectName: 'Szlak rowerowy',
+          participants: [
+            {
+              id: 'participant-1',
+              firstName: 'Jan',
+              lastName: 'Kowalski',
+              email: null,
+              phone: null,
+              address: 'Lesko',
+              meetingCount: 2,
+            },
+          ],
+        },
+      );
 
       expect(findManyArgs()).toMatchObject({
         where: {

@@ -3,7 +3,10 @@ const POLISH_LETTERS_MARK = '﻿';
 
 function csvValue(value: string) {
   const needsQuotes =
-    value.includes(SEPARATOR) || value.includes('"') || value.includes('\n');
+    value.includes(SEPARATOR) ||
+    value.includes('"') ||
+    value.includes('\n') ||
+    value.includes('\r');
 
   if (!needsQuotes) {
     return value;
