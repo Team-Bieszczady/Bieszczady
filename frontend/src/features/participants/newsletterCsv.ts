@@ -1,8 +1,7 @@
 import type { BackendParticipant } from '../../lib/api';
+import { buildCsv } from './csv';
 
-const SEPARATOR = ';';
 const HEADER = 'Imię;Nazwisko;E-mail';
-const POLISH_LETTERS_MARK = '﻿';
 
 export interface NewsletterRecipient {
   firstName: string;
@@ -44,24 +43,12 @@ export function countWithConsent(participants: BackendParticipant[]) {
   return count;
 }
 
-function csvValue(value: string) {
-  const needsQuotes =
-    value.includes(SEPARATOR) || value.includes('"') || value.includes('\n');
-
-  if (!needsQuotes) {
-    return value;
-  }
-
-  return `"${value.split('"').join('""')}"`;
-}
-
 export function toNewsletterCsv(recipients: NewsletterRecipient[]) {
-  const lines = [HEADER];
+  const rows = recipients.map((recipient) => [
+    recipient.firstName,
+    recipient.lastName,
+    recipient.email,
+  ]);
 
-  for (const recipient of recipients) {
-    const values = [recipient.firstName, recipient.lastName, recipient.email];
-    lines.push(values.map(csvValue).join(SEPARATOR));
-  }
-
-  return POLISH_LETTERS_MARK + lines.join('\r\n');
+  return buildCsv(HEADER, rows);
 }

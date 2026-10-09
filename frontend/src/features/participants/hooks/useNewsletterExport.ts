@@ -8,6 +8,7 @@ import {
   pluralizePl,
   type PluralForms,
 } from '../../../lib/pluralizePl';
+import { downloadCsv } from '../csv';
 import {
   countWithConsent,
   newsletterRecipients,
@@ -21,16 +22,6 @@ const WITHOUT_EMAIL_FORMS: PluralForms = [
   'osoby ze zgodą nie mają e-maila',
   'osób ze zgodą nie ma e-maila',
 ];
-
-function saveFile(text: string, fileName: string) {
-  const blob = new Blob([text], { type: 'text/csv;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = fileName;
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
 
 function savedMessage(savedCount: number, withoutEmailCount: number) {
   const saved = `Pobrano listę: ${pluralizePl(savedCount, PERSON_FORMS)}`;
@@ -68,7 +59,7 @@ export function useNewsletterExport() {
         return;
       }
 
-      saveFile(toNewsletterCsv(recipients), `newsletter-${todayIso()}.csv`);
+      downloadCsv(toNewsletterCsv(recipients), `newsletter-${todayIso()}.csv`);
       toast.success(savedMessage(recipients.length, withoutEmailCount), {
         id: EXPORT_TOAST_ID,
       });

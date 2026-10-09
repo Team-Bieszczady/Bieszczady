@@ -35,6 +35,21 @@ export interface DuplicateParticipant {
   email: string | null;
 }
 
+export interface ProjectParticipant {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  meetingCount: number;
+}
+
+export interface ProjectParticipantsExport {
+  projectName: string;
+  participants: ProjectParticipant[];
+}
+
 export interface MeetingParticipant {
   id: string;
   firstName: string;
@@ -421,6 +436,20 @@ export const api = {
         accessToken,
         fallbackMessage:
           'Nie udało się sprawdzić, czy taka osoba już jest w bazie',
+      },
+    );
+  },
+
+  async getProjectParticipants(
+    accessToken: string,
+    projectId: string,
+  ): Promise<ProjectParticipantsExport> {
+    return request<ProjectParticipantsExport>(
+      `/api/v1/participants/by-project/${projectId}`,
+      {
+        method: 'GET',
+        accessToken,
+        fallbackMessage: 'Nie udało się pobrać uczestników projektu',
       },
     );
   },

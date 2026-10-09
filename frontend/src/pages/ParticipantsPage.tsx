@@ -2,10 +2,12 @@ import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { AiOutlineSearch } from 'react-icons/ai';
 import { HiOutlineDownload, HiOutlinePlus } from 'react-icons/hi';
+import { LuFolderDown } from 'react-icons/lu';
 import { Button } from '../components/ui/Button';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import Pagination from '../features/people/components/Pagination';
 import ParticipantFormModal from '../features/participants/components/ParticipantFormModal';
+import { ProjectParticipantsExportModal } from '../features/participants/components/ProjectParticipantsExportModal';
 import ParticipantsTable from '../features/participants/components/ParticipantsTable';
 import { useCreateParticipant } from '../features/participants/hooks/useCreateParticipant';
 import { useDeleteParticipant } from '../features/participants/hooks/useDeleteParticipant';
@@ -40,6 +42,7 @@ export default function ParticipantsPage() {
   const [page, setPage] = useState(1);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isProjectExportOpen, setIsProjectExportOpen] = useState(false);
   const [editedParticipant, setEditedParticipant] =
     useState<BackendParticipant | null>(null);
   const [participantToDelete, setParticipantToDelete] =
@@ -179,6 +182,16 @@ export default function ParticipantsPage() {
             <span className="max-sm:sr-only">Eksportuj do newslettera</span>
           </Button>
           <Button
+            variant="outline"
+            size="small"
+            type="button"
+            onClick={() => setIsProjectExportOpen(true)}
+            className="flex shrink-0 items-center gap-2 max-lg:h-7 max-lg:gap-1.5 max-lg:px-4 max-lg:py-1 max-lg:text-xs max-sm:px-2"
+          >
+            <LuFolderDown className="h-4 w-4" aria-hidden="true" />
+            <span className="max-sm:sr-only">Uczestnicy projektu</span>
+          </Button>
+          <Button
             variant="primary"
             size="small"
             type="button"
@@ -248,6 +261,12 @@ export default function ParticipantsPage() {
           onSubmit={submitParticipant}
           onDelete={editedParticipant ? askToDelete : undefined}
           isPending={createParticipant.isPending || updateParticipant.isPending}
+        />
+      )}
+
+      {isProjectExportOpen && (
+        <ProjectParticipantsExportModal
+          onClose={() => setIsProjectExportOpen(false)}
         />
       )}
 

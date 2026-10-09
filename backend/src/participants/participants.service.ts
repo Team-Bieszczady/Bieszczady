@@ -88,6 +88,53 @@ export class ParticipantsService {
     });
   }
 
+  async findByProject(projectId: string) {
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+      select: { name: true },
+    });
+    if (!project) {
+      throw new NotFoundException('Nie znaleziono projektu');
+    }
+
+    const attendedInProject: Prisma.MeetingWhereInput = {
+      ...ATTENDED_MEETING,
+      projectId,
+    };
+
+    const participants = await this.prisma.participant.findMany({
+      where: {
+        deletedAt: null,
+        meetings: { some: { meeting: attendedInProject } },
+      },
+      orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        phone: true,
+        address: true,
+        _count: {
+          select: { meetings: { where: { meeting: attendedInProject } } },
+        },
+      },
+    });
+
+    return {
+      projectName: project.name,
+      participants: participants.map((participant) => ({
+        id: participant.id,
+        firstName: participant.firstName,
+        lastName: participant.lastName,
+        email: participant.email,
+        phone: participant.phone,
+        address: participant.address,
+        meetingCount: participant._count.meetings,
+      })),
+    };
+  }
+
   async create(dto: CreateParticipantDto, creatorId: string) {
     return this.prisma.participant.create({
       data: {

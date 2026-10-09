@@ -13,6 +13,9 @@ describe('ParticipantsService', () => {
       create: jest.fn(),
       update: jest.fn(),
     },
+    project: {
+      findUnique: jest.fn(),
+    },
   };
 
   const person = {
@@ -280,6 +283,62 @@ describe('ParticipantsService', () => {
         service.findDuplicates({ firstName: 'Jan', lastName: undefined }),
       ).resolves.toEqual([]);
       expect(prisma.participant.findMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('findByProject', () => {
+    it('answers 404 for a project that does not exist', async () => {
+      prisma.project.findUnique.mockResolvedValue(null);
+
+      await expect(service.findByProject('project-1')).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(prisma.participant.findMany).not.toHaveBeenCalled();
+    });
+
+    it('lists people who attended a meeting of the project, with how many', async () => {
+      prisma.project.findUnique.mockResolvedValue({ name: 'Szlak rowerowy' });
+      prisma.participant.findMany.mockResolvedValue([
+        {
+          id: 'participant-1',
+          firstName: 'Jan',
+          lastName: 'Kowalski',
+          email: null,
+          phone: null,
+          address: 'Lesko',
+          _count: { meetings: 2 },
+        },
+      ]);
+
+      await expect(service.findByProject('project-1')).resolves.toEqual({
+        projectName: 'Szlak rowerowy',
+        participants: [
+          {
+            id: 'participant-1',
+            firstName: 'Jan',
+            lastName: 'Kowalski',
+            email: null,
+            phone: null,
+            address: 'Lesko',
+            meetingCount: 2,
+          },
+        ],
+      });
+
+      expect(findManyArgs()).toMatchObject({
+        where: {
+          deletedAt: null,
+          meetings: {
+            some: {
+              meeting: {
+                deletedAt: null,
+                status: { not: 'CANCELLED' },
+                projectId: 'project-1',
+              },
+            },
+          },
+        },
+      });
     });
   });
 });

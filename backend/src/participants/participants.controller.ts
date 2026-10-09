@@ -42,6 +42,11 @@ export class ParticipantsController {
     return this.participantsService.findDuplicates(query);
   }
 
+  @Get('by-project/:projectId')
+  findByProject(@Param('projectId', ParseUUIDPipe) projectId: string) {
+    return this.participantsService.findByProject(projectId);
+  }
+
   @Post()
   create(
     @Body() dto: CreateParticipantDto,
