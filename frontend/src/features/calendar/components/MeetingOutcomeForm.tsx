@@ -4,6 +4,9 @@ import { FieldError } from '../../../components/ui/FieldError';
 import { RadioPillGroup } from '../../../components/ui/RadioPillGroup';
 import { INPUT_CLASSES } from '../../../components/ui/formStyles';
 import type { BackendMeetingDetails, MeetingOutcome } from '../../../lib/api';
+import { useAuth } from '../../../context/useAuth';
+import { hasModule } from '../../../lib/modules';
+import { ListedParticipantsHint } from '../../participants/components/ListedParticipantsHint';
 import { todayIso } from '../../projects/utils/isoDate';
 import { formatLongDate } from '../utils/formatLongDate';
 import { AttendanceFilesSection } from './AttendanceFilesSection';
@@ -104,6 +107,7 @@ export function MeetingOutcomeForm({
     register,
     handleSubmit,
     control,
+    setValue,
     formState: { errors },
   } = useForm<OutcomeInputs>({
     defaultValues: {
@@ -113,7 +117,17 @@ export function MeetingOutcomeForm({
   });
 
   const status = useWatch({ control, name: 'status' });
+  const typedCount = useWatch({ control, name: 'attendeeCount' });
   const isCancelled = status === 'CANCELLED';
+  const { user } = useAuth();
+  const showListedHint = hasStarted && hasModule(user, 'PARTICIPANTS');
+
+  const fillListedCount = (count: number) => {
+    setValue('attendeeCount', String(count), {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  };
 
   const submit = ({ status, attendeeCount }: OutcomeInputs) => {
     if (status === 'HELD') {
@@ -151,9 +165,18 @@ export function MeetingOutcomeForm({
 
       {!isCancelled && (
         <div>
-          <label htmlFor={countId} className={LABEL_CLASSES}>
-            Rzeczywista liczba uczestników
-          </label>
+          <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+            <label htmlFor={countId} className="text-sm text-dark/80">
+              Rzeczywista liczba uczestników
+            </label>
+            {showListedHint && (
+              <ListedParticipantsHint
+                meetingId={meeting.id}
+                typedCount={typedCount}
+                onUseCount={fillListedCount}
+              />
+            )}
+          </div>
           <input
             {...register('attendeeCount', {
               validate: (value, values) =>

@@ -23,14 +23,22 @@ import { PERSON_FORMS, pluralizePl } from '../lib/pluralizePl';
 const PAGE_SIZE = 10;
 const SEARCH_DELAY_MS = 300;
 
-function summaryOf(participants: BackendParticipant[], isSearching: boolean) {
-  const people = pluralizePl(participants.length, PERSON_FORMS);
+function summaryOf(
+  shown: BackendParticipant[],
+  isSearching: boolean,
+  onlyWithConsent: boolean,
+) {
+  const people = pluralizePl(shown.length, PERSON_FORMS);
 
   if (isSearching) {
     return `Znaleziono: ${people}`;
   }
 
-  const withConsent = participants.filter(
+  if (onlyWithConsent) {
+    return `Ze zgodą na kontakt: ${people}`;
+  }
+
+  const withConsent = shown.filter(
     (participant) => participant.consentAt !== null,
   ).length;
 
@@ -39,6 +47,7 @@ function summaryOf(participants: BackendParticipant[], isSearching: boolean) {
 
 export default function ParticipantsPage() {
   const [search, setSearch] = useState('');
+  const [onlyWithConsent, setOnlyWithConsent] = useState(false);
   const [page, setPage] = useState(1);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -56,19 +65,25 @@ export default function ParticipantsPage() {
   const isWideLayout = useMediaQuery('(min-width: 640px)');
 
   const participants = participantsQuery.data || [];
+  const visibleParticipants = onlyWithConsent
+    ? participants.filter((participant) => participant.consentAt !== null)
+    : participants;
   const isSearching = searchedText !== '';
-  const totalPages = Math.max(1, Math.ceil(participants.length / PAGE_SIZE));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(visibleParticipants.length / PAGE_SIZE),
+  );
   const currentPage = Math.min(page, totalPages);
 
-  let listedParticipants = participants.slice(0, visibleCount);
+  let listedParticipants = visibleParticipants.slice(0, visibleCount);
   if (isWideLayout) {
-    listedParticipants = participants.slice(
+    listedParticipants = visibleParticipants.slice(
       (currentPage - 1) * PAGE_SIZE,
       currentPage * PAGE_SIZE,
     );
   }
 
-  const hasMore = !isWideLayout && visibleCount < participants.length;
+  const hasMore = !isWideLayout && visibleCount < visibleParticipants.length;
   const sentinelRef = useInfiniteScroll<HTMLDivElement>({
     enabled: !isWideLayout,
     hasMore,
@@ -78,6 +93,12 @@ export default function ParticipantsPage() {
 
   const changeSearch = (value: string) => {
     setSearch(value);
+    setPage(1);
+    setVisibleCount(PAGE_SIZE);
+  };
+
+  const toggleOnlyWithConsent = () => {
+    setOnlyWithConsent((prev) => !prev);
     setPage(1);
     setVisibleCount(PAGE_SIZE);
   };
@@ -149,6 +170,8 @@ export default function ParticipantsPage() {
   let emptyMessage = 'Baza uczestników jest jeszcze pusta.';
   if (isSearching) {
     emptyMessage = `Nikt nie pasuje do „${searchedText}”.`;
+  } else if (onlyWithConsent) {
+    emptyMessage = 'Nikt jeszcze nie zgodził się na kontakt.';
   }
 
   let deleteDescription = '';
@@ -165,7 +188,7 @@ export default function ParticipantsPage() {
           </h1>
           {participantsQuery.isSuccess && (
             <p className="mt-1 text-xs text-gray-500">
-              {summaryOf(participants, isSearching)}
+              {summaryOf(visibleParticipants, isSearching, onlyWithConsent)}
             </p>
           )}
         </div>
@@ -204,19 +227,34 @@ export default function ParticipantsPage() {
         </div>
       </div>
 
-      <div className="relative mb-4">
-        <AiOutlineSearch
-          className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400"
-          aria-hidden="true"
-        />
-        <input
-          type="search"
-          value={search}
-          onChange={(event) => changeSearch(event.target.value)}
-          placeholder="Szukaj po imieniu, nazwisku lub mailu..."
-          aria-label="Szukaj uczestników"
-          className="h-10 w-full rounded-lg border border-gray-200 pr-4 pl-10 text-xs focus:border-transparent focus:ring-1 focus:ring-darkGreen focus:outline-none"
-        />
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="relative min-w-0 flex-1">
+          <AiOutlineSearch
+            className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400"
+            aria-hidden="true"
+          />
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => changeSearch(event.target.value)}
+            placeholder="Szukaj po imieniu, nazwisku lub mailu..."
+            aria-label="Szukaj uczestników"
+            className="h-10 w-full rounded-lg border border-gray-200 pr-4 pl-10 text-xs focus:border-transparent focus:ring-1 focus:ring-darkGreen focus:outline-none"
+          />
+        </div>
+        <button
+          type="button"
+          aria-pressed={onlyWithConsent}
+          onClick={toggleOnlyWithConsent}
+          className={`inline-flex h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border px-3 text-xs font-medium transition-colors ${
+            onlyWithConsent
+              ? 'border-darkGreen bg-lightGreen text-darkGreen'
+              : 'border-gray-200 bg-white text-dark hover:bg-gray-50'
+          }`}
+        >
+          {onlyWithConsent && <span aria-hidden="true">✓</span>}
+          Tylko ze zgodą
+        </button>
       </div>
 
       {participantsQuery.isError ? (
