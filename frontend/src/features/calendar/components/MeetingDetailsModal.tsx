@@ -5,6 +5,7 @@ import {
   LuLink,
   LuMapPin,
   LuPencil,
+  LuPrinter,
   LuTrash2,
   LuStickyNote,
   LuUsers,
@@ -19,6 +20,7 @@ import { useMeeting } from '../hooks/useMeeting';
 import { useOpenProjectPage } from '../hooks/useOpenProjectPage';
 import { useSetMeetingOutcome } from '../hooks/useSetMeetingOutcome';
 import { formatWeekday } from '../utils/calendarView';
+import { printAttendanceSheet } from '../utils/attendanceSheet';
 import { formatLongDate } from '../utils/formatLongDate';
 import { AttendanceFilesSection } from './AttendanceFilesSection';
 import { useRestoreMeeting } from '../hooks/useRestoreMeeting';
@@ -318,6 +320,17 @@ export default function MeetingDetailsModal({
                 <p className="text-grayText">Nikt nie został zaproszony</p>
               )}
             </div>
+
+            {meeting.canManage && meeting.status !== 'CANCELLED' && (
+              <button
+                type="button"
+                onClick={() => printAttendanceSheet(meeting)}
+                className="inline-flex cursor-pointer items-center gap-2 self-start text-sm font-medium text-darkGreen hover:text-darkGreenHover hover:underline"
+              >
+                <LuPrinter size={16} aria-hidden="true" />
+                Drukuj listę obecności
+              </button>
+            )}
 
             {meeting.note && (
               <div className={ROW_CLASSES}>
