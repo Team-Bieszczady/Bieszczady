@@ -122,9 +122,10 @@ export class ParticipantsService {
 
     return words.map((word) => ({
       OR: [
-        { firstName: { contains: word } },
-        { lastName: { contains: word } },
-        { email: { contains: word } },
+        { firstName: { startsWith: word } },
+        { lastName: { startsWith: word } },
+        { lastName: { contains: `-${word}` } },
+        { email: { startsWith: word } },
       ],
     }));
   }

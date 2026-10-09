@@ -38,9 +38,10 @@ describe('ParticipantsService', () => {
 
   const matching = (word: string) => ({
     OR: [
-      { firstName: { contains: word } },
-      { lastName: { contains: word } },
-      { email: { contains: word } },
+      { firstName: { startsWith: word } },
+      { lastName: { startsWith: word } },
+      { lastName: { contains: `-${word}` } },
+      { email: { startsWith: word } },
     ],
   });
 
@@ -153,6 +154,24 @@ describe('ParticipantsService', () => {
       expect(findManyArgs()).toMatchObject({
         where: { deletedAt: null, AND: [] },
         orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+      });
+    });
+
+    it('matches the start of a name or email and the second part of a double surname', async () => {
+      await service.findAll({ search: 'Kow' });
+
+      expect(findManyArgs().where).toEqual({
+        deletedAt: null,
+        AND: [
+          {
+            OR: [
+              { firstName: { startsWith: 'Kow' } },
+              { lastName: { startsWith: 'Kow' } },
+              { lastName: { contains: '-Kow' } },
+              { email: { startsWith: 'Kow' } },
+            ],
+          },
+        ],
       });
     });
 
