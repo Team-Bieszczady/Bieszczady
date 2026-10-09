@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { LuPlus } from 'react-icons/lu';
 import {
@@ -11,6 +11,10 @@ import { Button } from '../components/ui/Button';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useAuth } from '../context/useAuth';
+import {
+  readCalendarSettings,
+  writeCalendarSettings,
+} from '../features/calendar/utils/calendarSettings';
 import { hasModule } from '../lib/modules';
 import { CalendarToolbar } from '../features/calendar/components/CalendarToolbar';
 import { MonthView } from '../features/calendar/components/MonthView';
@@ -46,12 +50,27 @@ function toMeetingChanges(values: MeetingFormInputs): MeetingChanges {
 }
 
 export default function CalendarPage() {
-  const [view, setView] = useState<CalendarView>('month');
-  const [anchor, setAnchor] = useState(todayIso);
-  const [hiddenProjectIds, setHiddenProjectIds] = useState<string[]>([]);
-  const [showMeetings, setShowMeetings] = useState(true);
-  const [showDeadlines, setShowDeadlines] = useState(true);
   const { user } = useAuth();
+  const userId = user ? user.id : null;
+  const [savedSettings] = useState(() => readCalendarSettings(userId));
+  const [view, setView] = useState<CalendarView>(savedSettings.view);
+  const [anchor, setAnchor] = useState(todayIso);
+  const [hiddenProjectIds, setHiddenProjectIds] = useState<string[]>(
+    savedSettings.hiddenProjectIds,
+  );
+  const [showMeetings, setShowMeetings] = useState(savedSettings.showMeetings);
+  const [showDeadlines, setShowDeadlines] = useState(
+    savedSettings.showDeadlines,
+  );
+
+  useEffect(() => {
+    writeCalendarSettings(userId, {
+      view,
+      hiddenProjectIds,
+      showMeetings,
+      showDeadlines,
+    });
+  }, [userId, view, hiddenProjectIds, showMeetings, showDeadlines]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editedMeeting, setEditedMeeting] =
     useState<BackendMeetingDetails | null>(null);
