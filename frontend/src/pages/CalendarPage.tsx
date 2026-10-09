@@ -10,6 +10,8 @@ import { todayIso } from '../features/projects/utils/isoDate';
 import { Button } from '../components/ui/Button';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { useMediaQuery } from '../hooks/useMediaQuery';
+import { useAuth } from '../context/useAuth';
+import { hasModule } from '../lib/modules';
 import { CalendarToolbar } from '../features/calendar/components/CalendarToolbar';
 import { MonthView } from '../features/calendar/components/MonthView';
 import { WeekAgenda } from '../features/calendar/components/WeekAgenda';
@@ -47,6 +49,9 @@ export default function CalendarPage() {
   const [view, setView] = useState<CalendarView>('month');
   const [anchor, setAnchor] = useState(todayIso);
   const [hiddenProjectIds, setHiddenProjectIds] = useState<string[]>([]);
+  const [showMeetings, setShowMeetings] = useState(true);
+  const [showDeadlines, setShowDeadlines] = useState(true);
+  const { user } = useAuth();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editedMeeting, setEditedMeeting] =
     useState<BackendMeetingDetails | null>(null);
@@ -81,10 +86,11 @@ export default function CalendarPage() {
   const projects = projectsQuery.data ?? [];
 
   const filteredMeetings = meetings.filter(
-    (meeting) => !hiddenProjectIds.includes(meeting.projectId),
+    (meeting) => showMeetings && !hiddenProjectIds.includes(meeting.projectId),
   );
   const filteredDeadlines = (deadlinesQuery.data ?? []).filter(
-    (deadline) => !hiddenProjectIds.includes(deadline.projectId),
+    (deadline) =>
+      showDeadlines && !hiddenProjectIds.includes(deadline.projectId),
   );
   const loadFailed = meetingsQuery.isError || deadlinesQuery.isError;
   const showAgenda = isPhone && view === 'week';
@@ -212,6 +218,11 @@ export default function CalendarPage() {
           projects={projects}
           hiddenProjectIds={hiddenProjectIds}
           onToggle={toggleProject}
+          meetingsShown={showMeetings}
+          onToggleMeetings={() => setShowMeetings((prev) => !prev)}
+          showDeadlineToggle={hasModule(user, 'TASKS')}
+          deadlinesShown={showDeadlines}
+          onToggleDeadlines={() => setShowDeadlines((prev) => !prev)}
         />
       </div>
 
