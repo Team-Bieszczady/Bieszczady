@@ -17,6 +17,7 @@ describe('MeetingsService', () => {
       findFirst: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
+      count: jest.fn(),
     },
     meetingInvitee: { findMany: jest.fn() },
     projectMember: { findUnique: jest.fn(), findMany: jest.fn() },
@@ -172,6 +173,61 @@ describe('MeetingsService', () => {
           },
         }),
       );
+    });
+  });
+
+  describe('waitingCount', () => {
+    const countArgs = () => {
+      const [args] = prisma.meeting.count.mock.calls[0] as [
+        { where: Record<string, unknown> },
+      ];
+      return args.where;
+    };
+
+    beforeEach(() => {
+      prisma.meeting.count.mockResolvedValue(3);
+    });
+
+    it('counts every started meeting that is still planned for a director', async () => {
+      await expect(
+        service.waitingCount({ id: 'director-1', isDirector: true }),
+      ).resolves.toEqual({ count: 3 });
+
+      expect(countArgs()).toEqual({
+        deletedAt: null,
+        status: 'PLANNED',
+        date: { lte: expect.any(Date) as unknown },
+        project: { archivedAt: null },
+      });
+    });
+
+    it('counts only meetings the person may confirm', async () => {
+      await service.waitingCount({ id: 'user-1', isDirector: false });
+
+      expect(countArgs().OR).toEqual([
+        {
+          project: {
+            members: {
+              some: { userId: 'user-1', projectRole: 'COORDINATOR' },
+            },
+          },
+        },
+        {
+          createdById: 'user-1',
+          project: {
+            members: { some: { userId: 'user-1', projectRole: 'EXECUTOR' } },
+          },
+        },
+      ]);
+    });
+
+    it('does not count meetings planned for later days', async () => {
+      await service.waitingCount({ id: 'director-1', isDirector: true });
+
+      const { date } = countArgs() as { date: { lte: Date } };
+      const endOfToday = new Date();
+      endOfToday.setHours(23, 59, 59, 999);
+      expect(date.lte.getTime()).toBeLessThanOrEqual(endOfToday.getTime());
     });
   });
 

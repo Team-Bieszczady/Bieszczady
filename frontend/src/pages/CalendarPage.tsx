@@ -12,6 +12,10 @@ import { Button } from '../components/ui/Button';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useAuth } from '../context/useAuth';
+import {
+  readCalendarSettings,
+  writeCalendarSettings,
+} from '../features/calendar/utils/calendarSettings';
 import { hasModule } from '../lib/modules';
 import { CalendarToolbar } from '../features/calendar/components/CalendarToolbar';
 import { MonthView } from '../features/calendar/components/MonthView';
@@ -30,7 +34,7 @@ import { useUpdateMeeting } from '../features/calendar/hooks/useUpdateMeeting';
 import { useDeleteMeeting } from '../features/calendar/hooks/useDeleteMeeting';
 import { useMeetingProjectOptions } from '../features/calendar/hooks/useMeetingProjectOptions';
 import { useProjects } from '../features/projects/hooks/useProjectsApi';
-import type { Deadline } from '../features/calendar/types';
+import type { Deadline, NewMeetingSlot } from '../features/calendar/types';
 import type { BackendMeetingDetails, MeetingChanges } from '../lib/api';
 
 function toMeetingChanges(values: MeetingFormInputs): MeetingChanges {
@@ -47,13 +51,33 @@ function toMeetingChanges(values: MeetingFormInputs): MeetingChanges {
 }
 
 export default function CalendarPage() {
-  const [view, setView] = useState<CalendarView>('month');
-  const [anchor, setAnchor] = useState(todayIso);
-  const [hiddenProjectIds, setHiddenProjectIds] = useState<string[]>([]);
-  const [showMeetings, setShowMeetings] = useState(true);
-  const [showDeadlines, setShowDeadlines] = useState(true);
   const { user } = useAuth();
+  const userId = user ? user.id : null;
+  const [savedSettings] = useState(() => readCalendarSettings(userId));
+  const [view, setView] = useState<CalendarView>(savedSettings.view);
+  const [anchor, setAnchor] = useState(todayIso);
+  const [hiddenProjectIds, setHiddenProjectIds] = useState<string[]>(
+    savedSettings.hiddenProjectIds,
+  );
+  const [showMeetings, setShowMeetings] = useState(savedSettings.showMeetings);
+  const [showDeadlines, setShowDeadlines] = useState(
+    savedSettings.showDeadlines,
+  );
+
+  useEffect(() => {
+    writeCalendarSettings(userId, {
+      view,
+      hiddenProjectIds,
+      showMeetings,
+      showDeadlines,
+    });
+  }, [userId, view, hiddenProjectIds, showMeetings, showDeadlines]);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [newMeetingSlot, setNewMeetingSlot] = useState<NewMeetingSlot | null>(
+    null,
+  );
+  const [copiedMeeting, setCopiedMeeting] =
+    useState<BackendMeetingDetails | null>(null);
   const [editedMeeting, setEditedMeeting] =
     useState<BackendMeetingDetails | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -138,6 +162,15 @@ export default function CalendarPage() {
 
   const openAddForm = () => {
     setEditedMeeting(null);
+    setNewMeetingSlot(null);
+    setCopiedMeeting(null);
+    setIsFormOpen(true);
+  };
+
+  const openAddFormAt = (slot: NewMeetingSlot) => {
+    setEditedMeeting(null);
+    setCopiedMeeting(null);
+    setNewMeetingSlot(slot);
     setIsFormOpen(true);
   };
 
@@ -147,9 +180,19 @@ export default function CalendarPage() {
     setIsFormOpen(true);
   };
 
+  const openCopyForm = (meeting: BackendMeetingDetails) => {
+    setSelectedMeetingId(null);
+    setEditedMeeting(null);
+    setNewMeetingSlot(null);
+    setCopiedMeeting(meeting);
+    setIsFormOpen(true);
+  };
+
   const closeForm = () => {
     setIsFormOpen(false);
     setEditedMeeting(null);
+    setNewMeetingSlot(null);
+    setCopiedMeeting(null);
   };
 
   const afterSave = (message: string) => ({
@@ -266,7 +309,11 @@ export default function CalendarPage() {
         <WeekAgenda days={days} {...entryProps} />
       )}
       {view !== 'month' && !showAgenda && (
-        <TimeGridView days={days} {...entryProps} />
+        <TimeGridView
+          days={days}
+          {...entryProps}
+          onSlotClick={canAddMeetings ? openAddFormAt : undefined}
+        />
       )}
 
       {selectedDeadline && (
@@ -281,6 +328,7 @@ export default function CalendarPage() {
           meetingId={selectedMeetingId}
           onClose={() => setSelectedMeetingId(null)}
           onEdit={openEditForm}
+          onDuplicate={openCopyForm}
           onDelete={askToDelete}
         />
       )}
@@ -299,6 +347,8 @@ export default function CalendarPage() {
       {isFormOpen && (
         <MeetingFormModal
           meeting={editedMeeting ?? undefined}
+          slot={newMeetingSlot}
+          copyOf={copiedMeeting}
           projectOptions={projectOptions}
           onClose={closeForm}
           onSubmit={submitMeeting}

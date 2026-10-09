@@ -1,10 +1,12 @@
 import toast from 'react-hot-toast';
 import {
   LuClock,
+  LuCopy,
   LuFileText,
   LuLink,
   LuMapPin,
   LuPencil,
+  LuPrinter,
   LuTrash2,
   LuStickyNote,
   LuUsers,
@@ -19,6 +21,7 @@ import { useMeeting } from '../hooks/useMeeting';
 import { useOpenProjectPage } from '../hooks/useOpenProjectPage';
 import { useSetMeetingOutcome } from '../hooks/useSetMeetingOutcome';
 import { formatWeekday } from '../utils/calendarView';
+import { printAttendanceSheet } from '../utils/attendanceSheet';
 import { formatLongDate } from '../utils/formatLongDate';
 import { AttendanceFilesSection } from './AttendanceFilesSection';
 import { useRestoreMeeting } from '../hooks/useRestoreMeeting';
@@ -34,6 +37,7 @@ interface MeetingDetailsModalProps {
   meetingId: string;
   onClose: () => void;
   onEdit: (meeting: BackendMeetingDetails) => void;
+  onDuplicate: (meeting: BackendMeetingDetails) => void;
   onDelete: (meeting: BackendMeetingDetails) => void;
 }
 
@@ -175,6 +179,7 @@ export default function MeetingDetailsModal({
   meetingId,
   onClose,
   onEdit,
+  onDuplicate,
   onDelete,
 }: MeetingDetailsModalProps) {
   const meetingQuery = useMeeting(meetingId);
@@ -326,6 +331,17 @@ export default function MeetingDetailsModal({
               )}
             </div>
 
+            {meeting.canManage && meeting.status !== 'CANCELLED' && (
+              <button
+                type="button"
+                onClick={() => printAttendanceSheet(meeting)}
+                className="inline-flex cursor-pointer items-center gap-2 self-start text-sm font-medium text-darkGreen hover:text-darkGreenHover hover:underline"
+              >
+                <LuPrinter size={16} aria-hidden="true" />
+                Drukuj listę obecności
+              </button>
+            )}
+
             {meeting.note && (
               <div className={ROW_CLASSES}>
                 <LuStickyNote
@@ -367,15 +383,15 @@ export default function MeetingDetailsModal({
       )}
 
       {meeting?.canManage && (
-        <div className="mt-6 grid grid-cols-2 gap-3 border-t border-gray-200 pt-4 sm:flex sm:items-center sm:justify-between">
+        <div className="mt-6 grid grid-cols-3 gap-3 border-t border-gray-200 pt-4 sm:flex sm:items-center sm:justify-between">
           <Button
             variant="outline"
             size="small"
             type="button"
             onClick={() => onDelete(meeting)}
-            className="gap-1.5 border-darkRed text-darkRed hover:bg-red-50"
+            className="gap-1.5 border-darkRed text-darkRed hover:bg-red-50 max-sm:px-3"
           >
-            <LuTrash2 size={14} aria-hidden="true" />
+            <LuTrash2 size={14} className="shrink-0" aria-hidden="true" />
             Usuń
           </Button>
           <div className="contents sm:flex sm:gap-3">
@@ -383,10 +399,20 @@ export default function MeetingDetailsModal({
               variant="outline"
               size="small"
               type="button"
-              onClick={() => onEdit(meeting)}
-              className="gap-1.5"
+              onClick={() => onDuplicate(meeting)}
+              className="gap-1.5 max-sm:px-3"
             >
-              <LuPencil size={14} aria-hidden="true" />
+              <LuCopy size={14} className="shrink-0" aria-hidden="true" />
+              Powiel
+            </Button>
+            <Button
+              variant="outline"
+              size="small"
+              type="button"
+              onClick={() => onEdit(meeting)}
+              className="gap-1.5 max-sm:px-3"
+            >
+              <LuPencil size={14} className="shrink-0" aria-hidden="true" />
               Edytuj
             </Button>
             {!isUpcoming(meeting) && !isCancelledAhead(meeting) && (
@@ -396,7 +422,7 @@ export default function MeetingDetailsModal({
                 type="submit"
                 form={MEETING_OUTCOME_FORM_ID}
                 isPending={setOutcome.isPending}
-                className="col-span-2 font-medium!"
+                className="col-span-3 font-medium!"
               >
                 {meeting.status === 'PLANNED'
                   ? 'Zatwierdź spotkanie'

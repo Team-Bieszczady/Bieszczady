@@ -9,6 +9,7 @@ import { TimeInput } from '../../../components/ui/TimeInput';
 import { INPUT_CLASSES } from '../../../components/ui/formStyles';
 import type { BackendMeetingDetails } from '../../../lib/api';
 import { todayIso } from '../../projects/utils/isoDate';
+import type { NewMeetingSlot } from '../types';
 import { InviteeCheckboxes } from './InviteeCheckboxes';
 
 export interface MeetingFormInputs {
@@ -25,6 +26,8 @@ export interface MeetingFormInputs {
 
 interface MeetingFormModalProps {
   meeting?: BackendMeetingDetails;
+  slot?: NewMeetingSlot | null;
+  copyOf?: BackendMeetingDetails | null;
   projectOptions: SelectOption[];
   onClose: () => void;
   onSubmit: (values: MeetingFormInputs) => void;
@@ -48,6 +51,64 @@ function linkOrEmpty(value: string) {
   return 'Link musi zaczynać się od http:// albo https://';
 }
 
+function inviteeIdsOf(meeting: BackendMeetingDetails) {
+  return meeting.invitees.map((invitee) => invitee.user.id);
+}
+
+function startingValues(
+  meeting: BackendMeetingDetails | undefined,
+  slot: NewMeetingSlot | null | undefined,
+  copyOf: BackendMeetingDetails | null | undefined,
+): MeetingFormInputs {
+  if (meeting) {
+    return {
+      projectId: meeting.projectId,
+      title: meeting.title,
+      date: meeting.date,
+      startTime: meeting.startTime,
+      endTime: meeting.endTime,
+      place: meeting.place || '',
+      meetingUrl: meeting.meetingUrl || '',
+      note: meeting.note,
+      inviteeIds: inviteeIdsOf(meeting),
+    };
+  }
+
+  if (copyOf) {
+    return {
+      projectId: copyOf.projectId,
+      title: copyOf.title,
+      date: '',
+      startTime: copyOf.startTime,
+      endTime: copyOf.endTime,
+      place: copyOf.place || '',
+      meetingUrl: copyOf.meetingUrl || '',
+      note: copyOf.note,
+      inviteeIds: inviteeIdsOf(copyOf),
+    };
+  }
+
+  const values: MeetingFormInputs = {
+    projectId: '',
+    title: '',
+    date: '',
+    startTime: '',
+    endTime: '',
+    place: '',
+    meetingUrl: '',
+    note: '',
+    inviteeIds: [],
+  };
+
+  if (slot) {
+    values.date = slot.date;
+    values.startTime = slot.startTime;
+    values.endTime = slot.endTime;
+  }
+
+  return values;
+}
+
 function heldMeetingDate(value: string, meeting?: BackendMeetingDetails) {
   if (meeting && meeting.status === 'HELD' && value > todayIso()) {
     return 'Spotkanie już się odbyło, więc nie może mieć daty w przyszłości';
@@ -62,6 +123,8 @@ const TEXTAREA_CLASSES =
 
 export default function MeetingFormModal({
   meeting,
+  slot,
+  copyOf,
   projectOptions,
   onClose,
   onSubmit,
@@ -77,20 +140,25 @@ export default function MeetingFormModal({
     handleSubmit,
     control,
     setValue,
+    getValues,
     formState: { errors },
   } = useForm<MeetingFormInputs>({
-    defaultValues: {
-      projectId: meeting?.projectId ?? '',
-      title: meeting?.title ?? '',
-      date: meeting?.date ?? '',
-      startTime: meeting?.startTime ?? '',
-      endTime: meeting?.endTime ?? '',
-      place: meeting?.place ?? '',
-      meetingUrl: meeting?.meetingUrl ?? '',
-      note: meeting?.note ?? '',
-      inviteeIds: meeting?.invitees.map(({ user }) => user.id) ?? [],
-    },
+    defaultValues: startingValues(meeting, slot, copyOf),
   });
+
+  const isCopy = !meeting && !!copyOf;
+
+  const keepOnlyTeamMembers = (memberIds: string[]) => {
+    if (meeting) {
+      return;
+    }
+
+    const chosen = getValues('inviteeIds');
+    const kept = chosen.filter((userId) => memberIds.includes(userId));
+    if (kept.length !== chosen.length) {
+      setValue('inviteeIds', kept);
+    }
+  };
 
   const projectId = useWatch({ control, name: 'projectId' });
   const whenError =
@@ -118,7 +186,7 @@ export default function MeetingFormModal({
             id={titleId}
             type="text"
             maxLength={200}
-            autoFocus
+            autoFocus={!isCopy}
             placeholder="Podaj nazwę, np. Spotkanie zespołu"
             aria-invalid={!!errors.title}
             className={INPUT_CLASSES}
@@ -170,6 +238,7 @@ export default function MeetingFormModal({
                 validate: (value) => heldMeetingDate(value, meeting),
               })}
               type="date"
+              autoFocus={isCopy}
               aria-label="Data"
               aria-invalid={!!errors.date}
               className={`${INPUT_CLASSES} sm:w-36!`}
@@ -239,6 +308,7 @@ export default function MeetingFormModal({
             <InviteeCheckboxes
               projectId={projectId}
               registration={register('inviteeIds')}
+              onTeamLoaded={keepOnlyTeamMembers}
             />
           ) : (
             <p className="text-xs text-grayText">

@@ -102,6 +102,20 @@ export class MeetingsService {
     });
   }
 
+  async waitingCount(viewer: Viewer) {
+    const count = await this.prisma.meeting.count({
+      where: {
+        deletedAt: null,
+        status: 'PLANNED',
+        date: { lte: new Date(todayInPoland()) },
+        project: { archivedAt: null },
+        ...this.manageableBy(viewer),
+      },
+    });
+
+    return { count };
+  }
+
   async findOne(id: string, viewer: Viewer) {
     const meeting = await this.prisma.meeting.findFirst({
       where: { id, deletedAt: null, ...this.visibleTo(viewer) },
@@ -349,6 +363,28 @@ export class MeetingsService {
         {
           invitees: { some: { userId: viewer.id } },
           project: { members: { some: { userId: viewer.id } } },
+        },
+      ],
+    };
+  }
+
+  private manageableBy(viewer: Viewer): Prisma.MeetingWhereInput {
+    if (viewer.isDirector) return {};
+
+    return {
+      OR: [
+        {
+          project: {
+            members: {
+              some: { userId: viewer.id, projectRole: 'COORDINATOR' },
+            },
+          },
+        },
+        {
+          createdById: viewer.id,
+          project: {
+            members: { some: { userId: viewer.id, projectRole: 'EXECUTOR' } },
+          },
         },
       ],
     };

@@ -1,5 +1,5 @@
-import type { MeetingStatus } from '../../../../lib/api';
 import { meetingColors } from '../../meetingColors';
+import { describeMeeting } from '../../utils/describeMeeting';
 import type { CalendarProject, Meeting } from '../../types';
 import {
   horizontalPlacement,
@@ -35,22 +35,12 @@ const WEEK_STYLE = {
 
 type BlockStyle = typeof DAY_STYLE;
 
-const STATUS_DESCRIPTIONS: Record<MeetingStatus, string> = {
-  PLANNED: '',
-  HELD: ', odbyło się',
-  CANCELLED: ', odwołane',
-};
-
 interface MeetingBlockProps {
   placed: PlacedMeeting;
   firstHour: number;
   project: CalendarProject | undefined;
   detailed: boolean;
   onClick: () => void;
-}
-
-function describeMeeting(meeting: Meeting) {
-  return `${meeting.title}, ${meeting.startTime}–${meeting.endTime}${STATUS_DESCRIPTIONS[meeting.status]}`;
 }
 
 function titleText(meeting: Meeting) {

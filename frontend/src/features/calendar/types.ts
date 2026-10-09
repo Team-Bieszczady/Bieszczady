@@ -15,6 +15,12 @@ export interface Deadline extends Omit<BackendDeadline, 'dueDate'> {
   date: string;
 }
 
+export interface NewMeetingSlot {
+  date: string;
+  startTime: string;
+  endTime: string;
+}
+
 export interface CalendarProject {
   id: string;
   name: string;

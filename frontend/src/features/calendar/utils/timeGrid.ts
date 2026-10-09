@@ -1,4 +1,4 @@
-import type { Meeting } from '../types';
+import type { Meeting, NewMeetingSlot } from '../types';
 
 export const HOUR_HEIGHT = 60;
 
@@ -10,6 +10,9 @@ const GAP_BETWEEN_MEETINGS = 4;
 const STACK_INDENT = 10;
 const MAX_INDENT_LEVELS = 2;
 const STACK_MIN_GAP_MINUTES = 30;
+const SLOT_MINUTES = 30;
+const NEW_MEETING_MINUTES = 60;
+const LAST_MINUTE_OF_DAY = 23 * 60 + 59;
 
 export type MeetingSize = 'short' | 'medium' | 'long';
 
@@ -31,6 +34,36 @@ export function toMinutes(time: string) {
   const [hours, minutes] = time.split(':').map(Number);
   return hours * 60 + minutes;
 }
+
+export function minutesToTime(minutes: number) {
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return `${String(hours).padStart(2, '0')}:${String(rest).padStart(2, '0')}`;
+}
+
+export function slotStartAt(offsetY: number, firstHour: number) {
+  const minutesFromTop = (offsetY / HOUR_HEIGHT) * 60;
+  const slot = Math.floor(minutesFromTop / SLOT_MINUTES) * SLOT_MINUTES;
+  return firstHour * 60 + slot;
+}
+
+export function newMeetingSlot(
+  day: string,
+  startMinutes: number,
+): NewMeetingSlot {
+  const endMinutes = Math.min(
+    startMinutes + NEW_MEETING_MINUTES,
+    LAST_MINUTE_OF_DAY,
+  );
+
+  return {
+    date: day,
+    startTime: minutesToTime(startMinutes),
+    endTime: minutesToTime(endMinutes),
+  };
+}
+
+export const SLOT_HEIGHT = (SLOT_MINUTES / 60) * HOUR_HEIGHT;
 
 export function minutesToTop(minutes: number, firstHour: number) {
   return ((minutes - firstHour * 60) / 60) * HOUR_HEIGHT;

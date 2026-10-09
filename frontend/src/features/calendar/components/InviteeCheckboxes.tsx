@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import type { UseFormRegisterReturn } from 'react-hook-form';
 import { LuCheck } from 'react-icons/lu';
 import { useMembers } from '../../projects/hooks/useProjectsApi';
@@ -5,6 +6,7 @@ import { useMembers } from '../../projects/hooks/useProjectsApi';
 interface InviteeCheckboxesProps {
   projectId: string;
   registration: UseFormRegisterReturn<'inviteeIds'>;
+  onTeamLoaded?: (memberIds: string[]) => void;
 }
 
 const PILL_CLASSES =
@@ -13,9 +15,16 @@ const PILL_CLASSES =
 export function InviteeCheckboxes({
   projectId,
   registration,
+  onTeamLoaded,
 }: InviteeCheckboxesProps) {
   const membersQuery = useMembers(projectId);
   const members = membersQuery.data ?? [];
+
+  useEffect(() => {
+    if (onTeamLoaded && membersQuery.data) {
+      onTeamLoaded(membersQuery.data.map((member) => member.userId));
+    }
+  }, [membersQuery.data, onTeamLoaded]);
 
   if (membersQuery.isPending) {
     return <p className="text-xs text-grayText">Ładowanie zespołu…</p>;
