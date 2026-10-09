@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { DocumentsModule } from '../documents/documents.module';
+import { MailModule } from '../mail/mail.module';
 import { ProjectsModule } from '../projects/projects.module';
 import { UsersModule } from '../users/users.module';
 import { DeadlinesController } from './deadlines.controller';
@@ -26,6 +27,6 @@ import { ParticipantMeetingsController } from './participant-meetings.controller
     MeetingParticipantsService,
     DeadlinesService,
   ],
-  imports: [UsersModule, ProjectsModule, DocumentsModule],
+  imports: [UsersModule, ProjectsModule, DocumentsModule, MailModule],
 })
 export class CalendarModule {}

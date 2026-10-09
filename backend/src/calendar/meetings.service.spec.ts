@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { MailService } from '../mail/mail.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { MeetingsService } from './meetings.service';
 
@@ -20,6 +21,12 @@ describe('MeetingsService', () => {
     meetingInvitee: { findMany: jest.fn() },
     projectMember: { findUnique: jest.fn(), findMany: jest.fn() },
     project: { findMany: jest.fn(), findUnique: jest.fn() },
+    user: { findMany: jest.fn() },
+  };
+
+  const mail = {
+    sendMeetingInvite: jest.fn(),
+    senderEmail: jest.fn(),
   };
 
   const october = { from: '2026-10-01', to: '2026-10-31' };
@@ -33,7 +40,14 @@ describe('MeetingsService', () => {
   const storedMeeting = {
     projectId: 'project-1',
     createdById: 'author-1',
-    project: { archivedAt: null },
+    title: 'Stare spotkanie',
+    date: new Date('2020-05-04'),
+    startTime: '09:00',
+    endTime: '10:00',
+    place: null,
+    meetingUrl: null,
+    note: '',
+    project: { archivedAt: null, name: 'Testowy projekt' },
   };
   const changes = {
     title: 'Rada gminy',
@@ -41,6 +55,16 @@ describe('MeetingsService', () => {
     startTime: '10:00',
     endTime: '11:00',
     inviteeIds: ['member-1'],
+  };
+  const savedMeeting = {
+    id: 'meeting-1',
+    title: 'Rada gminy',
+    date: new Date('2026-10-20'),
+    startTime: '10:00',
+    endTime: '11:00',
+    place: null,
+    meetingUrl: null,
+    note: '',
   };
 
   beforeEach(async () => {
@@ -50,15 +74,18 @@ describe('MeetingsService', () => {
       providers: [
         MeetingsService,
         { provide: PrismaService, useValue: prisma },
+        { provide: MailService, useValue: mail },
       ],
     }).compile();
 
     service = module.get(MeetingsService);
     prisma.meeting.findMany.mockResolvedValue([]);
     prisma.meeting.findFirst.mockResolvedValue(storedMeeting);
-    prisma.meeting.update.mockResolvedValue({});
+    prisma.meeting.update.mockResolvedValue(savedMeeting);
     prisma.projectMember.findMany.mockResolvedValue([{ userId: 'member-1' }]);
     prisma.meetingInvitee.findMany.mockResolvedValue([]);
+    prisma.user.findMany.mockResolvedValue([]);
+    mail.senderEmail.mockReturnValue('biuro@bieszczady-ul.local');
   });
 
   describe('projectOptions', () => {
@@ -152,11 +179,12 @@ describe('MeetingsService', () => {
       prisma.project.findUnique.mockResolvedValue({
         id: 'project-1',
         archivedAt: null,
+        name: 'Testowy projekt',
       });
       prisma.projectMember.findUnique.mockResolvedValue({
         projectRole: 'EXECUTOR',
       });
-      prisma.meeting.create.mockResolvedValue({});
+      prisma.meeting.create.mockResolvedValue(savedMeeting);
     });
 
     it('answers 404 for a project that does not exist', async () => {
@@ -244,6 +272,51 @@ describe('MeetingsService', () => {
 
       expect(prisma.projectMember.findUnique).not.toHaveBeenCalled();
       expect(prisma.meeting.create).toHaveBeenCalled();
+    });
+
+    it('sends an invite to each invitee', async () => {
+      prisma.user.findMany.mockResolvedValue([
+        {
+          firstName: 'Ewa',
+          lastName: 'Kowalska',
+          email: 'ewa@bieszczady.local',
+        },
+      ]);
+
+      await service.create(newMeeting, executor);
+
+      expect(prisma.user.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: { in: ['member-1'] } } }),
+      );
+      expect(mail.sendMeetingInvite).toHaveBeenCalledTimes(1);
+      const [sent] = mail.sendMeetingInvite.mock.calls[0] as [
+        { to: string; ics: string; isCancelled: boolean },
+      ];
+      expect(sent.to).toBe('ewa@bieszczady.local');
+      expect(sent.isCancelled).toBe(false);
+      expect(sent.ics).toContain('METHOD:REQUEST');
+    });
+
+    it('sends nothing when nobody is invited', async () => {
+      await service.create({ ...newMeeting, inviteeIds: [] }, executor);
+
+      expect(prisma.user.findMany).not.toHaveBeenCalled();
+      expect(mail.sendMeetingInvite).not.toHaveBeenCalled();
+    });
+
+    it('still saves the meeting even when sending the invite fails', async () => {
+      prisma.user.findMany.mockResolvedValue([
+        {
+          firstName: 'Ewa',
+          lastName: 'Kowalska',
+          email: 'ewa@bieszczady.local',
+        },
+      ]);
+      mail.sendMeetingInvite.mockRejectedValue(new Error('SMTP down'));
+
+      await expect(service.create(newMeeting, executor)).resolves.toEqual(
+        savedMeeting,
+      );
     });
   });
 
@@ -372,6 +445,85 @@ describe('MeetingsService', () => {
         ),
       ).rejects.toThrow(BadRequestException);
       expect(prisma.meeting.update).not.toHaveBeenCalled();
+    });
+
+    describe('invites', () => {
+      const sameDetails = {
+        title: 'Stałe spotkanie',
+        date: '2026-11-01',
+        startTime: '09:00',
+        endTime: '10:00',
+        inviteeIds: ['member-1', 'member-2'],
+      };
+      const unchangedMeeting = {
+        ...storedMeeting,
+        title: sameDetails.title,
+        date: new Date(sameDetails.date),
+        startTime: sameDetails.startTime,
+        endTime: sameDetails.endTime,
+      };
+      const coordinator = { id: 'coordinator-1', isDirector: false };
+
+      beforeEach(() => {
+        prisma.projectMember.findUnique.mockResolvedValue({
+          projectRole: 'COORDINATOR',
+        });
+        prisma.projectMember.findMany.mockResolvedValue([
+          { userId: 'member-2' },
+        ]);
+        prisma.meeting.findFirst.mockResolvedValue(unchangedMeeting);
+        prisma.meetingInvitee.findMany.mockResolvedValue([
+          { userId: 'member-1' },
+        ]);
+        prisma.user.findMany.mockResolvedValue([
+          {
+            firstName: 'Nowa',
+            lastName: 'Osoba',
+            email: 'nowa@bieszczady.local',
+          },
+        ]);
+      });
+
+      it('invites only the newly added person when nothing else changed', async () => {
+        await service.update('meeting-1', sameDetails, coordinator);
+
+        expect(prisma.user.findMany).toHaveBeenCalledWith(
+          expect.objectContaining({ where: { id: { in: ['member-2'] } } }),
+        );
+        expect(mail.sendMeetingInvite).toHaveBeenCalledTimes(1);
+      });
+
+      it('resends to everyone once the time changes, not just the new person', async () => {
+        prisma.user.findMany.mockResolvedValue([
+          { firstName: 'A', lastName: 'A', email: 'a@bieszczady.local' },
+          { firstName: 'B', lastName: 'B', email: 'b@bieszczady.local' },
+        ]);
+
+        await service.update(
+          'meeting-1',
+          { ...sameDetails, startTime: '11:00', endTime: '12:00' },
+          coordinator,
+        );
+
+        expect(prisma.user.findMany).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: { id: { in: ['member-1', 'member-2'] } },
+          }),
+        );
+        expect(mail.sendMeetingInvite).toHaveBeenCalledTimes(2);
+      });
+
+      it('sends nothing when the invitee list and details are unchanged', async () => {
+        prisma.meetingInvitee.findMany.mockResolvedValue([
+          { userId: 'member-1' },
+          { userId: 'member-2' },
+        ]);
+
+        await service.update('meeting-1', sameDetails, coordinator);
+
+        expect(prisma.user.findMany).not.toHaveBeenCalled();
+        expect(mail.sendMeetingInvite).not.toHaveBeenCalled();
+      });
     });
   });
 
