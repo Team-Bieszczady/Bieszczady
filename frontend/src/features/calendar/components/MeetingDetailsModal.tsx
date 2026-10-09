@@ -1,6 +1,7 @@
 import toast from 'react-hot-toast';
 import {
   LuClock,
+  LuCopy,
   LuFileText,
   LuLink,
   LuMapPin,
@@ -35,6 +36,7 @@ interface MeetingDetailsModalProps {
   meetingId: string;
   onClose: () => void;
   onEdit: (meeting: BackendMeetingDetails) => void;
+  onDuplicate: (meeting: BackendMeetingDetails) => void;
   onDelete: (meeting: BackendMeetingDetails) => void;
 }
 
@@ -176,6 +178,7 @@ export default function MeetingDetailsModal({
   meetingId,
   onClose,
   onEdit,
+  onDuplicate,
   onDelete,
 }: MeetingDetailsModalProps) {
   const meetingQuery = useMeeting(meetingId);
@@ -367,15 +370,15 @@ export default function MeetingDetailsModal({
       )}
 
       {meeting?.canManage && (
-        <div className="mt-6 grid grid-cols-2 gap-3 border-t border-gray-200 pt-4 sm:flex sm:items-center sm:justify-between">
+        <div className="mt-6 grid grid-cols-3 gap-3 border-t border-gray-200 pt-4 sm:flex sm:items-center sm:justify-between">
           <Button
             variant="outline"
             size="small"
             type="button"
             onClick={() => onDelete(meeting)}
-            className="gap-1.5 border-darkRed text-darkRed hover:bg-red-50"
+            className="gap-1.5 border-darkRed text-darkRed hover:bg-red-50 max-sm:px-3"
           >
-            <LuTrash2 size={14} aria-hidden="true" />
+            <LuTrash2 size={14} className="shrink-0" aria-hidden="true" />
             Usuń
           </Button>
           <div className="contents sm:flex sm:gap-3">
@@ -383,10 +386,20 @@ export default function MeetingDetailsModal({
               variant="outline"
               size="small"
               type="button"
-              onClick={() => onEdit(meeting)}
-              className="gap-1.5"
+              onClick={() => onDuplicate(meeting)}
+              className="gap-1.5 max-sm:px-3"
             >
-              <LuPencil size={14} aria-hidden="true" />
+              <LuCopy size={14} className="shrink-0" aria-hidden="true" />
+              Powiel
+            </Button>
+            <Button
+              variant="outline"
+              size="small"
+              type="button"
+              onClick={() => onEdit(meeting)}
+              className="gap-1.5 max-sm:px-3"
+            >
+              <LuPencil size={14} className="shrink-0" aria-hidden="true" />
               Edytuj
             </Button>
             {!isUpcoming(meeting) && !isCancelledAhead(meeting) && (
@@ -396,7 +409,7 @@ export default function MeetingDetailsModal({
                 type="submit"
                 form={MEETING_OUTCOME_FORM_ID}
                 isPending={setOutcome.isPending}
-                className="col-span-2 font-medium!"
+                className="col-span-3 font-medium!"
               >
                 {meeting.status === 'PLANNED'
                   ? 'Zatwierdź spotkanie'

@@ -75,6 +75,8 @@ export default function CalendarPage() {
   const [newMeetingSlot, setNewMeetingSlot] = useState<NewMeetingSlot | null>(
     null,
   );
+  const [copiedMeeting, setCopiedMeeting] =
+    useState<BackendMeetingDetails | null>(null);
   const [editedMeeting, setEditedMeeting] =
     useState<BackendMeetingDetails | null>(null);
   const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(
@@ -145,11 +147,13 @@ export default function CalendarPage() {
   const openAddForm = () => {
     setEditedMeeting(null);
     setNewMeetingSlot(null);
+    setCopiedMeeting(null);
     setIsFormOpen(true);
   };
 
   const openAddFormAt = (slot: NewMeetingSlot) => {
     setEditedMeeting(null);
+    setCopiedMeeting(null);
     setNewMeetingSlot(slot);
     setIsFormOpen(true);
   };
@@ -160,10 +164,19 @@ export default function CalendarPage() {
     setIsFormOpen(true);
   };
 
+  const openCopyForm = (meeting: BackendMeetingDetails) => {
+    setSelectedMeetingId(null);
+    setEditedMeeting(null);
+    setNewMeetingSlot(null);
+    setCopiedMeeting(meeting);
+    setIsFormOpen(true);
+  };
+
   const closeForm = () => {
     setIsFormOpen(false);
     setEditedMeeting(null);
     setNewMeetingSlot(null);
+    setCopiedMeeting(null);
   };
 
   const afterSave = (message: string) => ({
@@ -299,6 +312,7 @@ export default function CalendarPage() {
           meetingId={selectedMeetingId}
           onClose={() => setSelectedMeetingId(null)}
           onEdit={openEditForm}
+          onDuplicate={openCopyForm}
           onDelete={askToDelete}
         />
       )}
@@ -318,6 +332,7 @@ export default function CalendarPage() {
         <MeetingFormModal
           meeting={editedMeeting ?? undefined}
           slot={newMeetingSlot}
+          copyOf={copiedMeeting}
           projectOptions={projectOptions}
           onClose={closeForm}
           onSubmit={submitMeeting}
