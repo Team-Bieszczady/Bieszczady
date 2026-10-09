@@ -19,6 +19,7 @@ import { RequireModule } from '../auth/decorators/require-module.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { type AuthenticatedUser } from '../auth/types/auth.types';
 import { ParticipantsService } from './participants.service';
+import { DuplicateParticipantsQueryDto } from './dto/duplicate-participants-query.dto';
 import { ListParticipantsQueryDto } from './dto/list-participants-query.dto';
 import {
   CreateParticipantDto,
@@ -34,6 +35,11 @@ export class ParticipantsController {
   @Get()
   findAll(@Query() query: ListParticipantsQueryDto) {
     return this.participantsService.findAll(query);
+  }
+
+  @Get('duplicates')
+  findDuplicates(@Query() query: DuplicateParticipantsQueryDto) {
+    return this.participantsService.findDuplicates(query);
   }
 
   @Post()

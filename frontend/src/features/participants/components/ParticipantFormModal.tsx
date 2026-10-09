@@ -1,5 +1,5 @@
 import { useId } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { LuTrash2 } from 'react-icons/lu';
 import { Button } from '../../../components/ui/Button';
 import { FieldError } from '../../../components/ui/FieldError';
@@ -7,7 +7,9 @@ import { Modal } from '../../../components/ui/Modal';
 import { INPUT_CLASSES } from '../../../components/ui/formStyles';
 import type { BackendParticipant, ParticipantChanges } from '../../../lib/api';
 import { NAME_MAX_LENGTH, nameRules } from '../../../lib/nameValidation';
+import { useDuplicateParticipants } from '../hooks/useDuplicateParticipants';
 import { emailOrEmpty, PHONE_PATTERN } from '../validation';
+import { DuplicateParticipantWarning } from './DuplicateParticipantWarning';
 import { ParticipantHistorySection } from './ParticipantHistorySection';
 
 interface ParticipantFormModalProps {
@@ -65,10 +67,23 @@ export default function ParticipantFormModal({
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors },
   } = useForm<ParticipantChanges>({
     defaultValues: startingValues(participant),
   });
+
+  const watchedFirstName = useWatch({ control, name: 'firstName' });
+  const watchedLastName = useWatch({ control, name: 'lastName' });
+  const watchedEmail = useWatch({ control, name: 'email' });
+
+  const duplicatesQuery = useDuplicateParticipants({
+    firstName: watchedFirstName,
+    lastName: watchedLastName,
+    email: watchedEmail,
+    excludeId: participant?.id,
+  });
+  const duplicates = duplicatesQuery.data ?? [];
 
   let consentNote = '';
   if (participant && participant.consentAt) {
@@ -162,6 +177,8 @@ export default function ParticipantFormModal({
             <FieldError message={errors.phone?.message} />
           </div>
         </div>
+
+        <DuplicateParticipantWarning matches={duplicates} />
 
         <div>
           <label className={LABEL_CLASSES} htmlFor={addressId}>

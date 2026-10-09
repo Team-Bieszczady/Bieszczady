@@ -232,4 +232,54 @@ describe('ParticipantsService', () => {
       ]);
     });
   });
+
+  describe('findDuplicates', () => {
+    it('answers nothing when neither an email nor a full name is given', async () => {
+      await expect(
+        service.findDuplicates({ firstName: 'Jan' }),
+      ).resolves.toEqual([]);
+      expect(prisma.participant.findMany).not.toHaveBeenCalled();
+    });
+
+    it('matches by email or by first and last name together', async () => {
+      prisma.participant.findMany.mockResolvedValue([]);
+
+      await service.findDuplicates({
+        firstName: 'Jan',
+        lastName: 'Kowalski',
+        email: 'jan@poczta.pl',
+      });
+
+      expect(findManyArgs()).toMatchObject({
+        where: {
+          deletedAt: null,
+          id: undefined,
+          OR: [
+            { email: 'jan@poczta.pl' },
+            { firstName: 'Jan', lastName: 'Kowalski' },
+          ],
+        },
+      });
+    });
+
+    it('excludes the person being edited', async () => {
+      prisma.participant.findMany.mockResolvedValue([]);
+
+      await service.findDuplicates({
+        email: 'jan@poczta.pl',
+        excludeId: 'participant-1',
+      });
+
+      expect(findManyArgs().where).toMatchObject({
+        id: { not: 'participant-1' },
+      });
+    });
+
+    it('does not match on a first name alone', async () => {
+      await expect(
+        service.findDuplicates({ firstName: 'Jan', lastName: undefined }),
+      ).resolves.toEqual([]);
+      expect(prisma.participant.findMany).not.toHaveBeenCalled();
+    });
+  });
 });

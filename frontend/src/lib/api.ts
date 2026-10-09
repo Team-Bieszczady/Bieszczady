@@ -28,6 +28,13 @@ export interface BackendParticipant {
   meetingCount: number;
 }
 
+export interface DuplicateParticipant {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+}
+
 export interface MeetingParticipant {
   id: string;
   firstName: string;
@@ -390,6 +397,32 @@ export const api = {
       accessToken,
       fallbackMessage: 'Nie udało się pobrać listy uczestników',
     });
+  },
+
+  async getDuplicateParticipants(
+    accessToken: string,
+    params: {
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+      excludeId?: string;
+    },
+  ): Promise<DuplicateParticipant[]> {
+    const query = new URLSearchParams();
+    if (params.firstName) query.set('firstName', params.firstName);
+    if (params.lastName) query.set('lastName', params.lastName);
+    if (params.email) query.set('email', params.email);
+    if (params.excludeId) query.set('excludeId', params.excludeId);
+
+    return request<DuplicateParticipant[]>(
+      `/api/v1/participants/duplicates?${query.toString()}`,
+      {
+        method: 'GET',
+        accessToken,
+        fallbackMessage:
+          'Nie udało się sprawdzić, czy taka osoba już jest w bazie',
+      },
+    );
   },
 
   async createParticipant(

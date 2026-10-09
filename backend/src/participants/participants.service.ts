@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ATTENDED_MEETING } from './attended-meeting';
+import { DuplicateParticipantsQueryDto } from './dto/duplicate-participants-query.dto';
 import { ListParticipantsQueryDto } from './dto/list-participants-query.dto';
 import {
   CreateParticipantDto,
@@ -55,6 +57,35 @@ export class ParticipantsService {
       consentAt: participant.consentAt,
       meetingCount: participant._count.meetings,
     }));
+  }
+
+  async findDuplicates(query: DuplicateParticipantsQueryDto) {
+    const matchesEither: Prisma.ParticipantWhereInput[] = [];
+
+    if (query.email) {
+      matchesEither.push({ email: query.email });
+    }
+
+    if (query.firstName && query.lastName) {
+      matchesEither.push({
+        firstName: query.firstName,
+        lastName: query.lastName,
+      });
+    }
+
+    if (matchesEither.length === 0) {
+      return [];
+    }
+
+    return this.prisma.participant.findMany({
+      where: {
+        deletedAt: null,
+        id: query.excludeId ? { not: query.excludeId } : undefined,
+        OR: matchesEither,
+      },
+      orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+      select: { id: true, firstName: true, lastName: true, email: true },
+    });
   }
 
   async create(dto: CreateParticipantDto, creatorId: string) {
