@@ -32,14 +32,9 @@ export function ColumnHeader({
   onRename,
   onDelete,
 }: ColumnHeaderProps) {
-  const isMoney = column.type === 'money';
-
   if (column.locked) {
     return (
-      <th
-        scope="col"
-        className={`${TH_CLASSES} ${isMoney ? 'text-right' : 'text-left'}`}
-      >
+      <th scope="col" className={`${TH_CLASSES} text-left`}>
         <span className="inline-flex items-center gap-1.5">
           {column.name}
           <HiOutlineLockClosed
@@ -54,9 +49,7 @@ export function ColumnHeader({
 
   return (
     <th scope="col" className={`${TH_CLASSES} text-left`}>
-      <div
-        className={`group flex items-center gap-0.5 ${isMoney ? 'justify-end' : ''}`}
-      >
+      <div className="group flex items-center gap-0.5">
         <div className="whitespace-nowrap">
           <InlineEditField
             value={column.name}
@@ -67,8 +60,8 @@ export function ColumnHeader({
             canEdit
             saveOnBlur
             ariaLabel={`Nazwa kolumny ${column.name}`}
-            displayClassName="uppercase"
-            inputClassName="h-6 min-w-36 text-[11px] normal-case tracking-normal"
+            displayClassName="uppercase overflow-visible!"
+            inputClassName="animate-pop-in -my-0.5 h-5 min-w-36 field-sizing-content py-0 text-[11px] normal-case tracking-normal"
           />
         </div>
         <ActionMenu

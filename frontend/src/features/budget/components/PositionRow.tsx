@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { Fragment, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { ActionMenu } from '../../../components/ui/ActionMenu';
 import { Avatar } from '../../../components/ui/Avatar';
@@ -13,8 +13,7 @@ import {
   formatMoney,
   parseMoney,
 } from '../utils/budgetTotals';
-import { OverBudgetBadge } from './OverBudgetBadge';
-import { SpendCells } from './SpendCells';
+import { RemainingCell, UsageCell } from './SpendCells';
 
 function BudgetCell({
   column,
@@ -63,15 +62,13 @@ function BudgetCell({
       onClick={() => setIsEditing(true)}
       aria-label={`${column.name}, ${positionName}: ${label}, kliknij, aby edytować`}
       className={`-mx-1.5 flex w-[calc(100%+0.75rem)] cursor-text items-center gap-2 rounded-md px-1.5 py-0.5 transition-colors hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-darkGreen ${
-        isMoney
-          ? `justify-end tabular-nums ${moneyEmphasis(column)}`
-          : 'justify-start'
-      } ${isEmpty ? 'text-gray-400' : ''}`}
+        isMoney ? `tabular-nums ${moneyEmphasis(column)}` : ''
+      } justify-start ${isEmpty ? 'text-gray-400' : ''}`}
     >
       {column.type === 'person' && !isEmpty && (
         <Avatar initials={initials} size="xs" />
       )}
-      <span className="truncate">{label}</span>
+      <span className="whitespace-nowrap">{label}</span>
     </button>
   );
 }
@@ -106,7 +103,7 @@ function BudgetCellForm({
   });
 
   return (
-    <form onSubmit={submit} className="w-full">
+    <form onSubmit={submit} className="relative w-full">
       <input
         {...field}
         onBlur={(event) => {
@@ -125,11 +122,13 @@ function BudgetCellForm({
             onCancel();
           }
         }}
-        className={`h-6 w-full rounded-md border border-gray-300 px-2 text-xs focus:border-transparent focus:ring-1 focus:ring-darkGreen focus:outline-none ${
-          isMoney ? 'text-right tabular-nums' : ''
+        className={`animate-pop-in h-5 w-full rounded-md border border-gray-300 px-2 text-xs focus:border-transparent focus:ring-1 focus:ring-darkGreen focus:outline-none ${
+          isMoney ? 'tabular-nums' : ''
         }`}
       />
-      <FieldError message={errors.value?.message} />
+      <div className="absolute top-full left-0 z-10 whitespace-nowrap">
+        <FieldError message={errors.value?.message} />
+      </div>
     </form>
   );
 }
@@ -161,10 +160,10 @@ export function PositionRow({
   );
 
   return (
-    <tr className="group border-b border-gray-100 bg-white text-xs font-normal text-dark transition-colors hover:bg-gray-50">
-      <td className="py-3 pr-4 pl-10">
+    <tr className="animate-fade-in group border-b border-gray-100 bg-white text-xs font-normal text-dark transition-colors hover:bg-gray-50">
+      <td className="py-3 pr-3 pl-10">
         <div className="flex items-center gap-2">
-          <div className={`min-w-0 ${isEditing ? 'flex-1' : ''}`}>
+          <div className="min-w-0 flex-1">
             <InlineEditField
               value={position.name}
               isEditing={isEditing}
@@ -175,27 +174,30 @@ export function PositionRow({
               saveOnBlur
               ariaLabel={`Nazwa pozycji ${position.name}`}
               emptyMessage="Podaj nazwę pozycji"
-              inputClassName="h-6 text-xs"
+              displayClassName="overflow-visible!"
+              inputClassName="animate-pop-in -my-0.5 h-5 py-0 text-xs"
             />
           </div>
-          {spend.isOver && !isEditing && <OverBudgetBadge />}
         </div>
       </td>
 
       {columns.map((column) => (
-        <td key={column.id} className="px-4 py-3 whitespace-nowrap">
-          <BudgetCell
-            column={column}
-            value={position.values[column.id]}
-            positionName={position.name}
-            onSave={(value) => onUpdateCell(column.id, value)}
-          />
-        </td>
+        <Fragment key={column.id}>
+          <td className="px-3 py-3 whitespace-nowrap">
+            <BudgetCell
+              column={column}
+              value={position.values[column.id]}
+              positionName={position.name}
+              onSave={(value) => onUpdateCell(column.id, value)}
+            />
+          </td>
+          {column.id === SPENT_COLUMN_ID && <RemainingCell spend={spend} />}
+        </Fragment>
       ))}
 
-      <SpendCells spend={spend} />
+      <UsageCell spend={spend} />
 
-      <td className="px-4 py-3 text-right">
+      <td className="px-3 py-3 text-right">
         <ActionMenu
           ariaLabel={`Akcje pozycji ${position.name}`}
           className={`inline-flex h-6 w-6 items-center justify-center ${MENU_REVEAL_CLASSES}`}

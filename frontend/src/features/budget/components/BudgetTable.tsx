@@ -5,6 +5,7 @@ import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import type { BudgetAction } from '../budgetReducer';
 import { TH_CLASSES } from '../styles';
 import type { BudgetState } from '../types';
+import { SPENT_COLUMN_ID } from '../utils/budgetTotals';
 import { CategoryRow } from './CategoryRow';
 import { AddColumnButton, ColumnHeader } from './ColumnHeader';
 import { PositionRow } from './PositionRow';
@@ -56,38 +57,41 @@ export function BudgetTable({ state, dispatch }: BudgetTableProps) {
         <table className="w-full min-w-max border-collapse">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-100">
-              <th scope="col" className={`${TH_CLASSES} min-w-48 text-left`}>
+              <th scope="col" className={`${TH_CLASSES} min-w-72 text-left`}>
                 Kategoria / pozycja
               </th>
               {columns.map((column) => (
-                <ColumnHeader
-                  key={column.id}
-                  column={column}
-                  isEditing={editingId === column.id}
-                  onStartEdit={() => setEditingId(column.id)}
-                  onCancelEdit={stopEditing}
-                  onRename={(name) => {
-                    dispatch({
-                      type: 'RENAME_COLUMN',
-                      columnId: column.id,
-                      name,
-                    });
-                    stopEditing();
-                  }}
-                  onDelete={() =>
-                    setPendingDelete({
-                      kind: 'column',
-                      id: column.id,
-                      name: column.name,
-                    })
-                  }
-                />
+                <Fragment key={column.id}>
+                  <ColumnHeader
+                    column={column}
+                    isEditing={editingId === column.id}
+                    onStartEdit={() => setEditingId(column.id)}
+                    onCancelEdit={stopEditing}
+                    onRename={(name) => {
+                      dispatch({
+                        type: 'RENAME_COLUMN',
+                        columnId: column.id,
+                        name,
+                      });
+                      stopEditing();
+                    }}
+                    onDelete={() =>
+                      setPendingDelete({
+                        kind: 'column',
+                        id: column.id,
+                        name: column.name,
+                      })
+                    }
+                  />
+                  {column.id === SPENT_COLUMN_ID && (
+                    <th scope="col" className={`${TH_CLASSES} text-left`}>
+                      Pozostało
+                    </th>
+                  )}
+                </Fragment>
               ))}
-              <th scope="col" className={`${TH_CLASSES} text-right`}>
-                Zostało
-              </th>
               <th scope="col" className={`${TH_CLASSES} text-left`}>
-                Wykorzystanie
+                Wykonanie
               </th>
               <th scope="col" className={`${TH_CLASSES} w-10 text-right`}>
                 <AddColumnButton
@@ -180,7 +184,7 @@ export function BudgetTable({ state, dispatch }: BudgetTableProps) {
                         }
                       />
                     ))}
-                    <tr className="bg-white">
+                    <tr className="animate-fade-in bg-white">
                       <td colSpan={columns.length + 4} className="py-1.5 pl-10">
                         <button
                           type="button"

@@ -24,3 +24,9 @@ export interface BudgetState {
   columns: Column[];
   categories: Category[];
 }
+
+export interface BudgetVersion {
+  id: string;
+  label: string;
+  budget: BudgetState;
+}

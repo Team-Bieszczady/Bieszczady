@@ -1,10 +1,9 @@
 import type { RadioPillOption } from '../../components/ui/RadioPillGroup';
-import type { BudgetState, Position } from './types';
+import type { BudgetState, BudgetVersion, Position } from './types';
 
 export const COLUMN_TYPE_OPTIONS: RadioPillOption[] = [
   { value: 'text', label: 'Tekst' },
   { value: 'money', label: 'Kwota' },
-  { value: 'person', label: 'Osoba' },
 ];
 
 function position(
@@ -26,15 +25,15 @@ function position(
 
 export const INITIAL_BUDGET: BudgetState = {
   columns: [
+    { id: 'planned', name: 'Plan', type: 'money', locked: true },
+    { id: 'incurred', name: 'Poniesione', type: 'money', locked: true },
     {
       id: 'person',
       name: 'Osoba odpowiedzialna',
-      type: 'person',
+      type: 'text',
       locked: false,
     },
     { id: 'source', name: 'Źródło finansowania', type: 'text', locked: false },
-    { id: 'planned', name: 'Koszty planowane', type: 'money', locked: true },
-    { id: 'incurred', name: 'Poniesione', type: 'money', locked: true },
     { id: 'grant', name: 'Dotacja', type: 'money', locked: false },
     {
       id: 'ownContribution',
@@ -154,3 +153,9 @@ export const INITIAL_BUDGET: BudgetState = {
     },
   ],
 };
+
+export const INITIAL_VERSIONS: BudgetVersion[] = [
+  { id: 'base', label: 'Wersja podstawowa', budget: INITIAL_BUDGET },
+  { id: 'annex-1', label: 'Aneks 1', budget: INITIAL_BUDGET },
+  { id: 'annex-2', label: 'Aneks 2', budget: INITIAL_BUDGET },
+];

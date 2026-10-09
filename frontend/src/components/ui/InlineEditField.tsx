@@ -41,7 +41,7 @@ function InlineEditForm({
   };
 
   return (
-    <form onSubmit={submit} className="w-full">
+    <form onSubmit={submit} className="relative w-full">
       <input
         {...field}
         onBlur={(event) => {
@@ -60,7 +60,9 @@ function InlineEditForm({
         }}
         className={`w-full rounded-lg border border-gray-300 px-2 py-1 focus:border-transparent focus:ring-1 focus:ring-darkGreen focus:outline-none ${inputClassName}`}
       />
-      <FieldError message={errors.value?.message} />
+      <div className="absolute top-full left-0 z-10 whitespace-nowrap">
+        <FieldError message={errors.value?.message} />
+      </div>
     </form>
   );
 }

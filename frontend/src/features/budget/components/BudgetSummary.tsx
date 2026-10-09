@@ -1,7 +1,14 @@
+import ProgressBar from '../../projects/components/ProgressBar';
+import {
+  CATEGORY_FORMS,
+  pluralizePl,
+  polishForm,
+} from '../../../lib/pluralizePl';
 import type { BudgetState } from '../types';
 import {
   PLANNED_COLUMN_ID,
   SPENT_COLUMN_ID,
+  calcCategoryTotals,
   calcGrandTotals,
   calcSpend,
   formatMoney,
@@ -11,37 +18,75 @@ interface BudgetSummaryProps {
   state: BudgetState;
 }
 
+const EXCEEDS_FORMS = ['przekracza', 'przekraczają', 'przekracza'] as const;
+
 export function BudgetSummary({ state }: BudgetSummaryProps) {
   const totals = calcGrandTotals(state.categories, state.columns);
   const planned = totals[PLANNED_COLUMN_ID] ?? 0;
   const spent = totals[SPENT_COLUMN_ID] ?? 0;
-  const { remaining } = calcSpend(planned, spent);
+  const { remaining, usage, isOver } = calcSpend(planned, spent);
+  const percent = usage === null ? 0 : Math.round(usage * 100);
+  const overCount = state.categories.filter((category) => {
+    const categoryTotals = calcCategoryTotals(category, state.columns);
+    return calcSpend(
+      categoryTotals[PLANNED_COLUMN_ID],
+      categoryTotals[SPENT_COLUMN_ID],
+    ).isOver;
+  }).length;
 
-  const cards = [
-    { label: 'Plan całkowity', value: planned },
-    { label: 'Wydano', value: spent },
-    { label: 'Zostało', value: remaining },
+  const items = [
+    { label: 'Plan', value: planned, caption: null },
+    { label: 'Poniesione', value: spent, caption: null },
+    {
+      label: 'Pozostało',
+      value: remaining,
+      caption:
+        overCount > 0
+          ? `${pluralizePl(overCount, CATEGORY_FORMS)} ${EXCEEDS_FORMS[polishForm(overCount)]} plan`
+          : 'Wszystko w planie',
+    },
   ];
 
   return (
-    <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-      {cards.map(({ label, value }) => (
-        <div
-          key={label}
-          className="rounded-lg border border-gray-200 bg-white px-4 py-3"
+    <div className="mb-6 rounded-xl border border-gray-200 bg-white px-4 py-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {items.map((item) => (
+          <div key={item.label}>
+            <p className="text-xs text-grayText">{item.label}</p>
+            <p
+              className={`mt-1 text-lg font-bold tabular-nums lg:text-xl ${
+                item.value < 0 ? 'text-darkRed' : 'text-dark'
+              }`}
+            >
+              {formatMoney(item.value)}
+            </p>
+            {item.caption && (
+              <p
+                className={`mt-1 text-xs ${
+                  overCount > 0 ? 'font-semibold text-darkRed' : 'text-grayText'
+                }`}
+              >
+                {item.caption}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-3 flex items-center gap-3">
+        <ProgressBar
+          percent={Math.min(percent, 100)}
+          ariaLabel="Wykorzystanie budżetu"
+          className="flex-1"
+        />
+        <span
+          className={`text-xs font-bold tabular-nums ${
+            isOver ? 'text-darkRed' : 'text-darkGreen'
+          }`}
         >
-          <p className="text-[11px] tracking-wide text-gray-500 uppercase">
-            {label}
-          </p>
-          <p
-            className={`mt-1 text-lg font-bold tabular-nums lg:text-xl ${
-              value < 0 ? 'text-darkRed' : 'text-dark'
-            }`}
-          >
-            {formatMoney(value)}
-          </p>
-        </div>
-      ))}
+          {percent}%
+        </span>
+      </div>
     </div>
   );
 }
