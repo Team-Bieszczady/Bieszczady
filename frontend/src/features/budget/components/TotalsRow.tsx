@@ -1,5 +1,5 @@
 import { Fragment } from 'react';
-import type { Category, Column } from '../types';
+import type { Column, PlanCategory, PositionActuals } from '../types';
 import {
   PLANNED_COLUMN_ID,
   SPENT_COLUMN_ID,
@@ -10,12 +10,13 @@ import {
 import { RemainingCell, UsageCell } from './SpendCells';
 
 interface TotalsRowProps {
-  categories: Category[];
+  categories: PlanCategory[];
   columns: Column[];
+  actuals: Record<string, PositionActuals>;
 }
 
-export function TotalsRow({ categories, columns }: TotalsRowProps) {
-  const totals = calcGrandTotals(categories, columns);
+export function TotalsRow({ categories, columns, actuals }: TotalsRowProps) {
+  const totals = calcGrandTotals(categories, columns, actuals);
   const spend = calcSpend(totals[PLANNED_COLUMN_ID], totals[SPENT_COLUMN_ID]);
   const isEmpty = totals[PLANNED_COLUMN_ID] == null;
 

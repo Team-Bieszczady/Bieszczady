@@ -17,6 +17,7 @@ import type { Column, ColumnType } from '../types';
 
 interface ColumnHeaderProps {
   column: Column;
+  canEdit: boolean;
   isEditing: boolean;
   onStartEdit: () => void;
   onCancelEdit: () => void;
@@ -26,22 +27,25 @@ interface ColumnHeaderProps {
 
 export function ColumnHeader({
   column,
+  canEdit,
   isEditing,
   onStartEdit,
   onCancelEdit,
   onRename,
   onDelete,
 }: ColumnHeaderProps) {
-  if (column.locked) {
+  if (column.locked || !canEdit) {
     return (
       <th scope="col" className={`${TH_CLASSES} text-left`}>
         <span className="inline-flex items-center gap-1.5">
           {column.name}
-          <HiOutlineLockClosed
-            className="h-3 w-3 shrink-0 text-gray-400"
-            role="img"
-            aria-label="Kolumna stała"
-          />
+          {column.locked && (
+            <HiOutlineLockClosed
+              className="h-3 w-3 shrink-0 text-gray-400"
+              role="img"
+              aria-label="Kolumna stała"
+            />
+          )}
         </span>
       </th>
     );

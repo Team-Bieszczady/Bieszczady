@@ -4,7 +4,7 @@ import {
   pluralizePl,
   polishForm,
 } from '../../../lib/pluralizePl';
-import type { BudgetState } from '../types';
+import type { Column, PlanCategory, PositionActuals } from '../types';
 import {
   PLANNED_COLUMN_ID,
   SPENT_COLUMN_ID,
@@ -15,19 +15,25 @@ import {
 } from '../utils/budgetTotals';
 
 interface BudgetSummaryProps {
-  state: BudgetState;
+  categories: PlanCategory[];
+  columns: Column[];
+  actuals: Record<string, PositionActuals>;
 }
 
 const EXCEEDS_FORMS = ['przekracza', 'przekraczają', 'przekracza'] as const;
 
-export function BudgetSummary({ state }: BudgetSummaryProps) {
-  const totals = calcGrandTotals(state.categories, state.columns);
+export function BudgetSummary({
+  categories,
+  columns,
+  actuals,
+}: BudgetSummaryProps) {
+  const totals = calcGrandTotals(categories, columns, actuals);
   const planned = totals[PLANNED_COLUMN_ID] ?? 0;
   const spent = totals[SPENT_COLUMN_ID] ?? 0;
   const { remaining, usage, isOver } = calcSpend(planned, spent);
   const percent = usage === null ? 0 : Math.round(usage * 100);
-  const overCount = state.categories.filter((category) => {
-    const categoryTotals = calcCategoryTotals(category, state.columns);
+  const overCount = categories.filter((category) => {
+    const categoryTotals = calcCategoryTotals(category, columns, actuals);
     return calcSpend(
       categoryTotals[PLANNED_COLUMN_ID],
       categoryTotals[SPENT_COLUMN_ID],

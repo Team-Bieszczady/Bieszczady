@@ -23,6 +23,13 @@ export function UsageCell({
   showBar = true,
 }: SpendCellProps & { showBar?: boolean }) {
   const { usage, isOver } = spend;
+  const barColor = isOver
+    ? 'bg-darkRed'
+    : usage !== null && usage >= 1
+      ? 'bg-darkGreen'
+      : usage === 0
+        ? 'bg-amberDark'
+        : 'bg-blue-500';
 
   return (
     <td className="px-3 py-3 whitespace-nowrap">
@@ -31,9 +38,13 @@ export function UsageCell({
       ) : (
         <div className="flex items-center gap-2">
           {showBar && (
-            <div className="h-1.5 w-24 overflow-hidden rounded-full bg-gray-200">
+            <div
+              className={`h-1.5 w-24 overflow-hidden rounded-full ${
+                usage === 0 ? 'bg-amberSoft' : 'bg-gray-200'
+              }`}
+            >
               <div
-                className={`h-full rounded-full ${isOver ? 'bg-darkRed' : 'bg-darkGreen'}`}
+                className={`h-full rounded-full ${barColor}`}
                 style={{ width: `${Math.min(usage, 1) * 100}%` }}
               />
             </div>
