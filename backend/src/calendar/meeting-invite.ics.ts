@@ -1,5 +1,7 @@
 function escapeIcsText(text: string) {
   return text
+    .split('\r')
+    .join('')
     .split('\\')
     .join('\\\\')
     .split('\n')
@@ -8,6 +10,11 @@ function escapeIcsText(text: string) {
     .join('\\,')
     .split(';')
     .join('\\;');
+}
+
+// Imię w nagłówku ATTENDEE idzie w cudzysłowie; sam cudzysłów w nim jest niedozwolony.
+function quoteIcsParam(text: string) {
+  return `"${text.split('"').join('')}"`;
 }
 
 function toIcsUtc(date: Date) {
@@ -51,7 +58,7 @@ export function buildMeetingIcs(input: MeetingIcsInput) {
     `SUMMARY:${escapeIcsText(input.title)}`,
     'STATUS:CONFIRMED',
     `ORGANIZER;CN=Bieszczadzki Uniwersytet Ludowy:mailto:${input.organizerEmail}`,
-    `ATTENDEE;CN=${escapeIcsText(input.attendeeName)};RSVP=FALSE:mailto:${input.attendeeEmail}`,
+    `ATTENDEE;CN=${quoteIcsParam(input.attendeeName)};RSVP=FALSE:mailto:${input.attendeeEmail}`,
   ];
 
   if (input.place) {
