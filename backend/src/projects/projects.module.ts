@@ -25,6 +25,13 @@ import { SubtasksController } from './subtasks.controller';
 import { SubtasksService } from './subtasks.service';
 import { IndicatorsController } from './indicators.controller';
 import { IndicatorsService } from './indicators.service';
+import { PartnersController } from './partners.controller';
+import { PartnersService } from './partners.service';
+import { BudgetController } from './budget.controller';
+import { BudgetAnnexController } from './budget-annex.controller';
+import { BudgetService } from './budget.service';
+import { BudgetActualsService } from './budget-actuals.service';
+import { BudgetAnnexService } from './budget-annex.service';
 import { StageCompletionService } from './stage-completion.service';
 import { ProjectAccessService } from './project-access.service';
 
@@ -43,6 +50,9 @@ import { ProjectAccessService } from './project-access.service';
     TasksController,
     SubtasksController,
     IndicatorsController,
+    PartnersController,
+    BudgetController,
+    BudgetAnnexController,
   ],
   providers: [
     PrismaService,
@@ -56,6 +66,10 @@ import { ProjectAccessService } from './project-access.service';
     TasksService,
     SubtasksService,
     IndicatorsService,
+    PartnersService,
+    BudgetService,
+    BudgetActualsService,
+    BudgetAnnexService,
     StageCompletionService,
     ProjectAccessService,
   ],

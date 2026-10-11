@@ -1,4 +1,4 @@
-import { IsIn, IsUUID } from 'class-validator';
+import { IsIn, IsUUID, ValidateIf } from 'class-validator';
 import {
   PROJECT_ROLES,
   type ProjectRoleValue,
@@ -15,4 +15,10 @@ export class AddMemberDto {
 export class UpdateMemberRoleDto {
   @IsIn(PROJECT_ROLES)
   projectRole!: ProjectRoleValue;
+}
+
+export class UpdateMemberPartnerDto {
+  @ValidateIf((_, value) => value !== null)
+  @IsUUID()
+  partnerId!: string | null;
 }

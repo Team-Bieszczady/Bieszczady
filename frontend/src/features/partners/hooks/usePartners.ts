@@ -1,5 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { MOCK_PARTNERS, type Partner } from '../data';
+import { useApiQuery } from '../../../hooks/useApiQuery';
+import { useApiMutation } from '../../../hooks/useApiMutation';
+import {
+  partnersApi,
+  type BackendPartner,
+  type PartnerBody,
+} from '../../../lib/projectsApi';
+import type { Partner } from '../data';
 
 const PARTNERS_KEY = ['partners'];
 
@@ -15,50 +21,38 @@ function toInitials(name: string): string {
   return initials || name.trim().slice(0, 2).toUpperCase();
 }
 
+function toPartner(partner: BackendPartner): Partner {
+  return { ...partner, initials: toInitials(partner.name) };
+}
+
+function toBody({ projects, ...input }: PartnerInput): PartnerBody {
+  return {
+    ...input,
+    agreementValidUntil: input.agreementValidUntil || null,
+    projectIds: projects.map((project) => project.id),
+  };
+}
+
 export function usePartners() {
-  return useQuery({
-    queryKey: PARTNERS_KEY,
-    queryFn: async () => MOCK_PARTNERS,
-    staleTime: Infinity,
-  });
+  return useApiQuery(PARTNERS_KEY, async (token) =>
+    (await partnersApi.list(token)).map(toPartner),
+  );
 }
 
 export function useSavePartner() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({
-      id,
-      input,
-    }: {
-      id?: string;
-      input: PartnerInput;
-    }) => ({
-      ...input,
-      id: id ?? crypto.randomUUID(),
-      initials: toInitials(input.name),
-    }),
-    onSuccess: (saved) => {
-      queryClient.setQueryData<Partner[]>(PARTNERS_KEY, (partners = []) =>
-        partners.some((partner) => partner.id === saved.id)
-          ? partners.map((partner) =>
-              partner.id === saved.id ? saved : partner,
-            )
-          : [saved, ...partners],
-      );
-    },
-  });
+  return useApiMutation(
+    async (token, { id, input }: { id?: string; input: PartnerInput }) =>
+      toPartner(
+        id
+          ? await partnersApi.patch(token, id, toBody(input))
+          : await partnersApi.create(token, toBody(input)),
+      ),
+    { invalidates: [PARTNERS_KEY] },
+  );
 }
 
 export function useDeletePartner() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (id: string) => id,
-    onSuccess: (id) => {
-      queryClient.setQueryData<Partner[]>(PARTNERS_KEY, (partners = []) =>
-        partners.filter((partner) => partner.id !== id),
-      );
-    },
+  return useApiMutation((token, id: string) => partnersApi.remove(token, id), {
+    invalidates: [PARTNERS_KEY],
   });
 }

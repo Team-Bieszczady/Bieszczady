@@ -9,7 +9,11 @@ import { SERIALIZABLE } from '../prisma/transaction-options';
 import type { AuthenticatedUser } from '../auth/types/auth.types';
 import { ProjectAccessService } from './project-access.service';
 import { PERSON_SELECT } from './prisma-selects';
-import { AddMemberDto, UpdateMemberRoleDto } from './dto/member.dto';
+import {
+  AddMemberDto,
+  UpdateMemberPartnerDto,
+  UpdateMemberRoleDto,
+} from './dto/member.dto';
 
 const USER_SELECT = {
   select: {
@@ -100,9 +104,44 @@ export class MembersService {
 
     return this.prisma.projectMember.update({
       where: { id },
-      data: { projectRole: dto.projectRole },
+      data: {
+        projectRole: dto.projectRole,
+        ...(dto.projectRole === 'PARTNER' ? {} : { partnerId: null }),
+      },
       include: { user: USER_SELECT },
     });
+  }
+
+  async setPartner(id: string, dto: UpdateMemberPartnerDto) {
+    return this.prisma.$transaction(async (tx) => {
+      const member = await tx.projectMember.findUnique({ where: { id } });
+      if (!member) {
+        throw new NotFoundException('Nie znaleziono członka projektu');
+      }
+      await this.access.assertNotArchived(member.projectId, tx);
+
+      if (dto.partnerId !== null) {
+        if (member.projectRole !== 'PARTNER') {
+          throw new ConflictException(
+            'Organizację partnera można przypisać tylko osobie z rolą Partner',
+          );
+        }
+        const linked = await tx.partnerProject.count({
+          where: { partnerId: dto.partnerId, projectId: member.projectId },
+        });
+        if (linked === 0) {
+          throw new ConflictException(
+            'Ten partner nie jest przypisany do projektu',
+          );
+        }
+      }
+
+      return tx.projectMember.update({
+        where: { id },
+        data: { partnerId: dto.partnerId },
+        include: { user: USER_SELECT },
+      });
+    }, SERIALIZABLE);
   }
 
   async remove(id: string): Promise<void> {
@@ -131,6 +170,9 @@ export class MembersService {
         data: { ownerId: null },
       });
       await tx.documentAccess.deleteMany({
+        where: { projectId: member.projectId, userId: member.userId },
+      });
+      await tx.budgetAccess.deleteMany({
         where: { projectId: member.projectId, userId: member.userId },
       });
 

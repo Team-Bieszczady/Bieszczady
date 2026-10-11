@@ -194,6 +194,39 @@ export interface BackendMember {
   user: BackendMemberUser;
 }
 
+export type PartnerStatusValue = 'ACTIVE' | 'PAUSED';
+
+export interface BackendPartner {
+  id: string;
+  name: string;
+  type: string;
+  nip: string;
+  city: string;
+  email: string;
+  contactName: string;
+  contactEmail: string;
+  contactPhone: string;
+  agreement: string;
+  agreementValidUntil: string;
+  status: PartnerStatusValue;
+  projects: NamedRef[];
+}
+
+export interface PartnerBody {
+  name: string;
+  type: string;
+  nip: string;
+  city: string;
+  email: string;
+  contactName: string;
+  contactEmail: string;
+  contactPhone: string;
+  agreement: string;
+  agreementValidUntil: string | null;
+  status: PartnerStatusValue;
+  projectIds: string[];
+}
+
 const get = <T>(accessToken: string, path: string, fallbackMessage: string) =>
   request<T>(`${BASE}${path}`, { method: 'GET', accessToken, fallbackMessage });
 
@@ -629,3 +662,38 @@ export const subtasksApi = childResource<
   { title: string },
   { title?: string; done?: boolean }
 >({ parent: 'tasks', resource: 'subtasks', label: 'podzadania' });
+
+export const partnersApi = {
+  list: (accessToken: string) =>
+    get<BackendPartner[]>(
+      accessToken,
+      '/partners',
+      'Nie udało się pobrać partnerów',
+    ),
+
+  create: (accessToken: string, body: PartnerBody) =>
+    send<BackendPartner>(
+      'POST',
+      accessToken,
+      '/partners',
+      'Nie udało się dodać partnera',
+      body,
+    ),
+
+  patch: (accessToken: string, id: string, body: PartnerBody) =>
+    send<BackendPartner>(
+      'PATCH',
+      accessToken,
+      `/partners/${id}`,
+      'Nie udało się zapisać partnera',
+      body,
+    ),
+
+  remove: (accessToken: string, id: string) =>
+    send<void>(
+      'DELETE',
+      accessToken,
+      `/partners/${id}`,
+      'Nie udało się usunąć partnera',
+    ),
+};

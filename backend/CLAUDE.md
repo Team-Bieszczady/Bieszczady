@@ -103,8 +103,8 @@ ready-but-unbuilt today.
 ## Projects domain
 
 Tables, seed and endpoints are all built. The frontend is wired to them except for
-the Zadania page, which still reads its in-memory mock, and the budget
-placeholder. `docs/projects.md` is the frontend-facing guide; read this section
+the Zadania page, which still reads its in-memory mock, and the Budżet page,
+whose backend is built (see "Budget") but not yet wired. `docs/projects.md` is the frontend-facing guide; read this section
 before changing the backend.
 
 ### Shape
@@ -289,6 +289,57 @@ the supporting-document folders an indicator points at are `indicator_folders`.
   shared parent, or holding a document shared with them, and the path lists only visible
   parents. Anyone else gets `folders: []`.
 
+## Budget
+
+`src/projects/budget*.ts`: the Budżet tab. `BudgetService` (read, plan, columns,
+category settings, access), `BudgetActualsService` (cells, invoices, status,
+documents, moving spending) and `BudgetAnnexService` (the aneks workflow). Every
+route is gated on `BUDGET`.
+
+- **A category or position keeps its id across versions.** Each row has a row PK
+  (`id`) and a stable `key`; an aneks copies the plan with the same keys and new
+  row ids. The API sends `key` as `id` and never exposes the row PK. The frontend's
+  `diffVersions` and the actuals both depend on this, so never regenerate keys when
+  copying.
+- **Two layers.** The plan (`budget_versions` → `budget_categories` /
+  `budget_positions`) is versioned. Actuals, columns and category settings are not:
+  they're keyed by `positionKey` / `categoryKey` and shared by every version.
+  "Poniesione" is the `incurred` row in `budget_actual_values`, kept in step with
+  invoices (adding or deleting an invoice moves it, `recalculate` resets it). It is
+  typed by hand only in summary mode (a partner is set and `detailed = false`).
+- **Who can do what.**
+
+  | Action | Who |
+  |---|---|
+  | Read | any project member (`assertCanRead`) |
+  | Plan, columns, settings, actuals, create/submit/withdraw/discard an aneks | director, coordinator, or a `budget_access` grant (`canEditBudget`) |
+  | Grant or revoke `budget_access` | director or coordinator |
+  | Invoice status | director or coordinator, as in the UI |
+  | Approve, reject, revert, edit the description | director only, via `DirectorGuard` and a service check |
+
+- **Partner users.** A PARTNER member linked to a partner (`project_members.partner_id`,
+  set via `PATCH /members/:id/partner`) who has no edit rights reads a filtered budget:
+  only categories of their partner with `visibleToPartner`, only those actuals, only
+  their own history. They may edit actuals there when `partnerCanEdit` is on, and
+  nothing else. A PARTNER with no partner link sees no categories.
+- **Workflow rules.** One open aneks (DRAFT or PENDING) at a time. Submitting and
+  approving need changes against the current version. Approval is refused while a
+  removed position still has invoices or incurred spending. A director may approve
+  their own draft directly. Only the latest approved aneks can be reverted, never
+  the base version, and only with no aneks open. Rejections aren't stored
+  separately; the read derives them from `REJECTED` history rows.
+- **First read creates the budget.** If a project has no versions, `GET budget`
+  creates `Wersja podstawowa` as a DRAFT plus the six default columns. It skips this
+  on an archived project.
+- **History.** Consecutive `EDITED` entries by the same person on the same version
+  within 30 minutes are merged, as in the frontend reducer. `budget_history.version_id`
+  has no FK, so history survives a discarded draft.
+- **Document links** are checked against `folders` / `documents` of the same project
+  directly through Prisma. A link to a deleted document reads back as `null`.
+- **Cleanup.** Project delete removes every budget table (invoices first). Removing a
+  member deletes their `budget_access`. Changing a member's role away from PARTNER
+  clears `partner_id`.
+
 ## Document storage
 `StorageService` must never take the API down with it: a failed container check at boot
 is logged, not thrown, and the container is created lazily on the next save. A storage
@@ -321,8 +372,10 @@ module. Every query is scoped to `userId = caller`, and someone else's notificat
   non-member out, but anyone with `TASKS` who *is* a member sees every task in that
   project, not only their own. Narrowing further would buy nothing today, since the
   same rows are already readable through the nested stages response.
-- Budget stays out; it is hardcoded in the UI for now.
-- Meetings, documents, partners and participants from the ERD are not modelled.
+- Meetings, documents and participants from the ERD are not modelled.
+- Partners are modelled (`partners`, `partner_projects`): org-wide, director-only
+  CRUD at `/partners`. Deleting a partner that a budget category or a project
+  member uses is a 409, and so is unlinking a project whose budget uses it.
 - The Zadania page still reads its in-memory store. Wiring it to the task
   endpoints — a `tasksApi` plus TanStack Query hooks — is the next round.
 
@@ -338,6 +391,13 @@ Two Solina tasks carry a subtask checklist: `zad-sp-7` is 2-of-4 ticked (a
 half-filled bar) and `zad-sp-12` is fully ticked while still `BLOCKED` — proof that
 a finished checklist neither completes its task nor closes its stage. Every task
 owner is a member of their project, which the task endpoints now enforce.
+
+The seed also adds exactly five partners (`PARTNERS`, group `partner`). Four are
+linked to Solina–Polańczyk, and Muzeum Budownictwa Ludowego is `PAUSED` with no
+agreement. Solina–Polańczyk also gets the frontend's mock budget (`seedBudget`):
+Wersja podstawowa and Aneks 1 approved (Aneks 1 current), Aneks 2 pending, the
+mock actuals and invoices, and "Oznakowanie szlaku" run by Gmina Lutowiska in
+summary mode.
 
 ## Conventions
 - UUID primary keys.

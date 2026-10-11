@@ -130,6 +130,46 @@ export class ProjectAccessService {
     );
   }
 
+  async canEditBudget(
+    actor: AuthenticatedUser,
+    projectId: string,
+    db: Db = this.prisma,
+  ): Promise<boolean> {
+    if (await this.canManageTasks(actor, projectId, db)) return true;
+
+    const granted = await db.budgetAccess.count({
+      where: { projectId, userId: actor.id },
+    });
+    return granted > 0;
+  }
+
+  async assertCanEditBudget(
+    actor: AuthenticatedUser,
+    projectId: string,
+    db: Db = this.prisma,
+  ): Promise<void> {
+    if (await this.canEditBudget(actor, projectId, db)) return;
+    throw new ForbiddenException(
+      'Budżet tego projektu może edytować tylko dyrektor, koordynator lub osoba z nadanym dostępem',
+    );
+  }
+
+  async assertCanManageBudgetAccess(
+    actor: AuthenticatedUser,
+    projectId: string,
+    db: Db = this.prisma,
+  ): Promise<void> {
+    if (await this.canManageTasks(actor, projectId, db)) return;
+    throw new ForbiddenException(
+      'Dostępem do budżetu zarządza tylko dyrektor lub koordynator projektu',
+    );
+  }
+
+  assertCanApproveBudget(actor: AuthenticatedUser): void {
+    if (actor.isDirector) return;
+    throw new ForbiddenException('Aneksy zatwierdza tylko dyrektor');
+  }
+
   async assertCanChangeTaskStatus(
     actor: AuthenticatedUser,
     task: TaskLocation,

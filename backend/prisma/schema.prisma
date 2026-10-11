@@ -44,6 +44,14 @@ model User {
   sentNotifications  Notification[]  @relation("NotificationActor")
   ownedIndicators    Indicator[]     @relation("IndicatorOwner")
 
+  createdBudgetVersions   BudgetVersion[]      @relation("BudgetVersionCreatedBy")
+  submittedBudgetVersions BudgetVersion[]      @relation("BudgetVersionSubmittedBy")
+  approvedBudgetVersions  BudgetVersion[]      @relation("BudgetVersionApprovedBy")
+  budgetHistory           BudgetHistoryEntry[] @relation("BudgetHistoryActor")
+  enteredBudgetInvoices   BudgetInvoice[]      @relation("BudgetInvoiceEnteredBy")
+  budgetAccesses          BudgetAccess[]       @relation("BudgetAccessUser")
+  budgetAccessesGranted   BudgetAccess[]       @relation("BudgetAccessGrantedBy")
+
   @@map("users")
 }
 
@@ -132,9 +140,52 @@ model Project {
   risks      Risk[]                        @relation("ProjectRisks")
   events     ProjectEvent[]                @relation("ProjectEvents")
   indicators Indicator[]                   @relation("ProjectIndicators")
+  partners   PartnerProject[]              @relation("PartnerProjectsByProject")
+
+  budgetVersions         BudgetVersion[]          @relation("ProjectBudgetVersions")
+  budgetColumns          BudgetColumn[]           @relation("ProjectBudgetColumns")
+  budgetActuals          BudgetActual[]           @relation("ProjectBudgetActuals")
+  budgetCategorySettings BudgetCategorySettings[] @relation("ProjectBudgetCategorySettings")
+  budgetHistory          BudgetHistoryEntry[]     @relation("ProjectBudgetHistory")
+  budgetAccesses         BudgetAccess[]           @relation("ProjectBudgetAccess")
 
   @@index([statusId])
   @@map("projects")
+}
+
+model Partner {
+  id                  String    @id @default(uuid())
+  name                String
+  type                String
+  nip                 String    @default("")
+  city                String    @default("")
+  email               String    @default("")
+  contactName         String    @map("contact_name")
+  contactEmail        String    @map("contact_email")
+  contactPhone        String    @default("") @map("contact_phone")
+  agreement           String
+  agreementValidUntil DateTime? @map("agreement_valid_until") @db.Date
+  status              String    @default("ACTIVE")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  projects         PartnerProject[] @relation("PartnerProjectsByPartner")
+  members          ProjectMember[]  @relation("PartnerMembers")
+  budgetCategories BudgetCategory[] @relation("PartnerBudgetCategories")
+
+  @@map("partners")
+}
+
+model PartnerProject {
+  partnerId String @map("partner_id")
+  projectId String @map("project_id")
+
+  partner Partner @relation("PartnerProjectsByPartner", fields: [partnerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  project Project @relation("PartnerProjectsByProject", fields: [projectId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([partnerId, projectId])
+  @@index([projectId])
+  @@map("partner_projects")
 }
 
 model ProjectTypesOnProjects {
@@ -166,13 +217,16 @@ model ProjectMember {
   projectId   String   @map("project_id")
   userId      String   @map("user_id")
   projectRole String   @map("project_role")
+  partnerId   String?  @map("partner_id")
   joinedAt    DateTime @default(now()) @map("joined_at")
 
-  project Project @relation("ProjectMembers", fields: [projectId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  user    User    @relation("ProjectMemberUser", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  project Project  @relation("ProjectMembers", fields: [projectId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user    User     @relation("ProjectMemberUser", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  partner Partner? @relation("PartnerMembers", fields: [partnerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([projectId, userId])
   @@index([userId])
+  @@index([partnerId])
   @@map("project_members")
 }
 
@@ -459,3 +513,183 @@ model DocumentAccess {
 @@map("document_access")
 }
 
+model BudgetVersion {
+  id            String    @id @default(uuid())
+  projectId     String    @map("project_id")
+  number        Int
+  name          String
+  status        String
+  isCurrent     Boolean   @default(false) @map("is_current")
+  description   String    @default("") @db.NVarChar(Max)
+  createdById   String    @map("created_by_id")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  submittedById String?   @map("submitted_by_id")
+  submittedAt   DateTime? @map("submitted_at")
+  approvedById  String?   @map("approved_by_id")
+  approvedAt    DateTime? @map("approved_at")
+  savedAt       DateTime? @map("saved_at")
+
+  project     Project          @relation("ProjectBudgetVersions", fields: [projectId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  createdBy   User             @relation("BudgetVersionCreatedBy", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  submittedBy User?            @relation("BudgetVersionSubmittedBy", fields: [submittedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  approvedBy  User?            @relation("BudgetVersionApprovedBy", fields: [approvedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  categories  BudgetCategory[] @relation("BudgetVersionCategories")
+  positions   BudgetPosition[] @relation("BudgetVersionPositions")
+
+  @@unique([projectId, number])
+  @@index([projectId])
+  @@index([createdById])
+  @@index([submittedById])
+  @@index([approvedById])
+  @@map("budget_versions")
+}
+
+model BudgetCategory {
+  id        String  @id @default(uuid())
+  versionId String  @map("version_id")
+  key       String
+  name      String
+  partnerId String? @map("partner_id")
+  sortOrder Int     @map("sort_order")
+
+  version BudgetVersion @relation("BudgetVersionCategories", fields: [versionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  partner Partner?      @relation("PartnerBudgetCategories", fields: [partnerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([versionId, key])
+  @@index([partnerId])
+  @@map("budget_categories")
+}
+
+model BudgetPosition {
+  id              String  @id @default(uuid())
+  versionId       String  @map("version_id")
+  categoryKey     String  @map("category_key")
+  key             String
+  name            String
+  sortOrder       Int     @map("sort_order")
+  planned         Decimal @default(0) @db.Decimal(12, 2)
+  grant           Decimal @default(0) @db.Decimal(12, 2)
+  ownContribution Decimal @default(0) @map("own_contribution") @db.Decimal(12, 2)
+
+  version BudgetVersion @relation("BudgetVersionPositions", fields: [versionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([versionId, key])
+  @@index([versionId, categoryKey])
+  @@map("budget_positions")
+}
+
+model BudgetColumn {
+  id        String  @id @default(uuid())
+  projectId String  @map("project_id")
+  key       String
+  name      String
+  type      String
+  locked    Boolean @default(false)
+  sortOrder Int     @map("sort_order")
+
+  project Project @relation("ProjectBudgetColumns", fields: [projectId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([projectId, key])
+  @@map("budget_columns")
+}
+
+model BudgetActual {
+  id               String  @id @default(uuid())
+  projectId        String  @map("project_id")
+  positionKey      String  @map("position_key")
+  status           String?
+  documentFolderId String? @map("document_folder_id")
+  documentId       String? @map("document_id")
+
+  project  Project             @relation("ProjectBudgetActuals", fields: [projectId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  values   BudgetActualValue[] @relation("BudgetActualValues")
+  invoices BudgetInvoice[]     @relation("BudgetActualInvoices")
+
+  @@unique([projectId, positionKey])
+  @@map("budget_actuals")
+}
+
+model BudgetActualValue {
+  actualId  String @map("actual_id")
+  columnKey String @map("column_key")
+  value     String @db.NVarChar(Max)
+
+  actual BudgetActual @relation("BudgetActualValues", fields: [actualId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([actualId, columnKey])
+  @@map("budget_actual_values")
+}
+
+model BudgetInvoice {
+  id               String   @id @default(uuid())
+  actualId         String   @map("actual_id")
+  number           String
+  contractor       String
+  date             DateTime @db.Date
+  amount           Decimal  @db.Decimal(12, 2)
+  grant            Decimal  @default(0) @db.Decimal(12, 2)
+  ownContribution  Decimal  @default(0) @map("own_contribution") @db.Decimal(12, 2)
+  status           String   @default("TO_BE_PAID")
+  enteredById      String   @map("entered_by_id")
+  documentFolderId String?  @map("document_folder_id")
+  documentId       String?  @map("document_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  actual    BudgetActual @relation("BudgetActualInvoices", fields: [actualId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  enteredBy User         @relation("BudgetInvoiceEnteredBy", fields: [enteredById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([actualId])
+  @@index([enteredById])
+  @@map("budget_invoices")
+}
+
+model BudgetCategorySettings {
+  id               String  @id @default(uuid())
+  projectId        String  @map("project_id")
+  categoryKey      String  @map("category_key")
+  detailed         Boolean @default(true)
+  partnerCanEdit   Boolean @default(false) @map("partner_can_edit")
+  visibleToPartner Boolean @default(false) @map("visible_to_partner")
+  documentFolderId String? @map("document_folder_id")
+  documentId       String? @map("document_id")
+
+  project Project @relation("ProjectBudgetCategorySettings", fields: [projectId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([projectId, categoryKey])
+  @@map("budget_category_settings")
+}
+
+model BudgetHistoryEntry {
+  id          String   @id @default(uuid())
+  projectId   String   @map("project_id")
+  versionId   String?  @map("version_id")
+  versionName String   @map("version_name")
+  kind        String
+  comment     String?  @db.NVarChar(Max)
+  actorId     String   @map("actor_id")
+  at          DateTime @default(now())
+
+  project Project @relation("ProjectBudgetHistory", fields: [projectId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  actor   User    @relation("BudgetHistoryActor", fields: [actorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([projectId])
+  @@index([actorId])
+  @@map("budget_history")
+}
+
+model BudgetAccess {
+  id          String   @id @default(uuid())
+  projectId   String   @map("project_id")
+  userId      String   @map("user_id")
+  grantedById String   @map("granted_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  project   Project @relation("ProjectBudgetAccess", fields: [projectId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user      User    @relation("BudgetAccessUser", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  grantedBy User    @relation("BudgetAccessGrantedBy", fields: [grantedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([projectId, userId])
+  @@index([userId])
+  @@index([grantedById])
+  @@map("budget_access")
+}

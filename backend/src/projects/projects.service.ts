@@ -460,6 +460,25 @@ export class ProjectsService {
         where: { projectId: id },
       });
       await tx.projectEvent.deleteMany({ where: { projectId: id } });
+      await tx.partnerProject.deleteMany({ where: { projectId: id } });
+      await tx.budgetInvoice.deleteMany({
+        where: { actual: { projectId: id } },
+      });
+      await tx.budgetActualValue.deleteMany({
+        where: { actual: { projectId: id } },
+      });
+      await tx.budgetActual.deleteMany({ where: { projectId: id } });
+      await tx.budgetPosition.deleteMany({
+        where: { version: { projectId: id } },
+      });
+      await tx.budgetCategory.deleteMany({
+        where: { version: { projectId: id } },
+      });
+      await tx.budgetVersion.deleteMany({ where: { projectId: id } });
+      await tx.budgetCategorySettings.deleteMany({ where: { projectId: id } });
+      await tx.budgetColumn.deleteMany({ where: { projectId: id } });
+      await tx.budgetHistoryEntry.deleteMany({ where: { projectId: id } });
+      await tx.budgetAccess.deleteMany({ where: { projectId: id } });
       await tx.project.delete({ where: { id } });
     }, SERIALIZABLE);
   }

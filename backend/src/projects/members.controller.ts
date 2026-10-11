@@ -25,7 +25,11 @@ import { RequireModule } from '../auth/decorators/require-module.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { type AuthenticatedUser } from '../auth/types/auth.types';
 import { MembersService } from './members.service';
-import { AddMemberDto, UpdateMemberRoleDto } from './dto/member.dto';
+import {
+  AddMemberDto,
+  UpdateMemberPartnerDto,
+  UpdateMemberRoleDto,
+} from './dto/member.dto';
 
 @ApiTags('projects')
 @ApiBearerAuth()
@@ -124,6 +128,30 @@ export class MembersController {
     @Body() dto: UpdateMemberRoleDto,
   ) {
     return this.members.setRole(id, dto);
+  }
+
+  @UseGuards(DirectorGuard)
+  @RequireModule('PROJECTS')
+  @Patch('members/:id/partner')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Link a PARTNER member to a partner organisation',
+    description:
+      'The member then sees only the budget categories shared with that partner. The partner must be linked to the project. Send null to unlink.',
+  })
+  @ApiBody({ type: UpdateMemberPartnerDto })
+  @ApiResponse({ status: 200, description: 'Member updated' })
+  @ApiResponse({ status: 403, description: 'Director only' })
+  @ApiResponse({ status: 404, description: 'Project member not found' })
+  @ApiResponse({
+    status: 409,
+    description: 'Member is not a PARTNER, or partner not linked to project',
+  })
+  async setPartner(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateMemberPartnerDto,
+  ) {
+    return this.members.setPartner(id, dto);
   }
 
   @UseGuards(DirectorGuard)

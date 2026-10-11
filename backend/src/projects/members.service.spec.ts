@@ -25,6 +25,7 @@ describe('MembersService', () => {
     task: { updateMany: jest.fn() },
     indicator: { updateMany: jest.fn() },
     documentAccess: { deleteMany: jest.fn() },
+    budgetAccess: { deleteMany: jest.fn() },
   });
 
   const tx = makeClient();
@@ -64,6 +65,14 @@ describe('MembersService', () => {
       });
       expect(tx.projectMember.delete).toHaveBeenCalledWith({
         where: { id: 'm1' },
+      });
+    });
+
+    it('takes away the budget access the person had in that project', async () => {
+      await service.remove('m1');
+
+      expect(tx.budgetAccess.deleteMany).toHaveBeenCalledWith({
+        where: { projectId: 'p1', userId: 'anna' },
       });
     });
 
