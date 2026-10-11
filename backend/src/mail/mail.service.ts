@@ -77,6 +77,22 @@ function passwordResetHtml(link: string): string {
 </html>`;
 }
 
+// Nazwę spotkania czy miejsce wpisują ludzie, więc znaki < > " & nie mogą
+// zamienić się w HTML (np. w podstawiony link w mailu z naszego adresu).
+function escapeHtml(text: string): string {
+  return text
+    .split('&')
+    .join('&amp;')
+    .split('<')
+    .join('&lt;')
+    .split('>')
+    .join('&gt;')
+    .split('"')
+    .join('&quot;')
+    .split("'")
+    .join('&#39;');
+}
+
 function meetingInviteHtml(params: {
   title: string;
   projectName: string;
@@ -87,15 +103,19 @@ function meetingInviteHtml(params: {
   const heading = 'Zaproszenie na spotkanie';
   const intro =
     'Zostałeś(-aś) zaproszony(-a) na spotkanie w Wirtualnym Biurze. W załączniku znajdziesz plik, który doda je do Twojego kalendarza (Gmail, Outlook).';
+  const title = escapeHtml(params.title);
+  const projectName = escapeHtml(params.projectName);
+  const whenText = escapeHtml(params.whenText);
 
   let placeLine = '';
   if (params.place) {
-    placeLine = `<tr><td style="font-size:14px;color:${DARK};padding-bottom:6px;"><b>Miejsce:</b> ${params.place}</td></tr>`;
+    placeLine = `<tr><td style="font-size:14px;color:${DARK};padding-bottom:6px;"><b>Miejsce:</b> ${escapeHtml(params.place)}</td></tr>`;
   }
 
   let linkLine = '';
   if (params.meetingUrl) {
-    linkLine = `<tr><td style="font-size:14px;color:${DARK};padding-bottom:6px;"><b>Link:</b> <a href="${params.meetingUrl}" style="color:${DARK_GREEN};">${params.meetingUrl}</a></td></tr>`;
+    const url = escapeHtml(params.meetingUrl);
+    linkLine = `<tr><td style="font-size:14px;color:${DARK};padding-bottom:6px;"><b>Link:</b> <a href="${url}" style="color:${DARK_GREEN};">${url}</a></td></tr>`;
   }
 
   return `<!doctype html>
@@ -127,17 +147,17 @@ function meetingInviteHtml(params: {
             </tr>
             <tr>
               <td style="font-size:16px;font-weight:bold;color:${DARK};padding-bottom:8px;">
-                ${params.title}
+                ${title}
               </td>
             </tr>
             <tr>
               <td style="font-size:14px;color:${DARK};padding-bottom:6px;">
-                <b>Projekt:</b> ${params.projectName}
+                <b>Projekt:</b> ${projectName}
               </td>
             </tr>
             <tr>
               <td style="font-size:14px;color:${DARK};padding-bottom:6px;">
-                <b>Kiedy:</b> ${params.whenText}
+                <b>Kiedy:</b> ${whenText}
               </td>
             </tr>
             ${placeLine}

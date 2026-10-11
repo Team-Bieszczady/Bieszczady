@@ -30,6 +30,9 @@ describe('MeetingsService', () => {
     senderEmail: jest.fn(),
   };
 
+  // Maile idą w tle, więc test musi poczekać, aż skończy się rozpoczęta praca.
+  const flushPromises = () => new Promise((resolve) => setImmediate(resolve));
+
   const october = { from: '2026-10-01', to: '2026-10-31' };
   const inOctober = {
     deletedAt: null,
@@ -343,9 +346,16 @@ describe('MeetingsService', () => {
       ]);
 
       await service.create(newMeeting, executor);
+      await flushPromises();
 
       expect(prisma.user.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { id: { in: ['member-1'] } } }),
+        expect.objectContaining({
+          where: {
+            id: { in: ['member-1'] },
+            accountStatus: 'ACTIVE',
+            deletedAt: null,
+          },
+        }),
       );
       expect(mail.sendMeetingInvite).toHaveBeenCalledTimes(1);
       const [sent] = mail.sendMeetingInvite.mock.calls[0] as [
@@ -357,6 +367,7 @@ describe('MeetingsService', () => {
 
     it('sends nothing when nobody is invited', async () => {
       await service.create({ ...newMeeting, inviteeIds: [] }, executor);
+      await flushPromises();
 
       expect(prisma.user.findMany).not.toHaveBeenCalled();
       expect(mail.sendMeetingInvite).not.toHaveBeenCalled();
@@ -376,6 +387,7 @@ describe('MeetingsService', () => {
       ]);
 
       await service.create({ ...newMeeting, date: '2020-05-04' }, executor);
+      await flushPromises();
 
       expect(mail.sendMeetingInvite).not.toHaveBeenCalled();
     });
@@ -389,6 +401,22 @@ describe('MeetingsService', () => {
         },
       ]);
       mail.sendMeetingInvite.mockRejectedValue(new Error('SMTP down'));
+
+      await expect(service.create(newMeeting, executor)).resolves.toEqual(
+        savedMeeting,
+      );
+      await flushPromises();
+    });
+
+    it('saves the meeting without waiting for the emails to go out', async () => {
+      prisma.user.findMany.mockResolvedValue([
+        {
+          firstName: 'Ewa',
+          lastName: 'Kowalska',
+          email: 'ewa@bieszczady.local',
+        },
+      ]);
+      mail.sendMeetingInvite.mockReturnValue(new Promise(() => {}));
 
       await expect(service.create(newMeeting, executor)).resolves.toEqual(
         savedMeeting,
@@ -562,9 +590,16 @@ describe('MeetingsService', () => {
 
       it('invites only the newly added person when nothing else changed', async () => {
         await service.update('meeting-1', sameDetails, coordinator);
+        await flushPromises();
 
         expect(prisma.user.findMany).toHaveBeenCalledWith(
-          expect.objectContaining({ where: { id: { in: ['member-2'] } } }),
+          expect.objectContaining({
+            where: {
+              id: { in: ['member-2'] },
+              accountStatus: 'ACTIVE',
+              deletedAt: null,
+            },
+          }),
         );
         expect(mail.sendMeetingInvite).toHaveBeenCalledTimes(1);
       });
@@ -580,10 +615,15 @@ describe('MeetingsService', () => {
           { ...sameDetails, startTime: '11:00', endTime: '12:00' },
           coordinator,
         );
+        await flushPromises();
 
         expect(prisma.user.findMany).toHaveBeenCalledWith(
           expect.objectContaining({
-            where: { id: { in: ['member-1', 'member-2'] } },
+            where: {
+              id: { in: ['member-1', 'member-2'] },
+              accountStatus: 'ACTIVE',
+              deletedAt: null,
+            },
           }),
         );
         expect(mail.sendMeetingInvite).toHaveBeenCalledTimes(2);
@@ -600,6 +640,7 @@ describe('MeetingsService', () => {
           { ...sameDetails, startTime: '11:00', endTime: '12:00' },
           coordinator,
         );
+        await flushPromises();
 
         expect(mail.sendMeetingInvite).not.toHaveBeenCalled();
       });
@@ -611,6 +652,7 @@ describe('MeetingsService', () => {
         ]);
 
         await service.update('meeting-1', sameDetails, coordinator);
+        await flushPromises();
 
         expect(prisma.user.findMany).not.toHaveBeenCalled();
         expect(mail.sendMeetingInvite).not.toHaveBeenCalled();

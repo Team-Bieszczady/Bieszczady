@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 
@@ -49,6 +50,8 @@ const SAVED_MEETING_FIELDS = {
 
 @Injectable()
 export class MeetingsService {
+  private readonly logger = new Logger(MeetingsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly mail: MailService,
@@ -197,7 +200,8 @@ export class MeetingsService {
       select: SAVED_MEETING_FIELDS,
     });
 
-    await this.notifyInvitees(meeting, project.name, inviteeIds);
+    // Bez await: zapis nie czeka na serwer pocztowy, maile idą w tle.
+    void this.notifyInvitees(meeting, project.name, inviteeIds);
 
     return meeting;
   }
@@ -251,7 +255,7 @@ export class MeetingsService {
     });
 
     const toNotifyIds = detailsChanged ? inviteeIds : newInviteeIds;
-    await this.notifyInvitees(updated, meeting.project.name, toNotifyIds);
+    void this.notifyInvitees(updated, meeting.project.name, toNotifyIds);
 
     return updated;
   }
@@ -417,33 +421,48 @@ export class MeetingsService {
   ) {
     if (inviteeIds.length === 0) return;
 
-    // Zaproszenie ma sens tylko dla spotkania, które dopiero się odbędzie.
-    const day = isoDay(meeting.date);
-    if (meeting.status !== 'PLANNED' || day < todayInPoland()) return;
+    // Maile idą w tle, więc żaden błąd nie może stąd wyjść: wywróciłby serwer.
+    try {
+      const day = isoDay(meeting.date);
+      const startsAt = warsawLocalToUtc(day, meeting.startTime);
+      const endsAt = warsawLocalToUtc(day, meeting.endTime);
 
-    const invitees = await this.prisma.user.findMany({
-      where: { id: { in: inviteeIds } },
-      select: { firstName: true, lastName: true, email: true },
-    });
+      // Zaproszenie ma sens tylko dla spotkania, które jeszcze się nie skończyło.
+      if (meeting.status !== 'PLANNED' || endsAt.getTime() <= Date.now()) {
+        return;
+      }
 
-    const dayText = new Date(`${day}T00:00:00`).toLocaleDateString('pl-PL', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    });
+      // Jak przy resecie hasła: nie piszemy do kont wyłączonych ani usuniętych.
+      const invitees = await this.prisma.user.findMany({
+        where: {
+          id: { in: inviteeIds },
+          accountStatus: 'ACTIVE',
+          deletedAt: null,
+        },
+        select: { firstName: true, lastName: true, email: true },
+      });
 
-    const invite = {
-      meeting,
-      projectName,
-      whenText: `${dayText}, ${meeting.startTime}–${meeting.endTime}`,
-      startsAt: warsawLocalToUtc(day, meeting.startTime),
-      endsAt: warsawLocalToUtc(day, meeting.endTime),
-      sequence: Math.floor(Date.now() / 1000),
-    };
+      const dayText = new Date(`${day}T00:00:00`).toLocaleDateString('pl-PL', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      });
 
-    await Promise.allSettled(
-      invitees.map((invitee) => this.sendInviteEmail(invite, invitee)),
-    );
+      const invite = {
+        meeting,
+        projectName,
+        whenText: `${dayText}, ${meeting.startTime}–${meeting.endTime}`,
+        startsAt,
+        endsAt,
+        sequence: Math.floor(Date.now() / 1000),
+      };
+
+      await Promise.all(
+        invitees.map((invitee) => this.sendInviteEmail(invite, invitee)),
+      );
+    } catch (error) {
+      this.logger.error('Nie udało się wysłać zaproszeń na spotkanie', error);
+    }
   }
 
   private async sendInviteEmail(
@@ -459,33 +478,29 @@ export class MeetingsService {
   ) {
     const { meeting } = invite;
 
-    try {
-      const ics = buildMeetingIcs({
-        meetingId: meeting.id,
-        title: meeting.title,
-        note: meeting.note,
-        place: meeting.place,
-        meetingUrl: meeting.meetingUrl,
-        startsAt: invite.startsAt,
-        endsAt: invite.endsAt,
-        organizerEmail: this.mail.senderEmail(),
-        attendeeEmail: invitee.email,
-        attendeeName: `${invitee.firstName} ${invitee.lastName}`,
-        sequence: invite.sequence,
-      });
+    const ics = buildMeetingIcs({
+      meetingId: meeting.id,
+      title: meeting.title,
+      note: meeting.note,
+      place: meeting.place,
+      meetingUrl: meeting.meetingUrl,
+      startsAt: invite.startsAt,
+      endsAt: invite.endsAt,
+      organizerEmail: this.mail.senderEmail(),
+      attendeeEmail: invitee.email,
+      attendeeName: `${invitee.firstName} ${invitee.lastName}`,
+      sequence: invite.sequence,
+    });
 
-      await this.mail.sendMeetingInvite({
-        to: invitee.email,
-        title: meeting.title,
-        projectName: invite.projectName,
-        whenText: invite.whenText,
-        place: meeting.place,
-        meetingUrl: meeting.meetingUrl,
-        ics,
-      });
-    } catch (error) {
-      console.error('Nie udało się wysłać zaproszenia na spotkanie', error);
-    }
+    await this.mail.sendMeetingInvite({
+      to: invitee.email,
+      title: meeting.title,
+      projectName: invite.projectName,
+      whenText: invite.whenText,
+      place: meeting.place,
+      meetingUrl: meeting.meetingUrl,
+      ics,
+    });
   }
 
   private assertEndsAfterStart(times: { startTime: string; endTime: string }) {
