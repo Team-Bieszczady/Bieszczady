@@ -11,20 +11,29 @@ export interface NewsletterRecipient {
 
 export function newsletterRecipients(participants: BackendParticipant[]) {
   const recipients: NewsletterRecipient[] = [];
+  const usedEmails = new Set<string>();
 
   for (const participant of participants) {
+    const email = participant.email;
+
     if (participant.consentAt === null) {
       continue;
     }
 
-    if (participant.email === null || participant.email.trim() === '') {
+    if (email === null || email.trim() === '') {
       continue;
     }
+
+    // Rodzina może mieć jeden wspólny adres; newsletter ma przyjść raz.
+    if (usedEmails.has(email.toLowerCase())) {
+      continue;
+    }
+    usedEmails.add(email.toLowerCase());
 
     recipients.push({
       firstName: participant.firstName,
       lastName: participant.lastName,
-      email: participant.email,
+      email,
     });
   }
 
@@ -36,6 +45,21 @@ export function countWithConsent(participants: BackendParticipant[]) {
 
   for (const participant of participants) {
     if (participant.consentAt !== null) {
+      count += 1;
+    }
+  }
+
+  return count;
+}
+
+export function countWithConsentButNoEmail(participants: BackendParticipant[]) {
+  let count = 0;
+
+  for (const participant of participants) {
+    const email = participant.email;
+    const hasEmail = email !== null && email.trim() !== '';
+
+    if (participant.consentAt !== null && !hasEmail) {
       count += 1;
     }
   }

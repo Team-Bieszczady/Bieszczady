@@ -71,7 +71,12 @@ export function MeetingParticipantsSection({
 
   const createAndAdd = (participant: ParticipantChanges) => {
     createParticipant.mutate(participant, {
-      onSuccess: (created) => addToMeeting(created.id, fullName(participant)),
+      onSuccess: (created) => {
+        // Osoba jest już w bazie. Zamykamy formularz od razu, żeby ponowne
+        // kliknięcie nie dodało jej drugi raz, gdyby dopisanie się nie udało.
+        setIsAddingNew(false);
+        addToMeeting(created.id, fullName(participant));
+      },
       onError: (error) => toast.error(error.message),
     });
   };
@@ -123,6 +128,7 @@ export function MeetingParticipantsSection({
           type="search"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
+          maxLength={100}
           placeholder="Dopisz osobę z bazy uczestników..."
           aria-label="Wyszukaj osobę do dopisania"
           className="h-8 w-full rounded-lg border border-gray-300 pr-3 pl-8 text-xs text-dark focus:border-transparent focus:ring-1 focus:ring-darkGreen focus:outline-none"

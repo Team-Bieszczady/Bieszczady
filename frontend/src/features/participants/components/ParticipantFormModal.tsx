@@ -149,6 +149,7 @@ export default function ParticipantFormModal({
               })}
               id={emailId}
               type="email"
+              maxLength={200}
               placeholder="np. anna@poczta.pl"
               aria-invalid={!!errors.email}
               className={INPUT_CLASSES}

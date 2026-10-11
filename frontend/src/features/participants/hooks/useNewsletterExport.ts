@@ -11,6 +11,7 @@ import {
 import { downloadCsv } from '../csv';
 import {
   countWithConsent,
+  countWithConsentButNoEmail,
   newsletterRecipients,
   toNewsletterCsv,
 } from '../newsletterCsv';
@@ -44,7 +45,7 @@ export function useNewsletterExport() {
       const participants = await api.getParticipants(requireToken(), '');
       const recipients = newsletterRecipients(participants);
       const consentCount = countWithConsent(participants);
-      const withoutEmailCount = consentCount - recipients.length;
+      const withoutEmailCount = countWithConsentButNoEmail(participants);
 
       if (recipients.length === 0) {
         if (consentCount === 0) {

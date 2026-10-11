@@ -1,18 +1,27 @@
 const SEPARATOR = ';';
 const POLISH_LETTERS_MARK = '﻿';
 
-function csvValue(value: string) {
-  const needsQuotes =
-    value.includes(SEPARATOR) ||
-    value.includes('"') ||
-    value.includes('\n') ||
-    value.includes('\r');
+const FORMULA_START = ['=', '+', '-', '@'];
 
-  if (!needsQuotes) {
-    return value;
+function csvValue(value: string) {
+  // Excel bierze tekst zaczynający się od = + - @ za formułę: telefon
+  // +48-600-100-200 pokazałby jako -852. Apostrof każe mu zostawić tekst.
+  let text = value;
+  if (FORMULA_START.includes(value.charAt(0))) {
+    text = `'${value}`;
   }
 
-  return `"${value.split('"').join('""')}"`;
+  const needsQuotes =
+    text.includes(SEPARATOR) ||
+    text.includes('"') ||
+    text.includes('\n') ||
+    text.includes('\r');
+
+  if (!needsQuotes) {
+    return text;
+  }
+
+  return `"${text.split('"').join('""')}"`;
 }
 
 export function buildCsv(header: string, rows: string[][]) {

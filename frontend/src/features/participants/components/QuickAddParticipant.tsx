@@ -104,6 +104,7 @@ export function QuickAddParticipant({
         <input
           {...register('email', { validate: emailOrEmpty })}
           type="email"
+          maxLength={200}
           placeholder="E-mail (nieobowiązkowo)"
           aria-label="E-mail"
           aria-invalid={!!errors.email}

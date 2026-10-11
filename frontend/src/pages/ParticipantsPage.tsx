@@ -244,6 +244,7 @@ export default function ParticipantsPage() {
             type="search"
             value={search}
             onChange={(event) => changeSearch(event.target.value)}
+            maxLength={100}
             placeholder="Szukaj po imieniu, nazwisku lub mailu..."
             aria-label="Szukaj uczestników"
             className="h-10 w-full rounded-lg border border-gray-200 pr-4 pl-10 text-xs focus:border-transparent focus:ring-1 focus:ring-darkGreen focus:outline-none"
