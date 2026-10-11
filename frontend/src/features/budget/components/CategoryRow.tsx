@@ -6,6 +6,7 @@ import {
   type ActionMenuItem,
 } from '../../../components/ui/ActionMenu';
 import { InlineEditField } from '../../../components/ui/InlineEditField';
+import type { PartnerFlag } from '../budgetReducer';
 import type {
   CategorySettings,
   Column,
@@ -21,6 +22,7 @@ import {
 } from '../utils/budgetTotals';
 import { MENU_REVEAL_CLASSES, moneyEmphasis } from '../styles';
 import { ChangeTag } from './ChangeTag';
+import { DocumentLinkChip } from './DocumentLinkChip';
 import { RemainingCell, UsageCell } from './SpendCells';
 
 interface CategoryRowProps {
@@ -31,6 +33,7 @@ interface CategoryRowProps {
   change: RowChange | null;
   settings: CategorySettings;
   partnerName: string | null;
+  folderPaths: Map<string, string> | null;
   expanded: boolean;
   canEditPlan: boolean;
   canEditActuals: boolean;
@@ -40,8 +43,11 @@ interface CategoryRowProps {
   onRename: (name: string) => void;
   onToggle: () => void;
   onDelete: () => void;
-  onEditRealizer: () => void;
-  onTogglePartnerFlag: (flag: keyof CategorySettings) => void;
+  onShare: () => void;
+  onRemovePartner: () => void;
+  onEditDocument: () => void;
+  onRemoveDocument: () => void;
+  onTogglePartnerFlag: (flag: PartnerFlag) => void;
 }
 
 export function CategoryRow({
@@ -52,6 +58,7 @@ export function CategoryRow({
   change,
   settings,
   partnerName,
+  folderPaths,
   expanded,
   canEditPlan,
   canEditActuals,
@@ -61,7 +68,10 @@ export function CategoryRow({
   onRename,
   onToggle,
   onDelete,
-  onEditRealizer,
+  onShare,
+  onRemovePartner,
+  onEditDocument,
+  onRemoveDocument,
   onTogglePartnerFlag,
 }: CategoryRowProps) {
   const isRemoved = change === 'REMOVED';
@@ -74,15 +84,28 @@ export function CategoryRow({
         ...(canEditPlan
           ? [
               { id: 'rename', label: 'Zmień nazwę', onSelect: onStartEdit },
-              {
-                id: 'realizer',
-                label: 'Zmień realizującego…',
-                onSelect: onEditRealizer,
-              },
+              hasPartner
+                ? {
+                    id: 'remove-partner',
+                    label: 'Usuń partnera',
+                    onSelect: onRemovePartner,
+                  }
+                : {
+                    id: 'share',
+                    label: 'Udostępnij partnerowi',
+                    onSelect: onShare,
+                  },
             ]
           : []),
         ...(canEditActuals && hasPartner
           ? [
+              {
+                id: 'toggle-edit',
+                label: settings.partnerCanEdit
+                  ? 'Zablokuj edycję partnerowi'
+                  : 'Pozwól partnerowi edytować',
+                onSelect: () => onTogglePartnerFlag('partnerCanEdit'),
+              },
               {
                 id: 'toggle-detailed',
                 label: settings.detailed
@@ -90,12 +113,23 @@ export function CategoryRow({
                   : 'Włącz tabelę szczegółową',
                 onSelect: () => onTogglePartnerFlag('detailed'),
               },
+            ]
+          : []),
+        ...(canEditActuals
+          ? [
               {
-                id: 'toggle-edit',
-                label: settings.partnerCanEdit
-                  ? 'Zablokuj edycję partnerowi'
-                  : 'Pozwól partnerowi uzupełniać',
-                onSelect: () => onTogglePartnerFlag('partnerCanEdit'),
+                id: 'document',
+                label: settings.document ? 'Zmień dokument' : 'Dodaj dokument',
+                onSelect: onEditDocument,
+              },
+            ]
+          : []),
+        ...(canEditActuals && settings.document
+          ? [
+              {
+                id: 'remove-document',
+                label: 'Odłącz dokument',
+                onSelect: onRemoveDocument,
               },
             ]
           : []),
@@ -161,6 +195,14 @@ export function CategoryRow({
                 inputClassName="animate-pop-in -my-0.5 h-5 py-0 text-xs font-semibold"
               />
             )}
+            {settings.document && !isRemoved && (
+              <div className="mt-1">
+                <DocumentLinkChip
+                  link={settings.document}
+                  folderPaths={folderPaths}
+                />
+              </div>
+            )}
           </div>
           {change && change !== 'CHANGED' && (
             <ChangeTag change={change} className="ml-2" />
@@ -180,20 +222,30 @@ export function CategoryRow({
                       ? 'Kliknij, aby ukryć dane przed partnerem'
                       : 'Kliknij, aby pokazać dane partnerowi'
                   }
-                  className={`inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium whitespace-nowrap transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-darkGreen focus-visible:outline-none ${
+                  className={`inline-grid cursor-pointer rounded-md border bg-white px-2 py-0.5 text-[11px] font-medium whitespace-nowrap transition-colors duration-300 ease-in-out hover:opacity-80 focus-visible:ring-2 focus-visible:ring-darkGreen focus-visible:outline-none ${
                     settings.visibleToPartner
-                      ? 'border border-darkGreen bg-white text-darkGreen'
-                      : 'border border-amberDark bg-white text-amberDark'
+                      ? 'border-darkGreen text-darkGreen'
+                      : 'border-amberDark text-amberDark'
                   }`}
                 >
-                  {settings.visibleToPartner ? (
+                  <span
+                    aria-hidden={!settings.visibleToPartner}
+                    className={`inline-flex items-center gap-1 transition-opacity duration-300 ease-in-out [grid-area:1/1] ${
+                      settings.visibleToPartner ? 'opacity-100' : 'opacity-0'
+                    }`}
+                  >
                     <FiEye className="h-3 w-3" aria-hidden="true" />
-                  ) : (
+                    Widoczne dla partnera
+                  </span>
+                  <span
+                    aria-hidden={settings.visibleToPartner}
+                    className={`inline-flex items-center gap-1 transition-opacity duration-300 ease-in-out [grid-area:1/1] ${
+                      settings.visibleToPartner ? 'opacity-0' : 'opacity-100'
+                    }`}
+                  >
                     <FiEyeOff className="h-3 w-3" aria-hidden="true" />
-                  )}
-                  {settings.visibleToPartner
-                    ? 'Widoczne dla partnera'
-                    : 'Ukryte przed partnerem'}
+                    Ukryte przed partnerem
+                  </span>
                 </button>
               ) : null}
             </div>

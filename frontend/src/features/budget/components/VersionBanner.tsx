@@ -141,14 +141,6 @@ export function VersionBanner({
         </Banner>
       )}
 
-      {version.status === 'PENDING' && (
-        <Banner tone="amber">
-          <p>
-            <strong>{version.name}</strong> czeka na akceptację.
-          </p>
-        </Banner>
-      )}
-
       {version.status !== 'APPROVED' && previous && diff && (
         <AnnexReviewPanel
           store={store}
@@ -173,14 +165,15 @@ export function VersionBanner({
         />
       )}
 
-      {version.status === 'APPROVED' && (
+      {version.status === 'APPROVED' && openAnnex(store) === null && (
         <Banner tone="info">
           <div className="min-w-0 space-y-1">
-            <p className="font-semibold">
-              {version.isCurrent
-                ? 'Obowiązująca wersja budżetu. Faktury, wydatki i statusy wpisujesz tutaj, bez aneksu.'
-                : 'Wersja archiwalna, tylko do odczytu. Błędy poprawia się kolejnym aneksem.'}
-            </p>
+            {!version.isCurrent && (
+              <p className="font-semibold">
+                Wersja archiwalna, tylko do odczytu. Błędy poprawia się kolejnym
+                aneksem.
+              </p>
+            )}
             {version.approvedAt && (
               <p className="text-sm font-medium text-dark">
                 Data zatwierdzenia aneksu: {formatDate(version.approvedAt)}
@@ -196,6 +189,7 @@ export function VersionBanner({
               variant="outline"
               size="small"
               onClick={() => setDialog('metadata')}
+              className="border-darkGreen! bg-transparent! text-darkGreen! hover:bg-lightGreen!"
             >
               Edytuj opis
             </Button>

@@ -125,7 +125,7 @@ function BudgetView({ projectId }: { projectId: string }) {
         onToggleChanges={() => setShowChanges((value) => !value)}
       />
       <VersionBanner
-        key={active.id}
+        key={`banner-${active.id}`}
         store={store}
         version={active}
         previous={previous}
@@ -138,7 +138,7 @@ function BudgetView({ projectId }: { projectId: string }) {
         actuals={store.actuals}
       />
       <BudgetTable
-        key={active.id}
+        key={`table-${active.id}`}
         projectId={projectId}
         store={store}
         version={active}

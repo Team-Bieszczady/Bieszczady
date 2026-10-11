@@ -25,7 +25,7 @@ import {
   parseMoney,
 } from './utils/budgetTotals';
 
-type PartnerFlag = keyof CategorySettings;
+export type PartnerFlag = Exclude<keyof CategorySettings, 'document'>;
 
 export interface ActionMeta {
   actor: Actor;
@@ -115,6 +115,11 @@ export type BudgetAction =
     }
   | { type: 'MOVE_ACTUALS'; fromPositionId: string; toPositionId: string }
   | { type: 'TOGGLE_PARTNER_FLAG'; categoryId: string; flag: PartnerFlag }
+  | {
+      type: 'SET_CATEGORY_DOCUMENT';
+      categoryId: string;
+      document: DocumentLink | null;
+    }
   | { type: 'CREATE_ANNEX'; id: string }
   | { type: 'SUBMIT'; versionId: string }
   | { type: 'WITHDRAW'; versionId: string }
@@ -133,6 +138,7 @@ export const DEFAULT_SETTINGS: CategorySettings = {
   detailed: true,
   partnerCanEdit: false,
   visibleToPartner: false,
+  document: null,
 };
 
 export function canApproveAnnexes(user: AuthenticatedUser | null): boolean {
@@ -244,7 +250,7 @@ function editPlan(
   update: (categories: PlanCategory[]) => PlanCategory[],
 ): BudgetStore {
   const version = store.versions.find(({ id }) => id === versionId);
-  if (!version || version.status !== 'DRAFT') return store;
+  if (!version || version.status === 'APPROVED') return store;
 
   return {
     ...withVersion(store, versionId, (draft) => ({
@@ -511,6 +517,18 @@ export function budgetReducer(
         },
       };
     }
+
+    case 'SET_CATEGORY_DOCUMENT':
+      return {
+        ...store,
+        categorySettings: {
+          ...store.categorySettings,
+          [action.categoryId]: {
+            ...settingsOf(store, action.categoryId),
+            document: action.document,
+          },
+        },
+      };
 
     case 'CREATE_ANNEX': {
       if (openAnnex(store)) return store;

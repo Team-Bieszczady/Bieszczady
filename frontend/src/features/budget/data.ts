@@ -298,7 +298,12 @@ export const INITIAL_STORE: BudgetStore = {
     coordination: actuals('Anna Kowalczyk', 'Wkład własny', 36200),
   },
   categorySettings: {
-    signage: { detailed: false, partnerCanEdit: false, visibleToPartner: true },
+    signage: {
+      detailed: false,
+      partnerCanEdit: false,
+      visibleToPartner: true,
+      document: null,
+    },
   },
   history: [
     {

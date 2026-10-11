@@ -38,7 +38,13 @@ type PendingDelete =
   | { kind: 'category'; id: string; name: string }
   | { kind: 'column'; id: string; name: string };
 
-type CategoryForm = { kind: 'add' } | { kind: 'edit'; category: PlanCategory };
+type CategoryForm = { kind: 'add' } | { kind: 'share'; category: PlanCategory };
+
+type DocumentTarget = {
+  kind: 'position' | 'category';
+  id: string;
+  name: string;
+};
 
 interface BudgetTableProps {
   projectId: string;
@@ -65,7 +71,7 @@ export function BudgetTable({
     null,
   );
   const [invoiceTarget, setInvoiceTarget] = useState<PlanPosition | null>(null);
-  const [documentTarget, setDocumentTarget] = useState<PlanPosition | null>(
+  const [documentTarget, setDocumentTarget] = useState<DocumentTarget | null>(
     null,
   );
   const [categoryForm, setCategoryForm] = useState<CategoryForm | null>(null);
@@ -76,8 +82,8 @@ export function BudgetTable({
 
   const { columns, actuals } = store;
   const versionId = version.id;
-  const canEditPlan = version.status === 'DRAFT';
-  const canEditActuals = version.isCurrent;
+  const canEditPlan = version.status !== 'APPROVED';
+  const canEditActuals = version.isCurrent || canEditPlan;
   const canChangeStatus =
     canEditActuals && canManageTasks(user, membersQuery.data ?? []);
   const currentPositionIds = new Set(
@@ -85,17 +91,16 @@ export function BudgetTable({
       category.positions.map(({ id }) => id),
     ),
   );
-  const moveTargets =
-    version.status === 'DRAFT'
-      ? version.categories.flatMap((category) =>
-          category.positions
-            .filter(({ id }) => currentPositionIds.has(id))
-            .map((position) => ({
-              value: position.id,
-              label: `${category.name} / ${position.name}`,
-            })),
-        )
-      : null;
+  const moveTargets = canEditPlan
+    ? version.categories.flatMap((category) =>
+        category.positions
+          .filter(({ id }) => currentPositionIds.has(id))
+          .map((position) => ({
+            value: position.id,
+            label: `${category.name} / ${position.name}`,
+          })),
+      )
+    : null;
   const previousCategories = new Map(
     (previous?.categories ?? []).map((category) => [category.id, category]),
   );
@@ -248,6 +253,7 @@ export function BudgetTable({
                         ({ id }) => id === category.partnerId,
                       )?.name ?? null
                     }
+                    folderPaths={folderPaths}
                     expanded={expanded}
                     canEditPlan={canEditPlan && !isRemovedCategory}
                     canEditActuals={canEditActuals}
@@ -281,8 +287,29 @@ export function BudgetTable({
                         name: category.name,
                       });
                     }}
-                    onEditRealizer={() =>
-                      setCategoryForm({ kind: 'edit', category })
+                    onShare={() => setCategoryForm({ kind: 'share', category })}
+                    onRemovePartner={() =>
+                      dispatch({
+                        type: 'UPDATE_CATEGORY',
+                        versionId,
+                        categoryId: category.id,
+                        name: category.name,
+                        partnerId: null,
+                      })
+                    }
+                    onEditDocument={() =>
+                      setDocumentTarget({
+                        kind: 'category',
+                        id: category.id,
+                        name: category.name,
+                      })
+                    }
+                    onRemoveDocument={() =>
+                      dispatch({
+                        type: 'SET_CATEGORY_DOCUMENT',
+                        categoryId: category.id,
+                        document: null,
+                      })
                     }
                     onTogglePartnerFlag={(flag) =>
                       dispatch({
@@ -376,7 +403,13 @@ export function BudgetTable({
                                   status,
                                 })
                               }
-                              onEditDocument={() => setDocumentTarget(position)}
+                              onEditDocument={() =>
+                                setDocumentTarget({
+                                  kind: 'position',
+                                  id: position.id,
+                                  name: position.name,
+                                })
+                              }
                               onRemoveDocument={() =>
                                 dispatch({
                                   type: 'SET_POSITION_DOCUMENT',
@@ -517,27 +550,40 @@ export function BudgetTable({
       {documentTarget && (
         <DocumentLinkModal
           projectId={projectId}
-          positionName={documentTarget.name}
+          title={`${documentTarget.kind === 'category' ? 'Dokument kategorii' : 'Dokument pozycji'}: ${documentTarget.name}`}
           folderPaths={folderPaths}
-          initialLink={(actuals[documentTarget.id] ?? EMPTY_ACTUALS).document}
+          initialLink={
+            documentTarget.kind === 'category'
+              ? settingsOf(store, documentTarget.id).document
+              : (actuals[documentTarget.id] ?? EMPTY_ACTUALS).document
+          }
           onClose={() => setDocumentTarget(null)}
           onSave={(document) =>
-            dispatch({
-              type: 'SET_POSITION_DOCUMENT',
-              positionId: documentTarget.id,
-              document,
-            })
+            dispatch(
+              documentTarget.kind === 'category'
+                ? {
+                    type: 'SET_CATEGORY_DOCUMENT',
+                    categoryId: documentTarget.id,
+                    document,
+                  }
+                : {
+                    type: 'SET_POSITION_DOCUMENT',
+                    positionId: documentTarget.id,
+                    document,
+                  },
+            )
           }
         />
       )}
 
       {categoryForm && (
         <CategoryFormModal
-          initial={categoryForm.kind === 'edit' ? categoryForm.category : null}
+          initial={categoryForm.kind === 'share' ? categoryForm.category : null}
+          partnerOnly={categoryForm.kind === 'share'}
           onClose={() => setCategoryForm(null)}
           onSave={({ name, partnerId }) =>
             dispatch(
-              categoryForm.kind === 'edit'
+              categoryForm.kind === 'share'
                 ? {
                     type: 'UPDATE_CATEGORY',
                     versionId,

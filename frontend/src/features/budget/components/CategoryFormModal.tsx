@@ -18,12 +18,14 @@ interface CategoryFormValues {
 
 interface CategoryFormModalProps {
   initial: { name: string; partnerId: string | null } | null;
+  partnerOnly?: boolean;
   onClose: () => void;
   onSave: (values: { name: string; partnerId: string | null }) => void;
 }
 
 export function CategoryFormModal({
   initial,
+  partnerOnly = false,
   onClose,
   onSave,
 }: CategoryFormModalProps) {
@@ -36,11 +38,11 @@ export function CategoryFormModal({
   } = useForm<CategoryFormValues>({
     defaultValues: {
       name: initial?.name ?? '',
-      realizer: initial?.partnerId ?? FOUNDATION,
+      realizer: initial?.partnerId ?? (partnerOnly ? '' : FOUNDATION),
     },
   });
   const realizerOptions = [
-    { value: FOUNDATION, label: 'Fundacja' },
+    ...(partnerOnly ? [] : [{ value: FOUNDATION, label: 'Fundacja' }]),
     ...(partnersQuery.data ?? [])
       .filter(
         (partner) =>
@@ -61,39 +63,55 @@ export function CategoryFormModal({
     <Modal
       isOpen
       onClose={onClose}
-      title={initial ? 'Edytuj kategorię' : 'Nowa kategoria'}
+      title={
+        partnerOnly
+          ? 'Udostępnij partnerowi'
+          : initial
+            ? 'Edytuj kategorię'
+            : 'Nowa kategoria'
+      }
     >
       <form onSubmit={submit} className="space-y-5">
+        {!partnerOnly && (
+          <div>
+            <label className={FIELD_LABEL_CLASSES}>Nazwa kategorii</label>
+            <input
+              type="text"
+              autoFocus
+              className={INPUT_CLASSES}
+              {...register('name', {
+                validate: (value) =>
+                  value.trim() !== '' || 'Podaj nazwę kategorii',
+              })}
+            />
+            <FieldError message={errors.name?.message} />
+          </div>
+        )}
         <div>
-          <label className={FIELD_LABEL_CLASSES}>Nazwa kategorii</label>
-          <input
-            type="text"
-            autoFocus
-            className={INPUT_CLASSES}
-            {...register('name', {
-              validate: (value) =>
-                value.trim() !== '' || 'Podaj nazwę kategorii',
-            })}
-          />
-          <FieldError message={errors.name?.message} />
-        </div>
-        <div>
-          <label className={FIELD_LABEL_CLASSES}>Kto realizuje</label>
+          <label className={FIELD_LABEL_CLASSES}>
+            {partnerOnly ? 'Partner' : 'Kto realizuje'}
+          </label>
           <Controller
             control={control}
             name="realizer"
+            rules={{
+              validate: (value) => value !== '' || 'Wybierz partnera',
+            }}
             render={({ field }) => (
               <Select
                 value={field.value}
                 onChange={field.onChange}
                 onBlur={field.onBlur}
                 options={realizerOptions}
-                placeholder="Wybierz realizującego"
+                placeholder={
+                  partnerOnly ? 'Wybierz partnera' : 'Wybierz realizującego'
+                }
                 size="md"
                 allowEmpty={false}
               />
             )}
           />
+          <FieldError message={errors.realizer?.message} />
         </div>
 
         <div className="flex justify-end gap-3 border-t border-gray-200 pt-4">
@@ -106,7 +124,7 @@ export function CategoryFormModal({
             Anuluj
           </Button>
           <Button type="submit" variant="primary" size="small">
-            Zapisz
+            {partnerOnly ? 'Udostępnij' : 'Zapisz'}
           </Button>
         </div>
       </form>

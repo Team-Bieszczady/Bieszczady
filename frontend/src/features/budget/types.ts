@@ -87,6 +87,7 @@ export interface CategorySettings {
   detailed: boolean;
   partnerCanEdit: boolean;
   visibleToPartner: boolean;
+  document: DocumentLink | null;
 }
 
 export type HistoryKind =

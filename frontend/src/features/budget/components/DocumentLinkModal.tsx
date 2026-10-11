@@ -6,7 +6,7 @@ import { DocumentLinkPicker } from './DocumentLinkPicker';
 
 interface DocumentLinkModalProps {
   projectId: string;
-  positionName: string;
+  title: string;
   folderPaths: Map<string, string> | null;
   initialLink: DocumentLink | null;
   onClose: () => void;
@@ -15,7 +15,7 @@ interface DocumentLinkModalProps {
 
 export function DocumentLinkModal({
   projectId,
-  positionName,
+  title,
   folderPaths,
   initialLink,
   onClose,
@@ -31,7 +31,7 @@ export function DocumentLinkModal({
   });
 
   return (
-    <Modal isOpen onClose={onClose} title={`Dokument pozycji: ${positionName}`}>
+    <Modal isOpen onClose={onClose} title={title}>
       <form onSubmit={submit} className="space-y-5">
         <p className="text-[11px] text-grayText">
           Wskaż folder lub plik w Dokumentach, np. raport finansowy partnera.
