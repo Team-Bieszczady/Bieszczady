@@ -26,6 +26,7 @@ interface PopoverPanelProps extends VariantProps<typeof panelVariants> {
   minWidth?: number;
   width?: number;
   centerOnMobile?: boolean;
+  onDismiss?: () => void;
   role?: 'listbox' | 'menu' | 'dialog';
   ariaLabel?: string;
   tabIndex?: number;
@@ -40,6 +41,7 @@ export function PopoverPanel({
   minWidth,
   width,
   centerOnMobile = false,
+  onDismiss,
   role,
   ariaLabel,
   tabIndex,
@@ -62,7 +64,13 @@ export function PopoverPanel({
 
   if (isCentered) {
     return createPortal(
-      <div className="animate-fade-in fixed inset-0 z-60 flex items-center justify-center bg-black/40 p-4">
+      <div
+        onMouseDown={(event) => {
+          event.stopPropagation();
+          onDismiss?.();
+        }}
+        className="animate-fade-in fixed inset-0 z-60 flex items-center justify-center bg-black/40 p-4"
+      >
         <div
           ref={panelRef}
           role={role}

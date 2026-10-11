@@ -40,6 +40,7 @@ export default function NotificationPanel({
       align={align}
       width={352}
       centerOnMobile
+      onDismiss={onNavigate}
       role="dialog"
       ariaLabel="Powiadomienia"
       tabIndex={-1}

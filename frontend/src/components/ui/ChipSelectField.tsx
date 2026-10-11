@@ -172,6 +172,7 @@ export function ChipSelectField({
           position={position}
           minWidth={220}
           centerOnMobile
+          onDismiss={close}
           role="listbox"
           ariaLabel={label}
         >

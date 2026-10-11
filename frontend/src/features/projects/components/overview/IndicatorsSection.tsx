@@ -102,7 +102,7 @@ export default function IndicatorsSection({
     indicator: IndicatorView,
     values: IndicatorFormValues,
   ) => {
-    const result = await editIndicator(indicator.id, values);
+    const result = await editIndicator(indicator, values);
     if (!result.ok) return toast.error(result.message, { id: result.message });
 
     close();
