@@ -41,7 +41,7 @@ const SAVED_FIELDS = {
           versions: {
             orderBy: { versionNo: 'desc' },
             take: 1,
-            select: { fileName: true },
+            select: { fileName: true, versionNo: true, mimeType: true },
           },
         },
       },
@@ -73,6 +73,12 @@ function toInvoiceView(invoice: SavedInvoice) {
       status: link.document.status,
       fileName: link.document.versions[0]
         ? link.document.versions[0].fileName
+        : '',
+      versionNo: link.document.versions[0]
+        ? link.document.versions[0].versionNo
+        : 0,
+      mimeType: link.document.versions[0]
+        ? link.document.versions[0].mimeType
         : '',
     })),
   };

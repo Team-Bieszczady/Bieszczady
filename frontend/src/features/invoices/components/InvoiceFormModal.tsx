@@ -7,7 +7,10 @@ import { DateInput } from '../../../components/ui/DateInput';
 import { FieldError } from '../../../components/ui/FieldError';
 import { Modal } from '../../../components/ui/Modal';
 import { Select, type SelectOption } from '../../../components/ui/Select';
-import { INPUT_CLASSES } from '../../../components/ui/formStyles';
+import {
+  FIELD_LABEL_CLASSES,
+  INPUT_CLASSES,
+} from '../../../components/ui/formStyles';
 import type { BackendInvoice } from '../../../lib/api';
 import { formatNumericDate, todayIso } from '../../projects/utils/isoDate';
 import { formatAmount } from '../invoiceSummary';
@@ -44,8 +47,6 @@ function findDuplicate(
       invoice.id !== editedId && invoice.name.trim().toLowerCase() === wanted,
   );
 }
-
-const LABEL_CLASSES = 'mb-2 block text-sm text-dark/80';
 
 function startingValues(
   invoice: BackendInvoice | undefined,
@@ -226,7 +227,7 @@ export default function InvoiceFormModal({
         )}
 
         <div>
-          <label htmlFor={nameId} className={LABEL_CLASSES}>
+          <label htmlFor={nameId} className={FIELD_LABEL_CLASSES}>
             Nazwa faktury
           </label>
           <input
@@ -259,7 +260,7 @@ export default function InvoiceFormModal({
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label htmlFor={amountId} className={LABEL_CLASSES}>
+            <label htmlFor={amountId} className={FIELD_LABEL_CLASSES}>
               Kwota
             </label>
             <div className="relative">
@@ -287,7 +288,7 @@ export default function InvoiceFormModal({
           </div>
 
           <div>
-            <label htmlFor={dateId} className={LABEL_CLASSES}>
+            <label htmlFor={dateId} className={FIELD_LABEL_CLASSES}>
               Data zapłaty
             </label>
             <Controller
@@ -397,6 +398,7 @@ export default function InvoiceFormModal({
             size="small"
             type="submit"
             isPending={isPending}
+            className="font-medium!"
           >
             {invoice ? 'Zapisz' : 'Dodaj fakturę'}
           </Button>

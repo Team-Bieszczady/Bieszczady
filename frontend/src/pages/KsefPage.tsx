@@ -4,17 +4,19 @@ import { useNavigate } from 'react-router';
 import { LuDownload, LuPlus, LuSearch, LuX } from 'react-icons/lu';
 import { Button } from '../components/ui/Button';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+
 import { InlineQueryState } from '../components/ui/InlineQueryState';
 import InvoiceFormModal, {
   type InvoiceFormInputs,
 } from '../features/invoices/components/InvoiceFormModal';
 import { InvoicesTable } from '../features/invoices/components/InvoicesTable';
-import { InvoiceSummaryCards } from '../features/invoices/components/InvoiceSummaryCards';
+import { InvoiceStatusTabs } from '../features/invoices/components/InvoiceStatusTabs';
+
 import { ProjectTotalsSection } from '../features/invoices/components/ProjectTotalsSection';
 import {
   filterInvoices,
   projectTotals,
-  summarize,
+  tabCounts,
   type InvoiceTab,
 } from '../features/invoices/invoiceSummary';
 import { toInvoicesCsv } from '../features/invoices/invoicesCsv';
@@ -25,6 +27,7 @@ import { useInvoices } from '../features/invoices/hooks/useInvoices';
 import { useUpdateInvoice } from '../features/invoices/hooks/useUpdateInvoice';
 import { useUpdateInvoiceStatus } from '../features/invoices/hooks/useUpdateInvoiceStatus';
 import { useUploadInvoiceDocument } from '../features/invoices/hooks/useInvoiceDocument';
+import { useInvoiceFilePreview } from '../features/invoices/hooks/useInvoiceFilePreview';
 import { useProjects } from '../features/projects/hooks/useProjectsApi';
 import { useSelectedProject } from '../context/useSelectedProject';
 import { pluralizePl, type PluralForms } from '../lib/pluralizePl';
@@ -43,13 +46,6 @@ function byProjectName(invoices: BackendInvoice[], projectId: string | null) {
   }
   return null;
 }
-
-const STATUS_TABS: { value: InvoiceTab; label: string }[] = [
-  { value: null, label: 'Wszystkie' },
-  { value: 'TO_PAY', label: 'Do zapłaty' },
-  { value: 'OVERDUE', label: 'Po terminie' },
-  { value: 'PAID', label: 'Zapłacone' },
-];
 
 export default function KsefPage() {
   const [statusFilter, setStatusFilter] = useState<InvoiceTab>(null);
@@ -72,13 +68,16 @@ export default function KsefPage() {
   const updateStatus = useUpdateInvoiceStatus();
   const deleteInvoice = useDeleteInvoice();
   const uploadDocument = useUploadInvoiceDocument();
+  const filePreview = useInvoiceFilePreview();
   const navigate = useNavigate();
   const { setProjectId } = useSelectedProject();
 
   const invoices = invoicesQuery.data ?? [];
+  const searched = filterInvoices(invoices, null, search, projectFilter);
   const shown = filterInvoices(invoices, statusFilter, search, projectFilter);
   const filteredProject = byProjectName(invoices, projectFilter);
-  const totals = summarize(invoices);
+
+  const counts = tabCounts(searched);
   const byProject = projectTotals(invoices);
   const projectOptions = (projectsQuery.data ?? []).map((project) => ({
     value: project.id,
@@ -172,6 +171,15 @@ export default function KsefPage() {
     void navigate(`/project/documents?folder=${document.folderId}`);
   };
 
+  const previewFile = (invoice: BackendInvoice) => {
+    const document = invoice.documents[0];
+    if (!document) return;
+
+    filePreview
+      .preview(document.projectId, document.id, document.versionNo)
+      .catch((error: Error) => toast.error(error.message));
+  };
+
   const exportCsv = () => {
     if (shown.length === 0) {
       toast.error('Nie ma czego eksportować');
@@ -196,16 +204,11 @@ export default function KsefPage() {
   };
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 pt-16 pb-4 min-[400px]:px-6 sm:px-8 lg:pt-4">
+    <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 pt-16 pb-4 min-[400px]:px-6 sm:px-8 lg:pt-4">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-base font-bold text-dark min-[500px]:text-xl lg:text-2xl">
-            Faktury KSeF
-          </h1>
-          <p className="mt-1 text-xs text-grayText">
-            {pluralizePl(invoices.length, INVOICE_FORMS)} w rejestrze
-          </p>
-        </div>
+        <h1 className="text-base font-bold text-dark min-[500px]:text-xl lg:text-2xl">
+          Faktury KSeF
+        </h1>
         <div className="flex items-center gap-2">
           {invoices.length > 0 && (
             <Button
@@ -232,51 +235,28 @@ export default function KsefPage() {
         </div>
       </div>
 
-      {invoices.length > 0 && <InvoiceSummaryCards totals={totals} />}
-
-      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-gray-200">
-        <div
-          role="tablist"
-          aria-label="Filtruj po statusie"
-          className="flex gap-1"
-        >
-          {STATUS_TABS.map((tab) => {
-            const isActive = tab.value === statusFilter;
-            return (
-              <button
-                key={tab.value ?? 'all'}
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                onClick={() => setStatusFilter(tab.value)}
-                className={`flex cursor-pointer items-center border-b-2 px-3 py-2.5 text-xs whitespace-nowrap transition-colors focus-visible:ring-1 focus-visible:ring-darkGreen focus-visible:outline-none ${
-                  isActive
-                    ? 'border-darkGreen font-semibold text-darkGreen'
-                    : 'border-transparent text-grayText hover:text-dark'
-                }`}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="relative mb-2 w-full sm:w-64">
-          <LuSearch
-            className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400"
-            aria-hidden="true"
-          />
-          <input
-            type="search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            maxLength={100}
-            placeholder="Szukaj po nazwie lub projekcie..."
-            aria-label="Szukaj faktur"
-            className="h-9 w-full rounded-lg border border-gray-200 pr-3 pl-9 text-xs focus:border-transparent focus:ring-1 focus:ring-darkGreen focus:outline-none"
-          />
-        </div>
+      <div className="relative">
+        <LuSearch
+          className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400"
+          aria-hidden="true"
+        />
+        <input
+          type="search"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          maxLength={100}
+          placeholder="Szukaj po nazwie lub projekcie..."
+          aria-label="Szukaj faktur"
+          className="h-10 w-full rounded-lg border border-gray-200 pr-4 pl-10 text-xs focus:border-transparent focus:ring-1 focus:ring-darkGreen focus:outline-none"
+        />
       </div>
+
+      <InvoiceStatusTabs
+        value={statusFilter}
+        counts={counts}
+        total={searched.length}
+        onChange={setStatusFilter}
+      />
 
       {filteredProject && (
         <div className="-mb-3 flex flex-wrap items-center gap-2 text-xs">
@@ -292,7 +272,7 @@ export default function KsefPage() {
         </div>
       )}
 
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white max-sm:border-0 max-sm:bg-transparent">
         <InlineQueryState
           isLoading={invoicesQuery.isPending}
           isError={invoicesQuery.isError}
@@ -311,6 +291,7 @@ export default function KsefPage() {
               onToggleStatus={toggleStatus}
               onUploadFile={uploadFile}
               onOpenInDocuments={openInDocuments}
+              onPreviewFile={previewFile}
               isTogglingId={
                 updateStatus.isPending ? updateStatus.variables?.id : undefined
               }

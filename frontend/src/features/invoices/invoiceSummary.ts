@@ -3,8 +3,10 @@ import { toIsoDate, todayIso } from '../projects/utils/isoDate';
 
 export interface InvoiceTotals {
   all: number;
+  allCount: number;
   toPay: number;
   paid: number;
+  paidCount: number;
   overdueCount: number;
   overdueAmount: number;
 }
@@ -39,14 +41,45 @@ export function isOverdue(invoice: BackendInvoice, today: string = todayIso()) {
   return toIsoDate(invoice.paymentDate) < today;
 }
 
+export interface InvoiceTabCounts {
+  toPay: number;
+  paid: number;
+  overdue: number;
+}
+
+export function tabCounts(
+  invoices: BackendInvoice[],
+  today: string = todayIso(),
+): InvoiceTabCounts {
+  let toPay = 0;
+  let paid = 0;
+  let overdue = 0;
+
+  for (const invoice of invoices) {
+    if (invoice.status === 'PAID') {
+      paid += 1;
+    } else {
+      toPay += 1;
+    }
+
+    if (isOverdue(invoice, today)) {
+      overdue += 1;
+    }
+  }
+
+  return { toPay, paid, overdue };
+}
+
 export function summarize(
   invoices: BackendInvoice[],
   today: string = todayIso(),
 ): InvoiceTotals {
   const totals = {
     all: 0,
+    allCount: 0,
     toPay: 0,
     paid: 0,
+    paidCount: 0,
     overdueCount: 0,
     overdueAmount: 0,
   };
@@ -54,9 +87,11 @@ export function summarize(
   for (const invoice of invoices) {
     const amount = amountOf(invoice.amount);
     totals.all += amount;
+    totals.allCount += 1;
 
     if (invoice.status === 'PAID') {
       totals.paid += amount;
+      totals.paidCount += 1;
     } else {
       totals.toPay += amount;
     }
@@ -69,8 +104,10 @@ export function summarize(
 
   return {
     all: round(totals.all),
+    allCount: totals.allCount,
     toPay: round(totals.toPay),
     paid: round(totals.paid),
+    paidCount: totals.paidCount,
     overdueCount: totals.overdueCount,
     overdueAmount: round(totals.overdueAmount),
   };

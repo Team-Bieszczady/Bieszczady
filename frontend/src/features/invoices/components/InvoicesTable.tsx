@@ -1,6 +1,13 @@
 import { useRef } from 'react';
-import { LuFileUp, LuPaperclip, LuPencil, LuTrash2 } from 'react-icons/lu';
+import {
+  LuEye,
+  LuFileUp,
+  LuFolderOpen,
+  LuPencil,
+  LuTrash2,
+} from 'react-icons/lu';
 import type { BackendInvoice, InvoiceStatus } from '../../../lib/api';
+import { canPreview } from '../../documents/utils/formatters';
 import { formatNumericDate } from '../../projects/utils/isoDate';
 import { formatAmount, isOverdue } from '../invoiceSummary';
 
@@ -10,6 +17,7 @@ interface InvoiceActions {
   onToggleStatus: (invoice: BackendInvoice) => void;
   onUploadFile: (invoice: BackendInvoice, file: File) => void;
   onOpenInDocuments: (invoice: BackendInvoice) => void;
+  onPreviewFile: (invoice: BackendInvoice) => void;
   isTogglingId?: string;
   isUploadingId?: string;
 }
@@ -84,25 +92,41 @@ function FileCell({
   invoice,
   onUploadFile,
   onOpenInDocuments,
+  onPreviewFile,
   isUploading,
 }: {
   invoice: BackendInvoice;
   onUploadFile: (invoice: BackendInvoice, file: File) => void;
   onOpenInDocuments: (invoice: BackendInvoice) => void;
+  onPreviewFile: (invoice: BackendInvoice) => void;
   isUploading: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const document = invoice.documents[0];
 
-  if (invoice.documents.length > 0) {
+  if (document) {
     return (
-      <button
-        type="button"
-        onClick={() => onOpenInDocuments(invoice)}
-        className="flex cursor-pointer items-center gap-1.5 text-xs font-medium whitespace-nowrap text-darkGreen hover:text-darkGreenHover"
-      >
-        <LuPaperclip size={14} aria-hidden="true" />
-        Zobacz w dokumentach
-      </button>
+      <div className="flex items-center gap-3">
+        {canPreview(document.mimeType) && (
+          <button
+            type="button"
+            onClick={() => onPreviewFile(invoice)}
+            className="flex cursor-pointer items-center gap-1.5 text-xs font-medium whitespace-nowrap text-darkGreen hover:text-darkGreenHover"
+          >
+            <LuEye size={14} aria-hidden="true" />
+            Podgląd
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => onOpenInDocuments(invoice)}
+          title="Otwórz w drzewku Dokumentów"
+          className="flex cursor-pointer items-center gap-1.5 text-xs whitespace-nowrap text-grayText hover:text-darkGreen"
+        >
+          <LuFolderOpen size={14} aria-hidden="true" />
+          {canPreview(document.mimeType) ? '' : 'Zobacz w dokumentach'}
+        </button>
+      </div>
     );
   }
 
@@ -189,7 +213,7 @@ function InvoiceCard({
   actions: InvoiceActions;
 }) {
   return (
-    <li className="border-b border-gray-100 px-4 py-3 last:border-b-0">
+    <div className="rounded-lg border border-gray-200 bg-white p-4">
       <div className="flex items-baseline justify-between gap-3">
         <p className="text-sm font-medium text-dark">{invoice.name}</p>
         <p className="text-sm whitespace-nowrap text-dark">
@@ -213,6 +237,7 @@ function InvoiceCard({
           invoice={invoice}
           onUploadFile={actions.onUploadFile}
           onOpenInDocuments={actions.onOpenInDocuments}
+          onPreviewFile={actions.onPreviewFile}
           isUploading={actions.isUploadingId === invoice.id}
         />
         <RowActions
@@ -221,7 +246,7 @@ function InvoiceCard({
           onDelete={actions.onDelete}
         />
       </div>
-    </li>
+    </div>
   );
 }
 
@@ -240,15 +265,15 @@ export function InvoicesTable({
 
   return (
     <>
-      <ul className="sm:hidden">
+      <div className="space-y-3 sm:hidden">
         {invoices.map((invoice) => (
           <InvoiceCard key={invoice.id} invoice={invoice} actions={actions} />
         ))}
-      </ul>
+      </div>
 
       <div className="hidden overflow-x-auto sm:block">
         <table className="w-full min-w-[820px]">
-          <thead className="border-b border-gray-200">
+          <thead className="border-b border-gray-200 bg-gray-100">
             <tr>
               {HEADERS.map((header) => (
                 <th key={header} className={TH_CLASSES}>
@@ -284,6 +309,7 @@ export function InvoicesTable({
                     invoice={invoice}
                     onUploadFile={actions.onUploadFile}
                     onOpenInDocuments={actions.onOpenInDocuments}
+                    onPreviewFile={actions.onPreviewFile}
                     isUploading={actions.isUploadingId === invoice.id}
                   />
                 </td>

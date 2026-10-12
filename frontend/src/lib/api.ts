@@ -89,6 +89,8 @@ export interface InvoiceDocument {
   name: string;
   status: string;
   fileName: string;
+  versionNo: number;
+  mimeType: string;
 }
 
 export interface BackendInvoice {

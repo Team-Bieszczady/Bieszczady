@@ -41,8 +41,10 @@ export function ProjectTotalsSection({
                 type="button"
                 onClick={() => onPick(total.projectId)}
                 aria-pressed={isActive}
-                className={`w-full cursor-pointer px-4 py-3 text-left transition-colors ${
-                  isActive ? 'bg-lightGreen/40' : 'hover:bg-gray-50'
+                className={`w-full cursor-pointer border-l-2 px-4 py-3 text-left transition-colors ${
+                  isActive
+                    ? 'border-darkGreen bg-white'
+                    : 'border-transparent hover:bg-gray-50'
                 }`}
               >
                 <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
@@ -59,7 +61,7 @@ export function ProjectTotalsSection({
                   </span>
                 </div>
                 <div
-                  className="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-100"
+                  className="mt-2 h-1 overflow-hidden rounded-full bg-gray-100"
                   aria-hidden="true"
                 >
                   <div
