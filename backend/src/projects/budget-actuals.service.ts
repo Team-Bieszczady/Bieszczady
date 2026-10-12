@@ -67,7 +67,11 @@ export class BudgetActualsService {
       if ((BUDGET_PLAN_FIELDS as readonly string[]).includes(columnKey)) {
         throw new ConflictException('Tę kwotę zmienia się w planie budżetu');
       }
-      if (columnKey === BUDGET_SPENT_COLUMN && !this.isSummary(position)) {
+      if (
+        columnKey === BUDGET_SPENT_COLUMN &&
+        !this.isSummary(position) &&
+        !(await this.access.canEditBudget(actor, projectId, tx))
+      ) {
         throw new ConflictException(
           'Poniesione liczy się z faktur. Ręcznie wpisuje się je tylko w trybie podsumowania',
         );
@@ -360,6 +364,7 @@ export class BudgetActualsService {
     db: Db,
   ): Promise<PositionContext> {
     await this.access.assertCanRead(actor, projectId, db);
+    await this.access.assertCanUseModule(actor, projectId, 'BUDGET', db);
     const position = await this.locatePosition(projectId, positionKey, db);
 
     if (!(await this.access.canEditBudget(actor, projectId, db))) {

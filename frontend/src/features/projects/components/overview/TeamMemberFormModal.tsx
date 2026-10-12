@@ -1,24 +1,24 @@
-import { Controller, useForm } from 'react-hook-form';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import { FieldError } from '../../../../components/ui/FieldError';
 import { Button } from '../../../../components/ui/Button';
 import { Modal } from '../../../../components/ui/Modal';
 import { Select, type SelectOption } from '../../../../components/ui/Select';
 import { FIELD_LABEL_CLASSES } from '../../../../components/ui/formStyles';
+import { MODULE_LABELS, PROJECT_SCOPED_MODULES } from '../../../../lib/modules';
 import type { ProjectRoleValue } from '../../../../lib/projectsApi';
+import { useUserModules } from '../../../people/hooks/useUpdateUserModules';
 import { PROJECT_ROLE_OPTIONS } from '../../labels';
-import type { TeamMemberView } from '../../hooks/useProjectTeam';
-
-interface TeamMemberFormInputs {
-  userId: string;
-  role: ProjectRoleValue;
-}
+import type {
+  TeamMemberValues,
+  TeamMemberView,
+} from '../../hooks/useProjectTeam';
 
 interface TeamMemberFormModalProps {
   mode: 'add' | 'role';
   member: TeamMemberView | null;
   candidateOptions: SelectOption[];
   onClose: () => void;
-  onSubmit: (values: TeamMemberFormInputs) => void | Promise<unknown>;
+  onSubmit: (values: TeamMemberValues) => void | Promise<unknown>;
 }
 
 export default function TeamMemberFormModal({
@@ -32,24 +32,37 @@ export default function TeamMemberFormModal({
     handleSubmit,
     control,
     formState: { errors, isSubmitting },
-  } = useForm<TeamMemberFormInputs>({
+  } = useForm<TeamMemberValues>({
     defaultValues: {
       userId: member?.userId ?? '',
       role: member?.role ?? 'EXECUTOR',
+      modules: member?.modules ?? PROJECT_SCOPED_MODULES,
+      canEditBudget: !!member?.budgetAccessId,
     },
   });
 
   const isAdding = mode === 'add';
+  const [userId, role, modules] = useWatch({
+    control,
+    name: ['userId', 'role', 'modules'],
+  });
+  const orgModules = useUserModules(userId, !!userId);
+  const isCoordinator = role === 'COORDINATOR';
 
   return (
     <Modal
       isOpen
       onClose={onClose}
-      title={isAdding ? 'Dodaj członka zespołu' : 'Zmień rolę w projekcie'}
+      title={isAdding ? 'Dodaj członka zespołu' : 'Edytuj członka zespołu'}
     >
       <form
         onSubmit={handleSubmit(async (values) => {
-          await onSubmit(values);
+          await onSubmit({
+            ...values,
+            modules: values.modules.filter(
+              (module) => !orgModules.data || orgModules.data.includes(module),
+            ),
+          });
         })}
         className="space-y-5"
       >
@@ -108,6 +121,83 @@ export default function TeamMemberFormModal({
             Rola obowiązuje tylko w tym projekcie, ta sama osoba może mieć inną
             w innym.
           </p>
+        </div>
+
+        <div>
+          <label className={FIELD_LABEL_CLASSES}>Dostęp w tym projekcie</label>
+          {isCoordinator ? (
+            <p className="text-[11px] text-mutedText">
+              Koordynator ma pełny dostęp do wszystkich sekcji tego projektu.
+            </p>
+          ) : (
+            <>
+              <Controller
+                name="modules"
+                control={control}
+                render={({ field }) => (
+                  <div className="space-y-2">
+                    {PROJECT_SCOPED_MODULES.map((module) => {
+                      const missing =
+                        !!orgModules.data && !orgModules.data.includes(module);
+                      return (
+                        <label
+                          key={module}
+                          className="flex items-center gap-2 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={!missing && field.value.includes(module)}
+                            disabled={missing}
+                            onChange={(event) =>
+                              field.onChange(
+                                event.target.checked
+                                  ? [...field.value, module]
+                                  : field.value.filter(
+                                      (item) => item !== module,
+                                    ),
+                              )
+                            }
+                            onBlur={field.onBlur}
+                            className="w-4 h-4 rounded border-gray-300"
+                          />
+                          <span className="text-sm text-gray-700">
+                            {MODULE_LABELS[module]}
+                          </span>
+                          {missing && (
+                            <span className="text-[11px] text-mutedText">
+                              brak w Ludzie → Dostęp
+                            </span>
+                          )}
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              />
+              {modules.includes('BUDGET') && (
+                <Controller
+                  name="canEditBudget"
+                  control={control}
+                  render={({ field }) => (
+                    <label className="mt-2 ml-6 flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={field.value}
+                        onChange={(event) =>
+                          field.onChange(event.target.checked)
+                        }
+                        onBlur={field.onBlur}
+                        className="w-4 h-4 rounded border-gray-300"
+                      />
+                      <span className="text-sm text-gray-700">
+                        Może edytować budżet
+                      </span>
+                    </label>
+                  )}
+                />
+              )}
+            </>
+          )}
         </div>
 
         <div className="flex justify-end gap-3 border-t border-gray-200 pt-4">

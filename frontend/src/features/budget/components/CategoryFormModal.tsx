@@ -9,8 +9,6 @@ import {
 } from '../../../components/ui/formStyles';
 import type { BudgetPartnerRef } from '../../../lib/projectsApi';
 
-const FOUNDATION = 'FOUNDATION';
-
 interface CategoryFormValues {
   name: string;
   realizer: string;
@@ -39,23 +37,20 @@ export function CategoryFormModal({
   } = useForm<CategoryFormValues>({
     defaultValues: {
       name: initial?.name ?? '',
-      realizer: initial?.partnerId ?? (partnerOnly ? '' : FOUNDATION),
+      realizer: initial?.partnerId ?? '',
     },
   });
-  const realizerOptions = [
-    ...(partnerOnly ? [] : [{ value: FOUNDATION, label: 'Fundacja' }]),
-    ...partners
-      .filter(
-        (partner) =>
-          partner.status === 'ACTIVE' || partner.id === initial?.partnerId,
-      )
-      .map((partner) => ({ value: partner.id, label: partner.name })),
-  ];
+  const realizerOptions = partners
+    .filter(
+      (partner) =>
+        partner.status === 'ACTIVE' || partner.id === initial?.partnerId,
+    )
+    .map((partner) => ({ value: partner.id, label: partner.name }));
 
   const submit = handleSubmit(({ name, realizer }) => {
     onSave({
       name: name.trim(),
-      partnerId: realizer === FOUNDATION ? null : realizer,
+      partnerId: partnerOnly ? realizer : null,
     });
     onClose();
   });
@@ -88,32 +83,30 @@ export function CategoryFormModal({
             <FieldError message={errors.name?.message} />
           </div>
         )}
-        <div>
-          <label className={FIELD_LABEL_CLASSES}>
-            {partnerOnly ? 'Partner' : 'Kto realizuje'}
-          </label>
-          <Controller
-            control={control}
-            name="realizer"
-            rules={{
-              validate: (value) => value !== '' || 'Wybierz partnera',
-            }}
-            render={({ field }) => (
-              <Select
-                value={field.value}
-                onChange={field.onChange}
-                onBlur={field.onBlur}
-                options={realizerOptions}
-                placeholder={
-                  partnerOnly ? 'Wybierz partnera' : 'Wybierz realizującego'
-                }
-                size="md"
-                allowEmpty={false}
-              />
-            )}
-          />
-          <FieldError message={errors.realizer?.message} />
-        </div>
+        {partnerOnly && (
+          <div>
+            <label className={FIELD_LABEL_CLASSES}>Partner</label>
+            <Controller
+              control={control}
+              name="realizer"
+              rules={{
+                validate: (value) => value !== '' || 'Wybierz partnera',
+              }}
+              render={({ field }) => (
+                <Select
+                  value={field.value}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  options={realizerOptions}
+                  placeholder="Wybierz partnera"
+                  size="md"
+                  allowEmpty={false}
+                />
+              )}
+            />
+            <FieldError message={errors.realizer?.message} />
+          </div>
+        )}
 
         <div className="flex justify-end gap-3 border-t border-gray-200 pt-4">
           <Button

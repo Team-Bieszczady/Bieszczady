@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { SERIALIZABLE } from '../prisma/transaction-options';
 import type { AuthenticatedUser } from '../auth/types/auth.types';
 import { ProjectAccessService } from './project-access.service';
+import { PROJECT_SCOPED_MODULES } from '../common/enums/module.enum';
 import { indicatorPercent } from './indicators.service';
 import { MS_PER_DAY } from './shift-following-stages';
 import { CreateProjectDto } from './dto/create-project.dto';
@@ -186,6 +187,15 @@ export class ProjectsService {
             projectRole: member.projectRole,
           })),
         });
+        const created = await tx.projectMember.findMany({
+          where: { projectId: project.id },
+          select: { id: true },
+        });
+        await tx.projectMemberModule.createMany({
+          data: created.flatMap(({ id }) =>
+            PROJECT_SCOPED_MODULES.map((module) => ({ memberId: id, module })),
+          ),
+        });
       }
 
       return tx.project.findUniqueOrThrow({
@@ -213,7 +223,10 @@ export class ProjectsService {
         _count: { select: { members: true } },
         members: {
           where: { userId: viewer.id },
-          select: { projectRole: true },
+          select: {
+            projectRole: true,
+            modules: { select: { module: true } },
+          },
         },
         stages: {
           where: { archivedAt: null },
@@ -267,12 +280,19 @@ export class ProjectsService {
             (member) => member.projectRole === 'COORDINATOR',
           );
 
+        const viewerModules = viewerManages
+          ? [...PROJECT_SCOPED_MODULES]
+          : project.members.flatMap((member) =>
+              member.modules.map(({ module }) => module),
+            );
+
         return {
           ...this.toDetail(project),
           peopleCount: project._count.members,
           progress: indicatorPercent(done, total),
           taskCounts: { total, done, mine },
           viewerManages,
+          viewerModules,
           stageCount: project.stages.length,
           stageLabel: project.stages.length
             ? `Etap ${currentStage}/${project.stages.length}`
@@ -452,6 +472,9 @@ export class ProjectsService {
 
       await tx.risk.deleteMany({ where: { projectId: id } });
       await tx.goal.deleteMany({ where: { projectId: id } });
+      await tx.projectMemberModule.deleteMany({
+        where: { member: { projectId: id } },
+      });
       await tx.projectMember.deleteMany({ where: { projectId: id } });
       await tx.projectTypesOnProjects.deleteMany({
         where: { projectId: id },

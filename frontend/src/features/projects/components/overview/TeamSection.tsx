@@ -11,10 +11,11 @@ import { Button } from '../../../../components/ui/Button';
 import { ConfirmDialog } from '../../../../components/ui/ConfirmDialog';
 import type { SelectOption } from '../../../../components/ui/Select';
 import { Spinner } from '../../../../components/ui/Spinner';
-import type { ProjectRoleValue } from '../../../../lib/projectsApi';
+import { MODULE_LABELS } from '../../../../lib/modules';
 import { PROJECT_ROLE_LABELS } from '../../labels';
 import {
   useProjectTeam,
+  type TeamMemberValues,
   type TeamMemberView,
 } from '../../hooks/useProjectTeam';
 import EmptySectionState from './EmptySectionState';
@@ -35,7 +36,7 @@ type TeamDialog =
 const CLOSED: TeamDialog = { kind: 'none' };
 
 export default function TeamSection({ projectId, canEdit }: TeamSectionProps) {
-  const { team, candidates, isLoading, addMember, changeRole, removeMember } =
+  const { team, candidates, isLoading, addMember, updateMember, removeMember } =
     useProjectTeam(projectId, canEdit);
   const [dialog, setDialog] = useState<TeamDialog>(CLOSED);
 
@@ -46,11 +47,8 @@ export default function TeamSection({ projectId, canEdit }: TeamSectionProps) {
     label: candidate.name,
   }));
 
-  const submitAdd = async (values: {
-    userId: string;
-    role: ProjectRoleValue;
-  }) => {
-    const result = await addMember(values.userId, values.role);
+  const submitAdd = async (values: TeamMemberValues) => {
+    const result = await addMember(values);
     if (!result.ok) return toast.error(result.message, { id: result.message });
 
     close();
@@ -59,13 +57,13 @@ export default function TeamSection({ projectId, canEdit }: TeamSectionProps) {
 
   const submitRole = async (
     member: TeamMemberView,
-    values: { role: ProjectRoleValue },
+    values: TeamMemberValues,
   ) => {
-    const result = await changeRole(member.id, values.role);
+    const result = await updateMember(member, values);
     if (!result.ok) return toast.error(result.message, { id: result.message });
 
     close();
-    toast.success('Rola zaktualizowana');
+    toast.success('Członek zespołu zaktualizowany');
   };
 
   const confirmRemove = async (member: TeamMemberView) => {
@@ -79,7 +77,7 @@ export default function TeamSection({ projectId, canEdit }: TeamSectionProps) {
   const menuItems = (member: TeamMemberView): ActionMenuItem[] => [
     {
       id: 'role',
-      label: 'Zmień rolę w projekcie',
+      label: 'Edytuj rolę i dostęp',
       onSelect: () => setDialog({ kind: 'role', member }),
     },
     {
@@ -144,6 +142,21 @@ export default function TeamSection({ projectId, canEdit }: TeamSectionProps) {
                   <p className="mt-0.5 text-xs text-grayText">
                     {PROJECT_ROLE_LABELS[member.role]}
                   </p>
+                  {member.role !== 'COORDINATOR' && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {member.modules.map((module) => (
+                        <span
+                          key={module}
+                          className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-grayText"
+                        >
+                          {MODULE_LABELS[module]}
+                          {module === 'BUDGET' &&
+                            member.budgetAccessId &&
+                            ' · edycja'}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 {canEdit && (
                   <ActionMenu

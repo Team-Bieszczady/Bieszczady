@@ -276,6 +276,12 @@ export class BudgetAnnexService {
   ): Promise<VersionRow> {
     const version = await this.budget.locateVersion(id, db);
     await this.access.assertCanRead(actor, version.projectId, db);
+    await this.access.assertCanUseModule(
+      actor,
+      version.projectId,
+      'BUDGET',
+      db,
+    );
     await this.access.assertCanEditBudget(actor, version.projectId, db);
     await this.access.assertNotArchived(version.projectId, db);
     return version;

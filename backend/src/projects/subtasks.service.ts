@@ -22,6 +22,7 @@ export class SubtasksService {
   async findAllForTask(taskId: string, actor: AuthenticatedUser) {
     const task = await this.access.locateTask(taskId);
     await this.access.assertCanRead(actor, task.projectId);
+    await this.access.assertCanUseModule(actor, task.projectId, 'TASKS');
 
     return this.prisma.subtask.findMany({
       where: { taskId },
@@ -36,6 +37,7 @@ export class SubtasksService {
   ) {
     const task = await this.access.locateTask(taskId);
     this.access.assertOwnsTask(actor, task);
+    await this.access.assertCanUseModule(actor, task.projectId, 'TASKS');
     await this.access.assertNotArchived(task.projectId);
 
     return this.prisma.$transaction(async (tx) => {
@@ -58,6 +60,7 @@ export class SubtasksService {
     const subtask = await this.findOrThrow(id);
     const task = await this.access.locateTask(subtask.taskId);
     this.access.assertOwnsTask(actor, task);
+    await this.access.assertCanUseModule(actor, task.projectId, 'TASKS');
     await this.access.assertNotArchived(task.projectId);
 
     const data: Prisma.SubtaskUpdateInput = {};
@@ -71,6 +74,7 @@ export class SubtasksService {
     const subtask = await this.findOrThrow(id);
     const task = await this.access.locateTask(subtask.taskId);
     this.access.assertOwnsTask(actor, task);
+    await this.access.assertCanUseModule(actor, task.projectId, 'TASKS');
     await this.access.assertNotArchived(task.projectId);
 
     await this.prisma.subtask.delete({ where: { id } });

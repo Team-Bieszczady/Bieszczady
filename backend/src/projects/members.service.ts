@@ -10,6 +10,10 @@ import type { AuthenticatedUser } from '../auth/types/auth.types';
 import { ProjectAccessService } from './project-access.service';
 import { PERSON_SELECT } from './prisma-selects';
 import {
+  PROJECT_SCOPED_MODULES,
+  type ProjectScopedModule,
+} from '../common/enums/module.enum';
+import {
   AddMemberDto,
   UpdateMemberPartnerDto,
   UpdateMemberRoleDto,
@@ -24,6 +28,19 @@ const USER_SELECT = {
   },
 } satisfies { select: Prisma.UserSelect };
 
+const MEMBER_INCLUDE = {
+  user: USER_SELECT,
+  modules: { select: { module: true } },
+} satisfies Prisma.ProjectMemberInclude;
+
+type MemberRow = Prisma.ProjectMemberGetPayload<{
+  include: typeof MEMBER_INCLUDE;
+}>;
+
+function toMember(row: MemberRow) {
+  return { ...row, modules: row.modules.map(({ module }) => module) };
+}
+
 @Injectable()
 export class MembersService {
   constructor(
@@ -34,10 +51,42 @@ export class MembersService {
   async findAllForProject(projectId: string, viewer: AuthenticatedUser) {
     await this.access.assertCanRead(viewer, projectId);
 
-    return this.prisma.projectMember.findMany({
+    const rows = await this.prisma.projectMember.findMany({
       where: { projectId },
       orderBy: { joinedAt: 'asc' },
-      include: { user: USER_SELECT },
+      include: MEMBER_INCLUDE,
+    });
+    return rows.map(toMember);
+  }
+
+  async findForUser(userId: string) {
+    const rows = await this.prisma.projectMember.findMany({
+      where: { userId, project: { archivedAt: null } },
+      orderBy: { project: { name: 'asc' } },
+      select: {
+        projectId: true,
+        projectRole: true,
+        project: { select: { name: true } },
+        modules: { select: { module: true } },
+      },
+    });
+    const grants = await this.prisma.budgetAccess.findMany({
+      where: { userId, projectId: { in: rows.map((row) => row.projectId) } },
+      select: { projectId: true },
+    });
+    const granted = new Set(grants.map(({ projectId }) => projectId));
+
+    return rows.map((row) => {
+      const coordinates = row.projectRole === 'COORDINATOR';
+      return {
+        projectId: row.projectId,
+        projectName: row.project.name,
+        projectRole: row.projectRole,
+        modules: coordinates
+          ? [...PROJECT_SCOPED_MODULES]
+          : row.modules.map(({ module }) => module),
+        canEditBudget: coordinates || granted.has(row.projectId),
+      };
     });
   }
 
@@ -84,32 +133,53 @@ export class MembersService {
         where: { projectId, userId: dto.userId },
       });
 
-      return tx.projectMember.create({
+      const modules: ProjectScopedModule[] = dto.modules ?? [
+        ...PROJECT_SCOPED_MODULES,
+      ];
+
+      const created = await tx.projectMember.create({
         data: {
           projectId,
           userId: dto.userId,
           projectRole: dto.projectRole,
+          modules: { create: modules.map((module) => ({ module })) },
         },
-        include: { user: USER_SELECT },
+        include: MEMBER_INCLUDE,
       });
+      return toMember(created);
     }, SERIALIZABLE);
   }
 
   async setRole(id: string, dto: UpdateMemberRoleDto) {
-    const member = await this.prisma.projectMember.findUnique({
-      where: { id },
-    });
-    if (!member) throw new NotFoundException('Nie znaleziono członka projektu');
-    await this.access.assertNotArchived(member.projectId);
+    return this.prisma.$transaction(async (tx) => {
+      const member = await tx.projectMember.findUnique({ where: { id } });
+      if (!member) {
+        throw new NotFoundException('Nie znaleziono członka projektu');
+      }
+      await this.access.assertNotArchived(member.projectId, tx);
 
-    return this.prisma.projectMember.update({
-      where: { id },
-      data: {
-        projectRole: dto.projectRole,
-        ...(dto.projectRole === 'PARTNER' ? {} : { partnerId: null }),
-      },
-      include: { user: USER_SELECT },
-    });
+      if (dto.modules) {
+        await tx.projectMemberModule.deleteMany({ where: { memberId: id } });
+        await tx.projectMemberModule.createMany({
+          data: dto.modules.map((module) => ({ memberId: id, module })),
+        });
+        if (!dto.modules.includes('BUDGET')) {
+          await tx.budgetAccess.deleteMany({
+            where: { projectId: member.projectId, userId: member.userId },
+          });
+        }
+      }
+
+      const updated = await tx.projectMember.update({
+        where: { id },
+        data: {
+          projectRole: dto.projectRole,
+          ...(dto.projectRole === 'PARTNER' ? {} : { partnerId: null }),
+        },
+        include: MEMBER_INCLUDE,
+      });
+      return toMember(updated);
+    }, SERIALIZABLE);
   }
 
   async setPartner(id: string, dto: UpdateMemberPartnerDto) {
@@ -136,11 +206,12 @@ export class MembersService {
         }
       }
 
-      return tx.projectMember.update({
+      const updated = await tx.projectMember.update({
         where: { id },
         data: { partnerId: dto.partnerId },
-        include: { user: USER_SELECT },
+        include: MEMBER_INCLUDE,
       });
+      return toMember(updated);
     }, SERIALIZABLE);
   }
 
@@ -175,6 +246,7 @@ export class MembersService {
       await tx.budgetAccess.deleteMany({
         where: { projectId: member.projectId, userId: member.userId },
       });
+      await tx.projectMemberModule.deleteMany({ where: { memberId: id } });
 
       await tx.projectMember.delete({ where: { id } });
     }, SERIALIZABLE);

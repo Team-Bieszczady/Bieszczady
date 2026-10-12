@@ -33,6 +33,7 @@ describe('ProjectsService date order', () => {
     budgetColumn: { deleteMany: jest.fn() },
     budgetHistoryEntry: { deleteMany: jest.fn() },
     budgetAccess: { deleteMany: jest.fn() },
+    projectMemberModule: { deleteMany: jest.fn() },
     $transaction: jest.fn(),
   };
 

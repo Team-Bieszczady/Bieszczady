@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { PROJECT_SCOPED_MODULES } from '../src/common/enums/module.enum';
 
 const GROUP = {
   status: 1,
@@ -23,6 +24,7 @@ const GROUP = {
   budgetActual: 20,
   budgetInvoice: 21,
   budgetHistory: 22,
+  memberModule: 23,
 } as const;
 
 const takenIds = new Map<string, string>();
@@ -946,7 +948,7 @@ export async function seedProjects(
 
     for (const member of project.members) {
       const userId = userIdByKey.get(member.person)!;
-      await prisma.projectMember.upsert({
+      const memberRow = await prisma.projectMember.upsert({
         where: { projectId_userId: { projectId, userId } },
         update: { projectRole: member.role },
         create: {
@@ -956,6 +958,17 @@ export async function seedProjects(
           projectRole: member.role,
         },
       });
+      for (const module of PROJECT_SCOPED_MODULES) {
+        await prisma.projectMemberModule.upsert({
+          where: { memberId_module: { memberId: memberRow.id, module } },
+          update: {},
+          create: {
+            id: id('memberModule', `${project.key}:${member.person}:${module}`),
+            memberId: memberRow.id,
+            module,
+          },
+        });
+      }
     }
 
     for (const event of project.events ?? []) {

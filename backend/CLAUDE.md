@@ -55,8 +55,8 @@
   get a native Prisma `enum`; the `user_module_access.module` column is a
   validated `String`.
 - Access is flat/binary: a row in `user_module_access` = access granted, no
-  row = no access. There is no per-action or per-project/activity scoping yet
-  (see "Future extension" below).
+  row = no access. `TASKS`, `BUDGET` and `DOCUMENTS` are additionally scoped
+  per project (see "Per-project modules" below).
 - `is_director` bypasses module access entirely—a director is never checked
   against `user_module_access` and always has every module.
 - Defaults: `PROJECTS`, `OVERVIEW`, `TASKS`, `CALENDAR` are inserted as real
@@ -91,14 +91,28 @@
   login/refresh/`/auth/me` response. The frontend never has to make a
   separate call to know what it can show.
 
-### Future extension (do NOT build yet)
-The separately-provided ERD models a richer `PERMISSION(module, action,
-project_id?, activity_id?)` system once `projects`/`activities` tables exist.
-This flat `user_module_access` table is intentionally the stepping stone: when
-that lands, keep `user_module_access` as the "has any access to this module
-at all" gate, and add the finer-grained table alongside it rather than
-replacing it outright, mirroring how `project_members`/`ProjectRole` are kept
-ready-but-unbuilt today.
+### Per-project modules
+`project_member_modules` (`memberId`, `module`) says which of
+`PROJECT_SCOPED_MODULES` = `TASKS, BUDGET, DOCUMENTS` a member may use in that
+project. `user_module_access` stays the outer gate: effective access in a
+project = director, or the org module AND (COORDINATOR of that project, or a
+row). Przegląd (`PROJECTS`/`OVERVIEW`) is never scoped; every member sees it.
+- Enforced twice. `ModuleAccessGuard` checks the row whenever the route has a
+  `:projectId` param (`ModuleAccessService.memberHasProjectModule`; a
+  non-member passes so the service's `assertCanRead` still answers 404). That
+  covers every documents route without touching `documents/*`. Routes that
+  find their project from an entity id (`tasks/:id`, subtasks,
+  `budget-versions/:id`, the actuals writers) call
+  `ProjectAccessService.assertCanUseModule` after locating it. Manager-only
+  writes need no extra check: a coordinator always has every module.
+- Members get all three when `POST .../members` (or project create) sends no
+  `modules`; the migration backfilled all three for existing members.
+  `PATCH members/:id` replaces the list when `modules` is sent, and dropping
+  `BUDGET` also deletes that member's `budget_access`. `budget_access` stays the
+  separate "may edit the budget" right on top of seeing the tab.
+- `GET /projects` returns `viewerModules`; `GET users/:userId/projects`
+  (director, `PEOPLE`) lists a person's live projects with their modules.
+- Member and project delete remove `project_member_modules` rows first.
 
 ## Projects domain
 
@@ -305,8 +319,9 @@ route is gated on `BUDGET`.
   `budget_positions`) is versioned. Actuals, columns and category settings are not:
   they're keyed by `positionKey` / `categoryKey` and shared by every version.
   "Poniesione" is the `incurred` row in `budget_actual_values`, kept in step with
-  invoices (adding or deleting an invoice moves it, `recalculate` resets it). It is
-  typed by hand only in summary mode (a partner is set and `detailed = false`).
+  invoices (adding or deleting an invoice moves it, `recalculate` resets it).
+  Anyone with `canEditBudget` may also type it by hand; a partner user only in
+  summary mode (a partner is set and `detailed = false`).
 - **Who can do what.**
 
   | Action | Who |

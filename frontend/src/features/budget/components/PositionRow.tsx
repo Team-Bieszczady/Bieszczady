@@ -183,6 +183,7 @@ interface PositionRowProps {
   canEditPlan: boolean;
   canEditActuals: boolean;
   canChangeStatus: boolean;
+  canTypeSpent: boolean;
   isEditing: boolean;
   folderPaths: Map<string, string> | null;
   moveTargets: { value: string; label: string }[] | null;
@@ -224,6 +225,7 @@ export function PositionRow({
   canEditPlan,
   canEditActuals,
   canChangeStatus,
+  canTypeSpent,
   isEditing,
   folderPaths,
   moveTargets,
@@ -260,7 +262,7 @@ export function PositionRow({
   const isCellEditable = (columnId: string) => {
     if (isRemoved) return false;
     if (isPlanField(columnId)) return canEditPlan;
-    if (columnId === SPENT_COLUMN_ID) return canEditActuals && !detailed;
+    if (columnId === SPENT_COLUMN_ID) return canEditActuals && (!detailed || canTypeSpent);
 
     return canEditActuals;
   };

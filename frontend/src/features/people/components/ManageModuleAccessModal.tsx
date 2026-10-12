@@ -13,6 +13,8 @@ import {
   type ModuleKey,
 } from '../../../lib/modules';
 import { useUpdateUserModules } from '../hooks/useUpdateUserModules';
+import { useUserProjects } from '../../projects/hooks/useProjectsApi';
+import { PROJECT_ROLE_LABELS } from '../../projects/labels';
 
 interface ManageModuleAccessModalProps {
   userId: string;
@@ -34,6 +36,7 @@ export default function ManageModuleAccessModal({
   });
 
   const mutation = useUpdateUserModules(userId);
+  const projects = useUserProjects(userId, isOpen);
 
   useEffect(() => {
     if (isOpen) {
@@ -93,6 +96,42 @@ export default function ManageModuleAccessModal({
             </div>
           )}
         />
+
+        <div className="border-t border-gray-200 pt-4">
+          <p className="text-sm font-semibold text-gray-700">Projekty</p>
+          <p className="mt-0.5 text-[11px] text-mutedText">
+            Dostęp w projekcie zmienisz w Przegląd → Zespół.
+          </p>
+          {projects.data?.length === 0 && (
+            <p className="mt-2 text-sm text-gray-500">
+              Nie należy do żadnego projektu.
+            </p>
+          )}
+          <ul className="mt-2 divide-y divide-gray-100">
+            {projects.data?.map((project) => (
+              <li key={project.projectId} className="py-2">
+                <p className="text-sm text-gray-700">
+                  {project.projectName}
+                  <span className="text-gray-500">
+                    {' · '}
+                    {PROJECT_ROLE_LABELS[project.projectRole]}
+                  </span>
+                </p>
+                <p className="mt-0.5 text-xs text-gray-500">
+                  {project.modules.length > 0
+                    ? project.modules
+                        .map((module) =>
+                          module === 'BUDGET'
+                            ? `${MODULE_LABELS[module]} (${project.canEditBudget ? 'edycja' : 'podgląd'})`
+                            : MODULE_LABELS[module],
+                        )
+                        .join(', ')
+                    : 'Tylko Przegląd'}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </div>
 
         <div className="flex gap-2 justify-end pt-4">
           <Button

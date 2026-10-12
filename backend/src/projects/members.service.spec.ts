@@ -26,6 +26,7 @@ describe('MembersService', () => {
     indicator: { updateMany: jest.fn() },
     documentAccess: { deleteMany: jest.fn() },
     budgetAccess: { deleteMany: jest.fn() },
+    projectMemberModule: { deleteMany: jest.fn() },
   });
 
   const tx = makeClient();
@@ -114,6 +115,7 @@ describe('MembersService', () => {
       });
       tx.projectMember.count.mockResolvedValue(0);
       tx.projectMember.create.mockResolvedValue({ id: 'm2' });
+      tx.projectMember.create.mockResolvedValue({ id: 'm2', modules: [] });
     });
 
     it('clears shares left from an earlier membership before adding the person', async () => {

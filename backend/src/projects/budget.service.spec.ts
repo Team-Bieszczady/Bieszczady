@@ -51,6 +51,7 @@ describe('BudgetService', () => {
     canManageTasks: jest.fn(),
     assertCanEditBudget: jest.fn(),
     assertNotArchived: jest.fn(),
+    assertCanUseModule: jest.fn(),
   };
 
   const viewer = { id: 'u1', isDirector: false } as never;

@@ -223,11 +223,23 @@ model ProjectMember {
   project Project  @relation("ProjectMembers", fields: [projectId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   user    User     @relation("ProjectMemberUser", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   partner Partner? @relation("PartnerMembers", fields: [partnerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  modules ProjectMemberModule[]
 
   @@unique([projectId, userId])
   @@index([userId])
   @@index([partnerId])
   @@map("project_members")
+}
+
+model ProjectMemberModule {
+  id       String @id @default(uuid())
+  memberId String @map("member_id")
+  module   String
+
+  member ProjectMember @relation(fields: [memberId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([memberId, module])
+  @@map("project_member_modules")
 }
 
 model Goal {

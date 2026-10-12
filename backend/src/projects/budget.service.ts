@@ -845,6 +845,12 @@ export class BudgetService {
   ) {
     const version = await this.locateVersion(versionId, db);
     await this.access.assertCanRead(actor, version.projectId, db);
+    await this.access.assertCanUseModule(
+      actor,
+      version.projectId,
+      'BUDGET',
+      db,
+    );
     await this.access.assertCanEditBudget(actor, version.projectId, db);
     await this.access.assertNotArchived(version.projectId, db);
     if (version.status === 'APPROVED') {

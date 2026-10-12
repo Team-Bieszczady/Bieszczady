@@ -353,6 +353,7 @@ export function BudgetTable({
                                 currentPositionIds.has(position.id)
                               }
                               canChangeStatus={canChangeStatus}
+                              canTypeSpent={store.permissions.canEdit}
                               isEditing={editingId === position.id}
                               folderPaths={folderPaths}
                               moveTargets={moveTargets}

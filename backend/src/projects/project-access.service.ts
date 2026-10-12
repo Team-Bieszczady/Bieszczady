@@ -6,6 +6,7 @@ import {
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import type { AuthenticatedUser } from '../auth/types/auth.types';
+import type { ProjectScopedModule } from '../common/enums/module.enum';
 
 type Db = Prisma.TransactionClient;
 
@@ -39,6 +40,37 @@ export class ProjectAccessService {
       where: { projectId, userId: actor.id },
     });
     if (member === 0) throw new NotFoundException('Nie znaleziono projektu');
+  }
+
+  async canUseModule(
+    actor: AuthenticatedUser,
+    projectId: string,
+    module: ProjectScopedModule,
+    db: Db = this.prisma,
+  ): Promise<boolean> {
+    if (actor.isDirector) return true;
+
+    const member = await db.projectMember.findFirst({
+      where: { projectId, userId: actor.id },
+      select: {
+        projectRole: true,
+        modules: { where: { module }, select: { id: true } },
+      },
+    });
+    if (!member) return false;
+    return member.projectRole === 'COORDINATOR' || member.modules.length > 0;
+  }
+
+  async assertCanUseModule(
+    actor: AuthenticatedUser,
+    projectId: string,
+    module: ProjectScopedModule,
+    db: Db = this.prisma,
+  ): Promise<void> {
+    if (await this.canUseModule(actor, projectId, module, db)) return;
+    throw new ForbiddenException(
+      'Nie masz dostępu do tej sekcji w tym projekcie',
+    );
   }
 
   async assertNotArchived(

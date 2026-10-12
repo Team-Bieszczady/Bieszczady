@@ -77,6 +77,20 @@ export class MembersController {
   }
 
   @UseGuards(DirectorGuard)
+  @RequireModule('PEOPLE')
+  @Get('users/:userId/projects')
+  @ApiOperation({
+    summary: 'Projects a user belongs to, with their modules there',
+    description:
+      'Live projects only. canEditBudget is true for a coordinator or a budget_access grant.',
+  })
+  @ApiResponse({ status: 200, description: 'List of memberships' })
+  @ApiResponse({ status: 403, description: 'Director only' })
+  async forUser(@Param('userId', ParseUUIDPipe) userId: string) {
+    return this.members.findForUser(userId);
+  }
+
+  @UseGuards(DirectorGuard)
   @RequireModule('PROJECTS')
   @Post('projects/:projectId/members')
   @HttpCode(HttpStatus.CREATED)
@@ -92,6 +106,7 @@ export class MembersController {
         value: {
           userId: '5eed0000-0004-4000-8000-000000000001',
           projectRole: 'EXECUTOR',
+          modules: ['TASKS', 'DOCUMENTS'],
         },
       },
     },

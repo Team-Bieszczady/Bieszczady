@@ -4,9 +4,8 @@ import { HiOutlinePlus } from 'react-icons/hi';
 import { Button } from '../components/ui/Button';
 import { PageLoading } from '../components/ui/PageLoading';
 import { PageMessage } from '../components/ui/PageMessage';
-import { useAuth } from '../context/useAuth';
 import { useSelectedProject } from '../context/useSelectedProject';
-import { hasModule } from '../lib/modules';
+import { useCanUseProjectModule } from '../features/projects/hooks/useProjectsApi';
 import {
   openAnnex,
   type BudgetDispatch,
@@ -38,13 +37,12 @@ export default function ProjectBudgetPage() {
 }
 
 function BudgetView({ projectId }: { projectId: string }) {
-  const { user } = useAuth();
   const budgetQuery = useBudget(projectId);
   const budgetAction = useBudgetAction(projectId);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showChanges, setShowChanges] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-  const canOpenDocuments = hasModule(user, 'DOCUMENTS');
+  const canOpenDocuments = useCanUseProjectModule(projectId, 'DOCUMENTS');
   const foldersQuery = useFolders(projectId, canOpenDocuments);
   const folders = foldersQuery.data ?? [];
   const folderById = new Map(folders.map((folder) => [folder.id, folder]));

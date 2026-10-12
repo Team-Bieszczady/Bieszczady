@@ -36,6 +36,7 @@ describe('BudgetAnnexService', () => {
     assertCanEditBudget: jest.fn(),
     assertNotArchived: jest.fn(),
     assertCanApproveBudget: jest.fn(),
+    assertCanUseModule: jest.fn(),
   };
   const budget = {
     locateVersion: jest.fn(),

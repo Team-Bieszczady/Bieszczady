@@ -41,6 +41,7 @@ describe('BudgetActualsService', () => {
     assertCanEditBudget: jest.fn(),
     assertNotArchived: jest.fn(),
     canManageTasks: jest.fn(),
+    assertCanUseModule: jest.fn(),
   };
   const budget = {
     openVersion: jest.fn(),
@@ -223,9 +224,35 @@ describe('BudgetActualsService', () => {
       ).rejects.toThrow(ConflictException);
     });
 
-    it('refuses a typed incurred amount in detailed mode', async () => {
+    it('lets an editor type incurred in detailed mode', async () => {
+      await service.updateCell(
+        'p1',
+        'pos',
+        'incurred',
+        { value: '10' },
+        editor,
+      );
+
+      expect(spentWrites()).toEqual(['10.00']);
+    });
+
+    it('refuses a partner user typing incurred in detailed mode', async () => {
+      access.canEditBudget.mockResolvedValue(false);
+      budget.partnerScope.mockResolvedValue({ partnerId: 'partner-2' });
+      useCategory('partner-2', {
+        detailed: true,
+        visibleToPartner: true,
+        partnerCanEdit: true,
+      });
+
       await expect(
-        service.updateCell('p1', 'pos', 'incurred', { value: '10' }, editor),
+        service.updateCell(
+          'p1',
+          'pos',
+          'incurred',
+          { value: '10' },
+          partnerUser,
+        ),
       ).rejects.toThrow(ConflictException);
     });
 

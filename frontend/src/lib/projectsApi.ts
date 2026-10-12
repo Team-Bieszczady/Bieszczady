@@ -1,4 +1,5 @@
 import { request, type AccountStatus } from './api';
+import type { ModuleKey } from './modules';
 
 const BASE = '/api/v1';
 
@@ -41,6 +42,7 @@ export interface BackendProjectCard extends BackendProject {
   progress: number;
   taskCounts: { total: number; done: number; mine: number };
   viewerManages: boolean;
+  viewerModules: ModuleKey[];
   stageCount: number;
   stageLabel: string;
   daysLeft: number | null;
@@ -192,6 +194,26 @@ export interface BackendMember {
   projectRole: ProjectRoleValue;
   joinedAt: string;
   user: BackendMemberUser;
+  modules: ModuleKey[];
+}
+
+export interface BackendBudgetAccess {
+  id: string;
+  projectId: string;
+  userId: string;
+}
+
+export interface BackendUserProject {
+  projectId: string;
+  projectName: string;
+  projectRole: ProjectRoleValue;
+  modules: ModuleKey[];
+  canEditBudget: boolean;
+}
+
+export interface MemberPayload {
+  projectRole: ProjectRoleValue;
+  modules?: ModuleKey[];
 }
 
 export type PartnerStatusValue = 'ACTIVE' | 'PAUSED';
@@ -599,14 +621,44 @@ export const indicatorsApi = {
 export const membersApi = {
   ...childResource<
     BackendMember,
-    { userId: string; projectRole: ProjectRoleValue },
-    { projectRole: ProjectRoleValue }
+    MemberPayload & { userId: string },
+    MemberPayload
   >({ parent: 'projects', resource: 'members', label: 'zespół' }),
   available: (accessToken: string, projectId: string) =>
     get<BackendMemberUser[]>(
       accessToken,
       `/projects/${projectId}/available-members`,
       'Nie udało się pobrać dostępnych osób',
+    ),
+  forUser: (accessToken: string, userId: string) =>
+    get<BackendUserProject[]>(
+      accessToken,
+      `/users/${userId}/projects`,
+      'Nie udało się pobrać projektów użytkownika',
+    ),
+};
+
+export const budgetAccessApi = {
+  list: (accessToken: string, projectId: string) =>
+    get<BackendBudgetAccess[]>(
+      accessToken,
+      `/projects/${projectId}/budget/access`,
+      'Nie udało się pobrać dostępu do budżetu',
+    ),
+  grant: (accessToken: string, projectId: string, userId: string) =>
+    send<BackendBudgetAccess>(
+      'POST',
+      accessToken,
+      `/projects/${projectId}/budget/access`,
+      'Nie udało się nadać prawa edycji budżetu',
+      { userId },
+    ),
+  revoke: (accessToken: string, id: string) =>
+    send<void>(
+      'DELETE',
+      accessToken,
+      `/budget-access/${id}`,
+      'Nie udało się odebrać prawa edycji budżetu',
     ),
 };
 

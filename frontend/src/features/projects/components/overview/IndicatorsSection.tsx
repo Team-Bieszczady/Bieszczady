@@ -19,7 +19,6 @@ import { Chip } from '../../../../components/ui/Chip';
 import { ConfirmDialog } from '../../../../components/ui/ConfirmDialog';
 import type { SelectOption } from '../../../../components/ui/Select';
 import { useAuth } from '../../../../context/useAuth';
-import { hasModule } from '../../../../lib/modules';
 import { truncateText } from '../../../../lib/truncate';
 import { useFolders } from '../../../documents/hooks/useFolders';
 import { canManageTasks } from '../../../tasks/utils/taskPermissions';
@@ -29,7 +28,7 @@ import {
   type IndicatorFormValues,
   type IndicatorView,
 } from '../../hooks/useProjectIndicators';
-import { useMembers } from '../../hooks/useProjectsApi';
+import { useCanUseProjectModule, useMembers } from '../../hooks/useProjectsApi';
 import { formatNumericDate } from '../../utils/isoDate';
 import ProgressBar from '../ProgressBar';
 import EmptySectionState from './EmptySectionState';
@@ -67,7 +66,7 @@ export default function IndicatorsSection({
   canEdit,
 }: IndicatorsSectionProps) {
   const { user } = useAuth();
-  const canOpenDocuments = hasModule(user, 'DOCUMENTS');
+  const canOpenDocuments = useCanUseProjectModule(projectId, 'DOCUMENTS');
   const {
     indicators,
     steppingId,
