@@ -416,6 +416,7 @@ model Document {
   versions DocumentVersion[]
   accesses DocumentAccess[]
   meetings MeetingAttendanceFile[] @relation("DocumentMeetingAttendance")
+  invoices InvoiceDocument[]       @relation("DocumentInvoices")
 
   @@index([projectId])
   @@index([folderId])
@@ -534,8 +535,9 @@ model Invoice {
   updatedAt   DateTime  @updatedAt @map("updated_at")
   deletedAt   DateTime? @map("deleted_at")
 
-  createdBy User            @relation("InvoiceCreator", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  shares    InvoiceShare[]  @relation("InvoiceShares")
+  createdBy User              @relation("InvoiceCreator", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  shares    InvoiceShare[]    @relation("InvoiceShares")
+  documents InvoiceDocument[] @relation("InvoiceDocuments")
 
   @@index([paymentDate])
   @@index([createdById])
@@ -554,4 +556,19 @@ model InvoiceShare {
   @@unique([invoiceId, projectId])
   @@index([projectId])
   @@map("invoice_shares")
+}
+
+// Ta sama faktura trafia do Dokumentów każdego projektu, na który jest
+// podzielona, bo każdy projekt rozlicza się ze swojej części osobno.
+model InvoiceDocument {
+  id         String @id @default(uuid())
+  invoiceId  String @map("invoice_id")
+  documentId String @map("document_id")
+
+  invoice  Invoice  @relation("InvoiceDocuments", fields: [invoiceId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  document Document @relation("DocumentInvoices", fields: [documentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([invoiceId, documentId])
+  @@index([documentId])
+  @@map("invoice_documents")
 }

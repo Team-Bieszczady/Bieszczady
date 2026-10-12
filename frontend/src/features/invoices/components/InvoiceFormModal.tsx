@@ -172,7 +172,7 @@ export default function InvoiceFormModal({
 
           <div>
             <label htmlFor={dateId} className={LABEL_CLASSES}>
-              Termin płatności
+              Data zapłaty
             </label>
             <Controller
               name="paymentDate"

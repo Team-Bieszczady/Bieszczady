@@ -28,6 +28,25 @@ const SAVED_FIELDS = {
       project: { select: { id: true, name: true } },
     },
   },
+  documents: {
+    where: { document: { deletedAt: null } },
+    select: {
+      document: {
+        select: {
+          id: true,
+          folderId: true,
+          projectId: true,
+          name: true,
+          status: true,
+          versions: {
+            orderBy: { versionNo: 'desc' },
+            take: 1,
+            select: { fileName: true },
+          },
+        },
+      },
+    },
+  },
 } satisfies Prisma.InvoiceSelect;
 
 type SavedInvoice = Prisma.InvoiceGetPayload<{ select: typeof SAVED_FIELDS }>;
@@ -45,6 +64,16 @@ function toInvoiceView(invoice: SavedInvoice) {
       projectId: share.project.id,
       projectName: share.project.name,
       amount: share.amount.toString(),
+    })),
+    documents: invoice.documents.map((link) => ({
+      id: link.document.id,
+      projectId: link.document.projectId,
+      folderId: link.document.folderId,
+      name: link.document.name,
+      status: link.document.status,
+      fileName: link.document.versions[0]
+        ? link.document.versions[0].fileName
+        : '',
     })),
   };
 }

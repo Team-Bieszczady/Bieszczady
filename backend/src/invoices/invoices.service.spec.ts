@@ -41,6 +41,7 @@ describe('InvoicesService', () => {
     status: 'TO_PAY',
     createdAt: new Date('2026-10-12'),
     shares: savedShares,
+    documents: [],
   };
 
   const newInvoice = {

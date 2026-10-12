@@ -82,6 +82,15 @@ export interface InvoiceShare {
   amount: string;
 }
 
+export interface InvoiceDocument {
+  id: string;
+  projectId: string;
+  folderId: string;
+  name: string;
+  status: string;
+  fileName: string;
+}
+
 export interface BackendInvoice {
   id: string;
   name: string;
@@ -90,6 +99,7 @@ export interface BackendInvoice {
   status: InvoiceStatus;
   createdAt: string;
   shares: InvoiceShare[];
+  documents: InvoiceDocument[];
 }
 
 export interface InvoiceShareInput {
@@ -1112,6 +1122,30 @@ export const api = {
       method: 'DELETE',
       accessToken,
       fallbackMessage: 'Nie udało się usunąć faktury',
+    });
+  },
+  async uploadInvoiceDocument(
+    accessToken: string,
+    id: string,
+    file: File,
+  ): Promise<void> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await sendWithRefresh(
+      `/api/v1/invoices/${id}/document`,
+      { method: 'POST', credentials: 'include', body: formData },
+      accessToken,
+    );
+    if (!response.ok) {
+      await throwFromResponse(response, 'Nie udało się wgrać pliku faktury');
+    }
+  },
+  async deleteInvoiceDocument(accessToken: string, id: string): Promise<void> {
+    return request<void>(`/api/v1/invoices/${id}/document`, {
+      method: 'DELETE',
+      accessToken,
+      fallbackMessage: 'Nie udało się usunąć pliku faktury',
     });
   },
 };

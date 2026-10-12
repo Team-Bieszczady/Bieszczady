@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router';
 import { LuPlus } from 'react-icons/lu';
 import { Button } from '../components/ui/Button';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
@@ -12,7 +13,9 @@ import { useDeleteInvoice } from '../features/invoices/hooks/useDeleteInvoice';
 import { useInvoices } from '../features/invoices/hooks/useInvoices';
 import { useUpdateInvoice } from '../features/invoices/hooks/useUpdateInvoice';
 import { useUpdateInvoiceStatus } from '../features/invoices/hooks/useUpdateInvoiceStatus';
+import { useUploadInvoiceDocument } from '../features/invoices/hooks/useInvoiceDocument';
 import { useProjects } from '../features/projects/hooks/useProjectsApi';
+import { useSelectedProject } from '../context/useSelectedProject';
 import { pluralizePl, type PluralForms } from '../lib/pluralizePl';
 import type { BackendInvoice, InvoiceStatus } from '../lib/api';
 
@@ -42,6 +45,9 @@ export default function KsefPage() {
   const updateInvoice = useUpdateInvoice();
   const updateStatus = useUpdateInvoiceStatus();
   const deleteInvoice = useDeleteInvoice();
+  const uploadDocument = useUploadInvoiceDocument();
+  const navigate = useNavigate();
+  const { setProjectId } = useSelectedProject();
 
   const invoices = invoicesQuery.data ?? [];
   const projectOptions = (projectsQuery.data ?? []).map((project) => ({
@@ -109,6 +115,26 @@ export default function KsefPage() {
         onError: (error) => toast.error(error.message),
       },
     );
+  };
+
+  const uploadFile = (invoice: BackendInvoice, file: File) => {
+    uploadDocument.mutate(
+      { id: invoice.id, file },
+      {
+        onSuccess: () => toast.success('Plik faktury trafił do Dokumentów'),
+        onError: (error) => toast.error(error.message),
+      },
+    );
+  };
+
+  // Faktura leży w Dokumentach każdego projektu z podziału, więc otwieramy
+  // pierwszy z nich i od razu właściwy folder.
+  const openInDocuments = (invoice: BackendInvoice) => {
+    const document = invoice.documents[0];
+    if (!document) return;
+
+    setProjectId(document.projectId);
+    void navigate(`/project/documents?folder=${document.folderId}`);
   };
 
   const confirmDelete = () => {
@@ -184,8 +210,13 @@ export default function KsefPage() {
           onEdit={openEditForm}
           onDelete={setInvoiceToDelete}
           onToggleStatus={toggleStatus}
+          onUploadFile={uploadFile}
+          onOpenInDocuments={openInDocuments}
           isTogglingId={
             updateStatus.isPending ? updateStatus.variables?.id : undefined
+          }
+          isUploadingId={
+            uploadDocument.isPending ? uploadDocument.variables?.id : undefined
           }
         />
       </div>

@@ -1,4 +1,5 @@
-import { LuPencil, LuTrash2 } from 'react-icons/lu';
+import { useRef } from 'react';
+import { LuFileUp, LuPaperclip, LuPencil, LuTrash2 } from 'react-icons/lu';
 import type { BackendInvoice, InvoiceStatus } from '../../../lib/api';
 import { formatNumericDate } from '../../projects/utils/isoDate';
 
@@ -7,15 +8,19 @@ interface InvoicesTableProps {
   onEdit: (invoice: BackendInvoice) => void;
   onDelete: (invoice: BackendInvoice) => void;
   onToggleStatus: (invoice: BackendInvoice) => void;
+  onUploadFile: (invoice: BackendInvoice, file: File) => void;
+  onOpenInDocuments: (invoice: BackendInvoice) => void;
   isTogglingId?: string;
+  isUploadingId?: string;
 }
 
 const HEADERS = [
   'FAKTURA',
   'KWOTA',
-  'TERMIN PŁATNOŚCI',
+  'DATA ZAPŁATY',
   'PROJEKTY',
   'STATUS',
+  'PLIK',
   '',
 ];
 
@@ -38,12 +43,66 @@ function formatAmount(amount: string) {
   return `${value.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`;
 }
 
+function FileCell({
+  invoice,
+  onUploadFile,
+  onOpenInDocuments,
+  isUploading,
+}: {
+  invoice: BackendInvoice;
+  onUploadFile: (invoice: BackendInvoice, file: File) => void;
+  onOpenInDocuments: (invoice: BackendInvoice) => void;
+  isUploading: boolean;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  if (invoice.documents.length > 0) {
+    return (
+      <button
+        type="button"
+        onClick={() => onOpenInDocuments(invoice)}
+        className="flex cursor-pointer items-center gap-1.5 text-xs font-medium text-darkGreen hover:text-darkGreenHover"
+      >
+        <LuPaperclip size={14} aria-hidden="true" />
+        Zobacz w dokumentach
+      </button>
+    );
+  }
+
+  return (
+    <>
+      <input
+        ref={inputRef}
+        type="file"
+        className="hidden"
+        onChange={(event) => {
+          const file = event.target.files ? event.target.files[0] : null;
+          if (file) onUploadFile(invoice, file);
+          event.target.value = '';
+        }}
+      />
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        disabled={isUploading}
+        className="flex cursor-pointer items-center gap-1.5 text-xs text-grayText hover:text-darkGreen disabled:cursor-wait disabled:opacity-60"
+      >
+        <LuFileUp size={14} aria-hidden="true" />
+        {isUploading ? 'Wgrywam…' : 'Wgraj plik'}
+      </button>
+    </>
+  );
+}
+
 export function InvoicesTable({
   invoices,
   onEdit,
   onDelete,
   onToggleStatus,
+  onUploadFile,
+  onOpenInDocuments,
   isTogglingId,
+  isUploadingId,
 }: InvoicesTableProps) {
   if (invoices.length === 0) {
     return (
@@ -94,6 +153,14 @@ export function InvoicesTable({
                 >
                   {STATUS_LABEL[invoice.status]}
                 </button>
+              </td>
+              <td className="px-4 py-3">
+                <FileCell
+                  invoice={invoice}
+                  onUploadFile={onUploadFile}
+                  onOpenInDocuments={onOpenInDocuments}
+                  isUploading={isUploadingId === invoice.id}
+                />
               </td>
               <td className="px-4 py-3">
                 <div className="flex items-center justify-end gap-3">

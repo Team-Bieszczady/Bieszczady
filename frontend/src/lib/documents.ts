@@ -5,6 +5,7 @@ export const DOCUMENT_KINDS = [
   'ANNEX',
   'LETTER',
   'ATTENDANCE_LIST',
+  'INVOICE',
 ] as const;
 
 export const DOCUMENT_STATUSES = [
@@ -23,6 +24,7 @@ export const DOCUMENT_KIND_LABELS: Record<DocumentKind, string> = {
   ANNEX: 'Aneks',
   LETTER: 'Pismo',
   ATTENDANCE_LIST: 'Lista obecności',
+  INVOICE: 'Faktura',
 };
 export type DocumentStatus = (typeof DOCUMENT_STATUSES)[number];
 
