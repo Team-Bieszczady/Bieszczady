@@ -1,13 +1,21 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router';
-import { LuPlus } from 'react-icons/lu';
+import { LuPlus, LuSearch } from 'react-icons/lu';
 import { Button } from '../components/ui/Button';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { InlineQueryState } from '../components/ui/InlineQueryState';
 import InvoiceFormModal, {
   type InvoiceFormInputs,
 } from '../features/invoices/components/InvoiceFormModal';
 import { InvoicesTable } from '../features/invoices/components/InvoicesTable';
+import { InvoiceSummaryCards } from '../features/invoices/components/InvoiceSummaryCards';
+import { ProjectTotalsSection } from '../features/invoices/components/ProjectTotalsSection';
+import {
+  filterInvoices,
+  projectTotals,
+  summarize,
+} from '../features/invoices/invoiceSummary';
 import { useCreateInvoice } from '../features/invoices/hooks/useCreateInvoice';
 import { useDeleteInvoice } from '../features/invoices/hooks/useDeleteInvoice';
 import { useInvoices } from '../features/invoices/hooks/useInvoices';
@@ -29,6 +37,7 @@ const STATUS_TABS: { value: InvoiceStatus | null; label: string }[] = [
 
 export default function KsefPage() {
   const [statusFilter, setStatusFilter] = useState<InvoiceStatus | null>(null);
+  const [search, setSearch] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editedInvoice, setEditedInvoice] = useState<BackendInvoice | null>(
     null,
@@ -37,9 +46,9 @@ export default function KsefPage() {
     null,
   );
 
-  const invoicesQuery = useInvoices(
-    statusFilter ? { status: statusFilter } : {},
-  );
+  // Pobieramy wszystkie faktury raz: dzięki temu sumy liczą się z całości,
+  // a zakładki i szukanie działają od razu, bez czekania na serwer.
+  const invoicesQuery = useInvoices();
   const projectsQuery = useProjects();
   const createInvoice = useCreateInvoice();
   const updateInvoice = useUpdateInvoice();
@@ -50,10 +59,18 @@ export default function KsefPage() {
   const { setProjectId } = useSelectedProject();
 
   const invoices = invoicesQuery.data ?? [];
+  const shown = filterInvoices(invoices, statusFilter, search);
+  const totals = summarize(invoices);
+  const byProject = projectTotals(invoices);
   const projectOptions = (projectsQuery.data ?? []).map((project) => ({
     value: project.id,
     label: project.name,
   }));
+
+  const emptyMessage =
+    invoices.length === 0
+      ? 'Nie ma jeszcze żadnej faktury.'
+      : 'Żadna faktura nie pasuje do wyszukiwania.';
 
   const openAddForm = () => {
     setEditedInvoice(null);
@@ -172,54 +189,85 @@ export default function KsefPage() {
         </Button>
       </div>
 
-      <div
-        role="tablist"
-        aria-label="Filtruj po statusie"
-        className="flex gap-1 border-b border-gray-200"
-      >
-        {STATUS_TABS.map((tab) => {
-          const isActive = tab.value === statusFilter;
-          return (
-            <button
-              key={tab.value ?? 'all'}
-              type="button"
-              role="tab"
-              aria-selected={isActive}
-              onClick={() => setStatusFilter(tab.value)}
-              className={`flex cursor-pointer items-center border-b-2 px-3 py-2.5 text-xs whitespace-nowrap transition-colors focus-visible:ring-1 focus-visible:ring-darkGreen focus-visible:outline-none ${
-                isActive
-                  ? 'border-darkGreen font-semibold text-darkGreen'
-                  : 'border-transparent text-grayText hover:text-dark'
-              }`}
-            >
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
+      {invoices.length > 0 && <InvoiceSummaryCards totals={totals} />}
 
-      {invoicesQuery.isError && (
-        <p role="alert" className="text-xs text-darkRed">
-          {invoicesQuery.error.message}
-        </p>
-      )}
+      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-gray-200">
+        <div
+          role="tablist"
+          aria-label="Filtruj po statusie"
+          className="flex gap-1"
+        >
+          {STATUS_TABS.map((tab) => {
+            const isActive = tab.value === statusFilter;
+            return (
+              <button
+                key={tab.value ?? 'all'}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => setStatusFilter(tab.value)}
+                className={`flex cursor-pointer items-center border-b-2 px-3 py-2.5 text-xs whitespace-nowrap transition-colors focus-visible:ring-1 focus-visible:ring-darkGreen focus-visible:outline-none ${
+                  isActive
+                    ? 'border-darkGreen font-semibold text-darkGreen'
+                    : 'border-transparent text-grayText hover:text-dark'
+                }`}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="relative mb-2 w-full sm:w-64">
+          <LuSearch
+            className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400"
+            aria-hidden="true"
+          />
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            maxLength={100}
+            placeholder="Szukaj po nazwie lub projekcie..."
+            aria-label="Szukaj faktur"
+            className="h-9 w-full rounded-lg border border-gray-200 pr-3 pl-9 text-xs focus:border-transparent focus:ring-1 focus:ring-darkGreen focus:outline-none"
+          />
+        </div>
+      </div>
 
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-        <InvoicesTable
-          invoices={invoices}
-          onEdit={openEditForm}
-          onDelete={setInvoiceToDelete}
-          onToggleStatus={toggleStatus}
-          onUploadFile={uploadFile}
-          onOpenInDocuments={openInDocuments}
-          isTogglingId={
-            updateStatus.isPending ? updateStatus.variables?.id : undefined
-          }
-          isUploadingId={
-            uploadDocument.isPending ? uploadDocument.variables?.id : undefined
-          }
-        />
+        <InlineQueryState
+          isLoading={invoicesQuery.isPending}
+          isError={invoicesQuery.isError}
+          isFetching={invoicesQuery.isFetching}
+          data={invoicesQuery.data}
+          errorMessage="Nie udało się pobrać faktur."
+          loadingMessage="Ładowanie faktur…"
+          onRetry={() => void invoicesQuery.refetch()}
+        >
+          {() => (
+            <InvoicesTable
+              invoices={shown}
+              emptyMessage={emptyMessage}
+              onEdit={openEditForm}
+              onDelete={setInvoiceToDelete}
+              onToggleStatus={toggleStatus}
+              onUploadFile={uploadFile}
+              onOpenInDocuments={openInDocuments}
+              isTogglingId={
+                updateStatus.isPending ? updateStatus.variables?.id : undefined
+              }
+              isUploadingId={
+                uploadDocument.isPending
+                  ? uploadDocument.variables?.id
+                  : undefined
+              }
+            />
+          )}
+        </InlineQueryState>
       </div>
+
+      <ProjectTotalsSection totals={byProject} />
 
       <ConfirmDialog
         isOpen={invoiceToDelete !== null}

@@ -2,9 +2,9 @@ import { useRef } from 'react';
 import { LuFileUp, LuPaperclip, LuPencil, LuTrash2 } from 'react-icons/lu';
 import type { BackendInvoice, InvoiceStatus } from '../../../lib/api';
 import { formatNumericDate } from '../../projects/utils/isoDate';
+import { formatAmount, isOverdue } from '../invoiceSummary';
 
-interface InvoicesTableProps {
-  invoices: BackendInvoice[];
+interface InvoiceActions {
   onEdit: (invoice: BackendInvoice) => void;
   onDelete: (invoice: BackendInvoice) => void;
   onToggleStatus: (invoice: BackendInvoice) => void;
@@ -12,6 +12,11 @@ interface InvoicesTableProps {
   onOpenInDocuments: (invoice: BackendInvoice) => void;
   isTogglingId?: string;
   isUploadingId?: string;
+}
+
+interface InvoicesTableProps extends InvoiceActions {
+  invoices: BackendInvoice[];
+  emptyMessage: string;
 }
 
 const HEADERS = [
@@ -37,10 +42,42 @@ const STATUS_LABEL: Record<InvoiceStatus, string> = {
   PAID: 'Zapłacona',
 };
 
-function formatAmount(amount: string) {
+function amountText(amount: string) {
   const value = Number(amount);
   if (!Number.isFinite(value)) return `${amount} zł`;
-  return `${value.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`;
+  return formatAmount(value);
+}
+
+function projectsText(invoice: BackendInvoice) {
+  return invoice.shares
+    .map((share) => `${share.projectName} (${amountText(share.amount)})`)
+    .join(', ');
+}
+
+function StatusButton({
+  invoice,
+  onToggleStatus,
+  isToggling,
+}: {
+  invoice: BackendInvoice;
+  onToggleStatus: (invoice: BackendInvoice) => void;
+  isToggling: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onToggleStatus(invoice)}
+      disabled={isToggling}
+      title={
+        invoice.status === 'PAID'
+          ? 'Kliknij, aby oznaczyć jako do zapłaty'
+          : 'Kliknij, aby oznaczyć jako zapłaconą'
+      }
+      className={`inline-flex cursor-pointer items-center rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap transition-opacity hover:opacity-80 disabled:cursor-wait disabled:opacity-60 ${STATUS_TONE[invoice.status]}`}
+    >
+      {STATUS_LABEL[invoice.status]}
+    </button>
+  );
 }
 
 function FileCell({
@@ -94,98 +131,176 @@ function FileCell({
   );
 }
 
-export function InvoicesTable({
-  invoices,
+function RowActions({
+  invoice,
   onEdit,
   onDelete,
-  onToggleStatus,
-  onUploadFile,
-  onOpenInDocuments,
-  isTogglingId,
-  isUploadingId,
+}: {
+  invoice: BackendInvoice;
+  onEdit: (invoice: BackendInvoice) => void;
+  onDelete: (invoice: BackendInvoice) => void;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <button
+        type="button"
+        onClick={() => onEdit(invoice)}
+        aria-label={`Edytuj fakturę ${invoice.name}`}
+        className="cursor-pointer text-dark/50 hover:text-darkGreen"
+      >
+        <LuPencil size={15} aria-hidden="true" />
+      </button>
+      <button
+        type="button"
+        onClick={() => onDelete(invoice)}
+        aria-label={`Usuń fakturę ${invoice.name}`}
+        className="cursor-pointer text-dark/50 hover:text-darkRed"
+      >
+        <LuTrash2 size={15} aria-hidden="true" />
+      </button>
+    </div>
+  );
+}
+
+function PaymentDate({ invoice }: { invoice: BackendInvoice }) {
+  const overdue = isOverdue(invoice);
+
+  if (!overdue) {
+    return (
+      <span className="whitespace-nowrap text-dark">
+        {formatNumericDate(invoice.paymentDate)}
+      </span>
+    );
+  }
+
+  return (
+    <span className="whitespace-nowrap font-medium text-darkRed">
+      {formatNumericDate(invoice.paymentDate)}
+      <span className="ml-1.5 text-xs font-normal">po terminie</span>
+    </span>
+  );
+}
+
+function InvoiceCard({
+  invoice,
+  actions,
+}: {
+  invoice: BackendInvoice;
+  actions: InvoiceActions;
+}) {
+  return (
+    <li className="border-b border-gray-100 px-4 py-3 last:border-b-0">
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="text-sm font-medium text-dark">{invoice.name}</p>
+        <p className="text-sm whitespace-nowrap text-dark">
+          {amountText(invoice.amount)}
+        </p>
+      </div>
+
+      <p className="mt-1 text-xs">
+        <PaymentDate invoice={invoice} />
+      </p>
+
+      <p className="mt-1 text-xs text-grayText">{projectsText(invoice)}</p>
+
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+        <StatusButton
+          invoice={invoice}
+          onToggleStatus={actions.onToggleStatus}
+          isToggling={actions.isTogglingId === invoice.id}
+        />
+        <FileCell
+          invoice={invoice}
+          onUploadFile={actions.onUploadFile}
+          onOpenInDocuments={actions.onOpenInDocuments}
+          isUploading={actions.isUploadingId === invoice.id}
+        />
+        <RowActions
+          invoice={invoice}
+          onEdit={actions.onEdit}
+          onDelete={actions.onDelete}
+        />
+      </div>
+    </li>
+  );
+}
+
+export function InvoicesTable({
+  invoices,
+  emptyMessage,
+  ...actions
 }: InvoicesTableProps) {
   if (invoices.length === 0) {
     return (
       <p className="px-4 py-10 text-center text-sm text-gray-400">
-        Nie ma jeszcze żadnej faktury.
+        {emptyMessage}
       </p>
     );
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[820px]">
-        <thead className="border-b border-gray-200">
-          <tr>
-            {HEADERS.map((header) => (
-              <th key={header} className={TH_CLASSES}>
-                {header}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-100">
-          {invoices.map((invoice) => (
-            <tr key={invoice.id} className="hover:bg-gray-50">
-              <td className="px-4 py-3 text-sm font-medium text-dark">
-                {invoice.name}
-              </td>
-              <td className="px-4 py-3 text-sm whitespace-nowrap text-dark">
-                {formatAmount(invoice.amount)}
-              </td>
-              <td className="px-4 py-3 text-sm whitespace-nowrap text-dark">
-                {formatNumericDate(invoice.paymentDate)}
-              </td>
-              <td className="px-4 py-3 text-xs text-grayText">
-                {invoice.shares
-                  .map(
-                    (share) =>
-                      `${share.projectName} (${formatAmount(share.amount)})`,
-                  )
-                  .join(', ')}
-              </td>
-              <td className="px-4 py-3">
-                <button
-                  type="button"
-                  onClick={() => onToggleStatus(invoice)}
-                  disabled={isTogglingId === invoice.id}
-                  className={`inline-flex cursor-pointer items-center rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap transition-opacity hover:opacity-80 disabled:cursor-wait disabled:opacity-60 ${STATUS_TONE[invoice.status]}`}
-                >
-                  {STATUS_LABEL[invoice.status]}
-                </button>
-              </td>
-              <td className="px-4 py-3">
-                <FileCell
-                  invoice={invoice}
-                  onUploadFile={onUploadFile}
-                  onOpenInDocuments={onOpenInDocuments}
-                  isUploading={isUploadingId === invoice.id}
-                />
-              </td>
-              <td className="px-4 py-3">
-                <div className="flex items-center justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={() => onEdit(invoice)}
-                    aria-label={`Edytuj fakturę ${invoice.name}`}
-                    className="cursor-pointer text-dark/50 hover:text-darkGreen"
-                  >
-                    <LuPencil size={15} aria-hidden="true" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onDelete(invoice)}
-                    aria-label={`Usuń fakturę ${invoice.name}`}
-                    className="cursor-pointer text-dark/50 hover:text-darkRed"
-                  >
-                    <LuTrash2 size={15} aria-hidden="true" />
-                  </button>
-                </div>
-              </td>
+    <>
+      <ul className="sm:hidden">
+        {invoices.map((invoice) => (
+          <InvoiceCard key={invoice.id} invoice={invoice} actions={actions} />
+        ))}
+      </ul>
+
+      <div className="hidden overflow-x-auto sm:block">
+        <table className="w-full min-w-[820px]">
+          <thead className="border-b border-gray-200">
+            <tr>
+              {HEADERS.map((header) => (
+                <th key={header} className={TH_CLASSES}>
+                  {header}
+                </th>
+              ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {invoices.map((invoice) => (
+              <tr key={invoice.id} className="hover:bg-gray-50">
+                <td className="px-4 py-3 text-sm font-medium text-dark">
+                  {invoice.name}
+                </td>
+                <td className="px-4 py-3 text-sm whitespace-nowrap text-dark">
+                  {amountText(invoice.amount)}
+                </td>
+                <td className="px-4 py-3 text-sm">
+                  <PaymentDate invoice={invoice} />
+                </td>
+                <td className="px-4 py-3 text-xs text-grayText">
+                  {projectsText(invoice)}
+                </td>
+                <td className="px-4 py-3">
+                  <StatusButton
+                    invoice={invoice}
+                    onToggleStatus={actions.onToggleStatus}
+                    isToggling={actions.isTogglingId === invoice.id}
+                  />
+                </td>
+                <td className="px-4 py-3">
+                  <FileCell
+                    invoice={invoice}
+                    onUploadFile={actions.onUploadFile}
+                    onOpenInDocuments={actions.onOpenInDocuments}
+                    isUploading={actions.isUploadingId === invoice.id}
+                  />
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex justify-end">
+                    <RowActions
+                      invoice={invoice}
+                      onEdit={actions.onEdit}
+                      onDelete={actions.onDelete}
+                    />
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }

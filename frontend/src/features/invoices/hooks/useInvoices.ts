@@ -1,8 +1,6 @@
 import { useApiQuery } from '../../../hooks/useApiQuery';
-import { api, type InvoiceStatus } from '../../../lib/api';
+import { api } from '../../../lib/api';
 
-export function useInvoices(filters: { status?: InvoiceStatus } = {}) {
-  return useApiQuery(['invoices', filters.status ?? 'all'], (token) =>
-    api.getInvoices(token, filters),
-  );
+export function useInvoices() {
+  return useApiQuery(['invoices'], (token) => api.getInvoices(token));
 }
