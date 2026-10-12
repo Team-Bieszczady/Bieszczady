@@ -1,12 +1,10 @@
 import { useId } from 'react';
 import { FieldError } from '../../../../../components/ui/FieldError';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { Modal } from '../../../../../components/ui/Modal';
 import { Button } from '../../../../../components/ui/Button';
-import {
-  FIELD_LABEL_CLASSES,
-  INPUT_CLASSES,
-} from '../../../../../components/ui/formStyles';
+import { DateInput } from '../../../../../components/ui/DateInput';
+import { FIELD_LABEL_CLASSES } from '../../../../../components/ui/formStyles';
 import type { BackendProject } from '../../../../../lib/projectsApi';
 import type { Stage } from '../../../types';
 import { formatStageDate, toIsoDate } from '../../../utils/isoDate';
@@ -19,7 +17,6 @@ interface MoveDeadlineInputs {
 
 interface MoveDeadlineModalProps {
   stage: Stage;
-  /** The window the new deadline has to stay inside. */
   project: Pick<BackendProject, 'startDate' | 'plannedEndDate'>;
   onClose: () => void;
   onSubmit: (deadline: string, note: string) => void | Promise<unknown>;
@@ -34,6 +31,7 @@ export default function MoveDeadlineModal({
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<MoveDeadlineInputs>({
     defaultValues: { deadline: stage.deadline, note: stage.deadlineNote ?? '' },
@@ -64,8 +62,10 @@ export default function MoveDeadlineModal({
           <label className={FIELD_LABEL_CLASSES} htmlFor={dateId}>
             Nowy termin
           </label>
-          <input
-            {...register('deadline', {
+          <Controller
+            name="deadline"
+            control={control}
+            rules={{
               required: 'Nowy termin jest wymagany',
               validate: (value) => {
                 if (value === stage.deadline) {
@@ -85,14 +85,19 @@ export default function MoveDeadlineModal({
                 }
                 return true;
               },
-            })}
-            id={dateId}
-            autoFocus
-            type="date"
-            min={stage.startDate ?? project.startDate ?? undefined}
-            max={project.plannedEndDate ?? undefined}
-            aria-invalid={!!errors.deadline}
-            className={INPUT_CLASSES}
+            }}
+            render={({ field }) => (
+              <DateInput
+                id={dateId}
+                autoFocus
+                value={field.value}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                min={stage.startDate ?? project.startDate ?? undefined}
+                max={project.plannedEndDate ?? undefined}
+                invalid={!!errors.deadline}
+              />
+            )}
           />
           <FieldError message={errors.deadline?.message} />
         </div>

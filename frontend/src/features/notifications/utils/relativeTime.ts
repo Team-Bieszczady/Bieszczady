@@ -1,21 +1,13 @@
-type PluralForm = 0 | 1 | 2;
+import { DAY_FORMS, pluralizePl, type PluralForms } from '../../../lib/pluralizePl';
 
-function polishForm(n: number): PluralForm {
-  if (n === 1) return 0;
-  const last1 = n % 10;
-  const last2 = n % 100;
-  if (last1 >= 2 && last1 <= 4 && !(last2 >= 12 && last2 <= 14)) return 1;
-  return 2;
-}
-
-const UNITS = {
+const UNITS: Record<'minute' | 'hour' | 'day', PluralForms> = {
   minute: ['minutę', 'minuty', 'minut'],
   hour: ['godzinę', 'godziny', 'godzin'],
-  day: ['dzień', 'dni', 'dni'],
-} as const;
+  day: DAY_FORMS,
+};
 
 function ago(n: number, unit: keyof typeof UNITS): string {
-  return `${n} ${UNITS[unit][polishForm(n)]} temu`;
+  return `${pluralizePl(n, UNITS[unit])} temu`;
 }
 
 export function formatRelativeTime(iso: string, now = Date.now()): string {

@@ -17,6 +17,7 @@ import * as bcrypt from 'bcryptjs';
 import { AuditLogService } from './audit-log.service';
 import { ModuleAccessService } from './module-access.service';
 import { Module } from '../common/enums/module.enum';
+import type { AccountStatus } from '../auth/types/auth.types';
 
 const TASK_COUNT = { _count: { select: { ownedTasks: true } } } as const;
 
@@ -211,7 +212,7 @@ export class UsersService {
   async setAccountStatus(
     actorId: string,
     id: string,
-    status: string,
+    status: AccountStatus,
   ): Promise<Omit<User, 'passwordHash'>> {
     const updated = await this.prisma.$transaction(async (tx) => {
       const user = await tx.user.findFirst({

@@ -10,11 +10,12 @@ import {
   pluralizePl,
   TASK_FORMS,
 } from '../../../../../lib/pluralizePl';
+import type { StageDeleteStrategy } from '../../../../../lib/projectsApi';
 import type { Stage } from '../../../types';
 import type { DeleteStrategy } from '../../../types';
 
 interface DeleteStageFormInputs {
-  mode: 'move' | 'delete';
+  mode: Exclude<StageDeleteStrategy, 'none'>;
   targetStageId: string;
 }
 
@@ -80,7 +81,7 @@ export default function DeleteStageModal({
             hint={
               canMove
                 ? 'Przenoszone są całe działania razem ze swoimi zadaniami. Nic nie zostanie utracone.'
-                : 'Nie ma dokąd przenieść zawartości — to jedyny otwarty etap w projekcie.'
+                : 'Nie ma dokąd przenieść zawartości, to jedyny otwarty etap w projekcie.'
             }
           >
             <label className={FIELD_LABEL_CLASSES}>Etap docelowy</label>

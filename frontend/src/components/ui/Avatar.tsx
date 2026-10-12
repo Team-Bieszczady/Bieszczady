@@ -6,7 +6,6 @@ interface AvatarProps {
   initials: string;
   src?: string | null;
   size?: AvatarSize;
-  className?: string;
 }
 
 const SIZES: Record<AvatarSize, string> = {
@@ -16,17 +15,12 @@ const SIZES: Record<AvatarSize, string> = {
   lg: 'w-9 h-9 lg:w-12 lg:h-12 text-xs lg:text-sm',
 };
 
-export function Avatar({
-  initials,
-  src,
-  size = 'md',
-  className = '',
-}: AvatarProps) {
+export function Avatar({ initials, src, size = 'md' }: AvatarProps) {
   const [imgFailed, setImgFailed] = useState(false);
 
   return (
     <div
-      className={`rounded-full bg-darkGreen flex items-center justify-center text-white font-bold shrink-0 overflow-hidden ${SIZES[size]} ${className}`}
+      className={`rounded-full bg-darkGreen flex items-center justify-center text-white font-bold shrink-0 overflow-hidden ${SIZES[size]}`}
     >
       {src && !imgFailed ? (
         <img

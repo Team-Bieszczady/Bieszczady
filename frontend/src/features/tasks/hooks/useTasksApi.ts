@@ -4,6 +4,7 @@ import {
   projectKeys,
   projectLists,
 } from '../../projects/hooks/useProjectsApi';
+import { eventKeys } from '../../decisions/hooks/useEventsApi';
 import {
   subtasksApi,
   tasksApi,
@@ -28,7 +29,9 @@ function taskWriteKeys(projectId: string) {
     taskKeys.listFor(projectId),
     taskKeys.mineFor(projectId),
     projectKeys.stagesFor(projectId),
+    projectKeys.indicators(projectId),
     ...projectLists,
+    eventKeys.all,
   ];
 }
 

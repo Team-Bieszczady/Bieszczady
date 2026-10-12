@@ -3,22 +3,22 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { SERIALIZABLE } from '../prisma/transaction-options';
 import type { AuthenticatedUser } from '../auth/types/auth.types';
 import { ProjectAccessService } from './project-access.service';
+import { PERSON_SELECT } from './prisma-selects';
 import { AddMemberDto, UpdateMemberRoleDto } from './dto/member.dto';
 
 const USER_SELECT = {
   select: {
-    id: true,
-    firstName: true,
-    lastName: true,
+    ...PERSON_SELECT.select,
     email: true,
     avatar: true,
     accountStatus: true,
   },
-};
+} satisfies { select: Prisma.UserSelect };
 
 @Injectable()
 export class MembersService {
@@ -48,13 +48,7 @@ export class MembersService {
         projectMemberships: { none: { projectId } },
       },
       orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        avatar: true,
-      },
+      select: { ...PERSON_SELECT.select, email: true, avatar: true },
     });
   }
 
@@ -130,6 +124,10 @@ export class MembersService {
           ownerId: member.userId,
           activity: { stage: { projectId: member.projectId } },
         },
+        data: { ownerId: null },
+      });
+      await tx.indicator.updateMany({
+        where: { projectId: member.projectId, ownerId: member.userId },
         data: { ownerId: null },
       });
       await tx.documentAccess.deleteMany({

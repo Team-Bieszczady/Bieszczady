@@ -1,4 +1,5 @@
 import type {
+  StageDeleteStrategy,
   TaskPriorityValue,
   TaskStatusValue,
 } from '../../lib/projectsApi';
@@ -23,9 +24,6 @@ export interface ScheduleAction {
   title: string;
 }
 
-export type TaskStatus = TaskStatusValue;
-export type TaskPriority = TaskPriorityValue;
-
 export interface Subtask {
   id: string;
   title: string;
@@ -37,15 +35,11 @@ export interface ScheduleTask {
   id: string;
   actionId: string;
   title: string;
-  status: TaskStatus;
-  priority: TaskPriority;
+  status: TaskStatusValue;
+  priority: TaskPriorityValue;
   dueDate: string | null;
   owner: string | null;
   ownerId: string | null;
-  description?: string;
-  subtasks?: Subtask[];
-  createdAt?: string;
-  updatedAt?: string;
 }
 
 export interface ProjectSchedule {
@@ -53,14 +47,12 @@ export interface ProjectSchedule {
   tasks: ScheduleTask[];
 }
 
-
 export interface StageFormValues {
   name: string;
   description: string;
   startDate: string | null;
   deadline: string;
 }
-
 
 export type StageEditValues = Pick<StageFormValues, 'name' | 'description'>;
 
@@ -72,14 +64,13 @@ export interface ActionFormValues {
 export interface TaskFormValues {
   title: string;
   actionId: string;
-  status: TaskStatus;
-  priority: TaskPriority;
+  status: TaskStatusValue;
+  priority: TaskPriorityValue;
   dueDate: string | null;
   ownerId: string | null;
   description: string;
 }
 
 export type DeleteStrategy =
-  | { kind: 'none' }
-  | { kind: 'move'; targetStageId: string }
-  | { kind: 'delete' };
+  | { kind: Exclude<StageDeleteStrategy, 'move'> }
+  | { kind: 'move'; targetStageId: string };

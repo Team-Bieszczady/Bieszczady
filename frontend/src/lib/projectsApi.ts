@@ -1,4 +1,4 @@
-import { request } from './api';
+import { request, type AccountStatus } from './api';
 
 const BASE = '/api/v1';
 
@@ -12,6 +12,12 @@ export interface DictionaryEntry {
 export interface NamedRef {
   id: string;
   name: string;
+}
+
+export interface PersonRef {
+  id: string;
+  firstName: string;
+  lastName: string;
 }
 
 export interface BackendProject {
@@ -49,7 +55,7 @@ export interface BackendTask {
   status: TaskStatusValue;
   priority: TaskPriorityValue;
   dueDate: string | null;
-  owner: { id: string; firstName: string; lastName: string } | null;
+  owner: PersonRef | null;
 }
 
 export interface BackendSubtask {
@@ -63,13 +69,8 @@ export interface BackendTaskRow extends BackendTask {
   activityId: string;
   projectId: string;
   description: string;
-  activity: { id: string; name: string };
-  stage: {
-    id: string;
-    name: string;
-    deadline: string;
-    archivedAt: string | null;
-  };
+  activity: NamedRef;
+  stage: NamedRef & { deadline: string; archivedAt: string | null };
   subtaskProgress: { done: number; total: number; percent: number };
   subtasks: BackendSubtask[];
   createdAt: string;
@@ -142,18 +143,46 @@ export interface BackendRisk {
   probability: RiskLevelValue;
   impact: RiskLevelValue;
   responsibleUserId: string | null;
-  responsible: { id: string; firstName: string; lastName: string } | null;
+  responsible: PersonRef | null;
+}
+
+export type IndicatorScopeValue = 'STAGE' | 'PROJECT';
+
+export interface BackendIndicator {
+  id: string;
+  projectId: string;
+  name: string;
+  description: string;
+  targetValue: number;
+  currentValue: number;
+  percent: number;
+  scope: IndicatorScopeValue;
+  stage: NamedRef | null;
+  task: { id: string; title: string } | null;
+  deadline: string | null;
+  deadlineSource: string;
+  owner: PersonRef | null;
+  folders: { id: string; name: string; path: string }[];
+}
+
+export interface IndicatorPayload {
+  name: string;
+  description?: string;
+  targetValue: number;
+  currentValue?: number;
+  scope: IndicatorScopeValue;
+  stageId?: string | null;
+  taskId?: string | null;
+  folderIds?: string[];
+  ownerId?: string | null;
 }
 
 export type ProjectRoleValue = 'COORDINATOR' | 'EXECUTOR' | 'PARTNER';
 
-export interface BackendMemberUser {
-  id: string;
-  firstName: string;
-  lastName: string;
+export interface BackendMemberUser extends PersonRef {
   email: string;
   avatar: string | null;
-  accountStatus: string;
+  accountStatus: AccountStatus;
 }
 
 export interface BackendMember {
@@ -177,41 +206,44 @@ const send = <T>(
 ) =>
   request<T>(`${BASE}${path}`, { method, accessToken, body, fallbackMessage });
 
-function childResource<TRow, TCreate extends object, TPatch extends object>(
-  parentSegment: string,
-  childSegment: string,
-  itemSegment: string,
-  noun: string,
-) {
+function childResource<TRow, TCreate extends object, TPatch extends object>({
+  parent,
+  resource,
+  label,
+}: {
+  parent: string;
+  resource: string;
+  label: string;
+}) {
   return {
     list: (accessToken: string, parentId: string) =>
       get<TRow[]>(
         accessToken,
-        `/${parentSegment}/${parentId}/${childSegment}`,
-        `Nie udało się pobrać: ${noun}`,
+        `/${parent}/${parentId}/${resource}`,
+        `Nie udało się pobrać: ${label}`,
       ),
     create: (accessToken: string, parentId: string, body: TCreate) =>
       send<TRow>(
         'POST',
         accessToken,
-        `/${parentSegment}/${parentId}/${childSegment}`,
-        `Nie udało się dodać: ${noun}`,
+        `/${parent}/${parentId}/${resource}`,
+        `Nie udało się dodać: ${label}`,
         body,
       ),
     patch: (accessToken: string, id: string, body: TPatch) =>
       send<TRow>(
         'PATCH',
         accessToken,
-        `/${itemSegment}/${id}`,
-        `Nie udało się zapisać: ${noun}`,
+        `/${resource}/${id}`,
+        `Nie udało się zapisać: ${label}`,
         body,
       ),
     remove: (accessToken: string, id: string) =>
       send<void>(
         'DELETE',
         accessToken,
-        `/${itemSegment}/${id}`,
-        `Nie udało się usunąć: ${noun}`,
+        `/${resource}/${id}`,
+        `Nie udało się usunąć: ${label}`,
       ),
   };
 }
@@ -362,7 +394,7 @@ export const goalsApi = childResource<
   BackendGoal,
   { title: string; description?: string },
   { title?: string; description?: string }
->('projects', 'goals', 'goals', 'cele');
+>({ parent: 'projects', resource: 'goals', label: 'cele' });
 
 export const risksApi = childResource<
   BackendRisk,
@@ -378,14 +410,34 @@ export const risksApi = childResource<
     impact?: RiskLevelValue;
     responsibleUserId?: string | null;
   }
->('projects', 'risks', 'risks', 'ryzyka');
+>({ parent: 'projects', resource: 'risks', label: 'ryzyka' });
+
+export const indicatorsApi = {
+  ...childResource<BackendIndicator, IndicatorPayload, IndicatorPayload>({
+    parent: 'projects',
+    resource: 'indicators',
+    label: 'wskaźniki',
+  }),
+  progress: (
+    accessToken: string,
+    id: string,
+    body: { delta: 1 | -1 } | { value: number },
+  ) =>
+    send<BackendIndicator>(
+      'PATCH',
+      accessToken,
+      `/indicators/${id}/progress`,
+      'Nie udało się zmienić postępu wskaźnika',
+      body,
+    ),
+};
 
 export const membersApi = {
   ...childResource<
     BackendMember,
     { userId: string; projectRole: ProjectRoleValue },
     { projectRole: ProjectRoleValue }
-  >('projects', 'members', 'members', 'zespół'),
+  >({ parent: 'projects', resource: 'members', label: 'zespół' }),
   available: (accessToken: string, projectId: string) =>
     get<BackendMemberUser[]>(
       accessToken,
@@ -406,7 +458,7 @@ export const stagesApi = {
       deadline: string;
     },
     { name?: string; description?: string }
-  >('projects', 'stages', 'stages', 'etapy'),
+  >({ parent: 'projects', resource: 'stages', label: 'etapy' }),
 
   list: (
     accessToken: string,
@@ -576,4 +628,4 @@ export const subtasksApi = childResource<
   BackendSubtask,
   { title: string },
   { title?: string; done?: boolean }
->('tasks', 'subtasks', 'subtasks', 'podzadania');
+>({ parent: 'tasks', resource: 'subtasks', label: 'podzadania' });

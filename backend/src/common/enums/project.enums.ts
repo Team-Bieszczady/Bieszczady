@@ -26,8 +26,30 @@ export type ProjectColor = (typeof PROJECT_COLORS)[number];
 export const TASK_STATUSES = ['NEW', 'IN_PROGRESS', 'BLOCKED', 'DONE'] as const;
 export type TaskStatus = (typeof TASK_STATUSES)[number];
 
+export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
+  NEW: 'Nowe',
+  IN_PROGRESS: 'W toku',
+  BLOCKED: 'Zablokowane',
+  DONE: 'Zrobione',
+};
+
 export const TASK_PRIORITIES = ['HIGH', 'MEDIUM', 'LOW'] as const;
 export type TaskPriority = (typeof TASK_PRIORITIES)[number];
 
 export const STAGE_DELETE_STRATEGIES = ['none', 'move', 'delete'] as const;
 export type StageDeleteStrategy = (typeof STAGE_DELETE_STRATEGIES)[number];
+export const EVENT_SOURCES = ['AUTOMATIC', 'MANUAL'] as const;
+export type EventSource = (typeof EVENT_SOURCES)[number];
+export const NOTIFICATION_KINDS = [
+  'TASK_ASSIGNED',
+  'TASK_DUE_SOON',
+  'TASK_OVERDUE',
+] as const;
+export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
+export const DEADLINE_NOTIFICATION_KINDS = [
+  'TASK_DUE_SOON',
+  'TASK_OVERDUE',
+] as const satisfies readonly NotificationKind[];
+
+export const INDICATOR_SCOPES = ['STAGE', 'PROJECT'] as const;
+export type IndicatorScope = (typeof INDICATOR_SCOPES)[number];

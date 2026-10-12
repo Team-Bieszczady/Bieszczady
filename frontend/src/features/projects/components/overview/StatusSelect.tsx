@@ -176,6 +176,7 @@ export default function StatusSelect({
           align="right"
           minWidth={240}
           centerOnMobile
+          onDismiss={close}
           role="listbox"
           ariaLabel="Status projektu"
         >

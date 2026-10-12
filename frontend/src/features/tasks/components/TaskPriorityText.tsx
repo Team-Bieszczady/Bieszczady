@@ -1,25 +1,19 @@
 import { TASK_PRIORITY_LABELS } from '../../projects/labels';
-import type { TaskPriority } from '../../projects/types';
+import type { TaskPriorityValue } from '../../../lib/projectsApi';
 
-const PRIORITY_CLASSES: Record<TaskPriority, string> = {
+const PRIORITY_CLASSES: Record<TaskPriorityValue, string> = {
   HIGH: 'text-darkRed',
   MEDIUM: 'text-amberDark',
   LOW: 'text-grayText',
 };
 
 interface TaskPriorityTextProps {
-  priority: TaskPriority;
-  className?: string;
+  priority: TaskPriorityValue;
 }
 
-export default function TaskPriorityText({
-  priority,
-  className = '',
-}: TaskPriorityTextProps) {
+export default function TaskPriorityText({ priority }: TaskPriorityTextProps) {
   return (
-    <span
-      className={`text-sm font-medium ${PRIORITY_CLASSES[priority]} ${className}`}
-    >
+    <span className={`text-sm font-medium ${PRIORITY_CLASSES[priority]}`}>
       {TASK_PRIORITY_LABELS[priority]}
     </span>
   );

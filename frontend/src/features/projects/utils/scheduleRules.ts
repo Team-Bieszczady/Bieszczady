@@ -1,6 +1,7 @@
 import { normalizeText } from '../../../lib/normalizeText';
 import type { ScheduleAction } from '../types';
 import type { Stage } from '../types';
+import { STAGE_ISSUE_MESSAGES } from './stageRules';
 
 export type ScheduleIssue =
   | 'actionNotFound'
@@ -35,9 +36,9 @@ export const SCHEDULE_ISSUE_MESSAGES: Record<ScheduleIssue, string> = {
   emptySubtaskTitle: 'Nazwa podzadania nie może być pusta',
   stageRequired: 'Wybierz etap, do którego należy działanie',
   noOpenStages:
-    'Najpierw dodaj etap w sekcji „Etapy” — działanie musi do niego należeć.',
-  stageCompleted: 'Ten etap jest zakończony — najpierw go wznów.',
-  stageArchived: 'Ten etap jest zarchiwizowany — najpierw go przywróć.',
+    'Najpierw dodaj etap w sekcji „Etapy”, działanie musi do niego należeć.',
+  stageCompleted: STAGE_ISSUE_MESSAGES.stageCompleted,
+  stageArchived: STAGE_ISSUE_MESSAGES.stageArchived,
 };
 
 export function validateStageAcceptsWork(

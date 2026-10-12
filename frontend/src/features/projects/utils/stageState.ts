@@ -51,10 +51,6 @@ export function getPlannedDeadline(stage: Stage): string {
   return stage.originalDeadline ?? stage.deadline;
 }
 
-export function isStageArchived(stage: Stage): boolean {
-  return stage.archivedAt !== null;
-}
-
 export function activeStages(stages: Stage[]): Stage[] {
   return stages.filter((stage) => stage.archivedAt === null);
 }
@@ -66,7 +62,6 @@ export function archivedStages(stages: Stage[]): Stage[] {
 export interface StageView {
   status: StageStatus;
   isOverdue: boolean;
-  isArchived: boolean;
   counts: TaskCounts;
   percent: number;
   plannedDeadline: string;
@@ -74,7 +69,6 @@ export interface StageView {
   movedNote: string | null;
   completedAt: string | null;
   completionTone: CompletionTone | null;
-  isEmpty: boolean;
   canAddContent: boolean;
 }
 
@@ -86,7 +80,6 @@ export function describeStage(
   return {
     status: getStageStatus(stage, counts, today),
     isOverdue: isStageOverdue(stage, counts, today),
-    isArchived: isStageArchived(stage),
     counts,
     percent: getStageProgress(stage, counts),
     plannedDeadline: getPlannedDeadline(stage),
@@ -94,7 +87,6 @@ export function describeStage(
     movedNote: isStageMoved(stage) ? stage.deadlineNote : null,
     completedAt: stage.completedAt,
     completionTone: getCompletionTone(stage),
-    isEmpty: counts.actions === 0,
     canAddContent: !stage.completedAt && !stage.archivedAt,
   };
 }

@@ -8,6 +8,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { SERIALIZABLE } from '../prisma/transaction-options';
 import type { AuthenticatedUser } from '../auth/types/auth.types';
 import { ProjectAccessService } from './project-access.service';
+import { indicatorPercent } from './indicators.service';
+import { MS_PER_DAY } from './shift-following-stages';
 import { CreateProjectDto } from './dto/create-project.dto';
 import {
   UpdateProjectDto,
@@ -15,8 +17,6 @@ import {
   UpdateProjectStatusDto,
   UpdateProjectTypesDto,
 } from './dto/update-project.dto';
-
-const MS_PER_DAY = 86_400_000;
 
 const DETAIL_INCLUDE = {
   status: true,
@@ -199,7 +199,7 @@ export class ProjectsService {
 
   async findAll(
     includeArchived: boolean,
-    viewer: { id: string; isDirector: boolean },
+    viewer: Pick<AuthenticatedUser, 'id' | 'isDirector'>,
   ) {
     const projects = await this.prisma.project.findMany({
       where: {
@@ -270,7 +270,7 @@ export class ProjectsService {
         return {
           ...this.toDetail(project),
           peopleCount: project._count.members,
-          progress: total === 0 ? 0 : Math.round((done / total) * 100),
+          progress: indicatorPercent(done, total),
           taskCounts: { total, done, mine },
           viewerManages,
           stageCount: project.stages.length,
@@ -429,8 +429,16 @@ export class ProjectsService {
       });
       const stageIds = stages.map((stage) => stage.id);
 
+      await tx.indicatorFolder.deleteMany({
+        where: { indicator: { projectId: id } },
+      });
+      await tx.indicator.deleteMany({ where: { projectId: id } });
+
       if (stageIds.length > 0) {
         await tx.subtask.deleteMany({
+          where: { task: { activity: { stageId: { in: stageIds } } } },
+        });
+        await tx.notification.deleteMany({
           where: { task: { activity: { stageId: { in: stageIds } } } },
         });
         await tx.task.deleteMany({
@@ -451,6 +459,7 @@ export class ProjectsService {
       await tx.projectRecipientsOnProjects.deleteMany({
         where: { projectId: id },
       });
+      await tx.projectEvent.deleteMany({ where: { projectId: id } });
       await tx.project.delete({ where: { id } });
     }, SERIALIZABLE);
   }

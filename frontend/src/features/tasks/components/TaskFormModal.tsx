@@ -2,28 +2,41 @@ import { useId } from 'react';
 import { FieldError } from '../../../components/ui/FieldError';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { Button } from '../../../components/ui/Button';
+import { DateInput } from '../../../components/ui/DateInput';
 import { Modal } from '../../../components/ui/Modal';
 import { RadioPillGroup } from '../../../components/ui/RadioPillGroup';
 import { Select, type SelectOption } from '../../../components/ui/Select';
 import {
   FIELD_LABEL_CLASSES,
   INPUT_CLASSES,
+  TEXTAREA_CLASSES,
 } from '../../../components/ui/formStyles';
 import {
   TASK_PRIORITY_OPTIONS,
   TASK_STATUS_OPTIONS,
 } from '../../projects/labels';
-import type { TaskPriority, TaskStatus } from '../../projects/types';
+import type { TaskPriorityValue } from '../../../lib/projectsApi';
+import type { TaskFormValues } from '../../projects/types';
+import {
+  formatNumericDate,
+  toIsoDate,
+} from '../../projects/utils/isoDate';
+import { NO_OPEN_ACTIONS_MESSAGE } from '../constants';
 import type { TaskRow } from '../data';
 
-export interface TaskFormInputs {
-  title: string;
-  actionId: string;
-  ownerId: string;
+export type TaskFormInputs = Omit<
+  TaskFormValues,
+  'priority' | 'dueDate' | 'ownerId'
+> & {
+  priority: TaskPriorityValue | '';
   dueDate: string;
-  priority: TaskPriority | '';
-  status: TaskStatus;
-  description: string;
+  ownerId: string;
+};
+
+export interface TaskFormStage {
+  name: string;
+  startDate: string | null;
+  deadline: string;
 }
 
 interface TaskFormModalProps {
@@ -31,8 +44,7 @@ interface TaskFormModalProps {
   task: TaskRow | null;
   actionOptions: SelectOption[];
   ownerOptions: SelectOption[];
-  /** Start date of the stage behind an action, so a task cannot predate it. */
-  stageStartFor: (actionId: string) => string | null;
+  stageFor: (actionId: string) => TaskFormStage | null;
   onClose: () => void;
   onSubmit: (values: TaskFormInputs) => void;
   isSubmitting?: boolean;
@@ -40,15 +52,12 @@ interface TaskFormModalProps {
 
 const UNASSIGNED = '';
 
-const TEXTAREA_CLASSES =
-  'w-full resize-y rounded-lg border border-gray-300 px-3 py-2 text-xs leading-relaxed text-dark focus:border-transparent focus:ring-1 focus:ring-darkGreen focus:outline-none';
-
 export default function TaskFormModal({
   mode,
   task,
   actionOptions,
   ownerOptions,
-  stageStartFor,
+  stageFor,
   onClose,
   onSubmit,
   isSubmitting = false,
@@ -72,12 +81,9 @@ export default function TaskFormModal({
 
   const titleId = useId();
   const dueDateId = useId();
+  const dueDateHintId = useId();
   const noteId = useId();
 
-  const owners: SelectOption[] = [
-    { value: UNASSIGNED, label: 'Bez przypisania' },
-    ...ownerOptions,
-  ];
   const statusOptions =
     mode === 'add'
       ? TASK_STATUS_OPTIONS.filter((option) => option.value !== 'DONE')
@@ -85,7 +91,11 @@ export default function TaskFormModal({
 
   const status = useWatch({ control, name: 'status' });
   const actionId = useWatch({ control, name: 'actionId' });
-  const stageStart = actionId ? stageStartFor(actionId) : null;
+  const dueDate = useWatch({ control, name: 'dueDate' });
+  const stage = actionId ? stageFor(actionId) : null;
+  const stageStart = stage?.startDate ? toIsoDate(stage.startDate) : null;
+  const stageDeadline = stage ? toIsoDate(stage.deadline) : null;
+  const isPastStage = !!dueDate && !!stageDeadline && dueDate > stageDeadline;
 
   return (
     <Modal
@@ -113,70 +123,7 @@ export default function TaskFormModal({
           />
           <FieldError message={errors.title?.message} />
         </div>
-
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
-            <label className={FIELD_LABEL_CLASSES}>Osoba odpowiedzialna</label>
-            <Controller
-              name="ownerId"
-              control={control}
-              render={({ field }) => (
-                <Select
-                  size="md"
-                  placeholder="Wybierz"
-                  options={owners}
-                  value={field.value}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                />
-              )}
-            />
-          </div>
-
-          <div>
-            <label className={FIELD_LABEL_CLASSES} htmlFor={dueDateId}>
-              Termin
-            </label>
-            <input
-              {...register('dueDate', {
-                validate: (value) =>
-                  !value ||
-                  !stageStart ||
-                  value >= stageStart ||
-                  'Termin zadania nie może być wcześniejszy niż data rozpoczęcia etapu',
-              })}
-              id={dueDateId}
-              type="date"
-              min={stageStart ?? undefined}
-              aria-invalid={!!errors.dueDate}
-              className={INPUT_CLASSES}
-            />
-            <FieldError message={errors.dueDate?.message} />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
-            <label className={FIELD_LABEL_CLASSES}>Priorytet</label>
-            <Controller
-              name="priority"
-              control={control}
-              rules={{ validate: (value) => !!value || 'Wybierz priorytet' }}
-              render={({ field }) => (
-                <Select
-                  size="md"
-                  placeholder="Wybierz"
-                  options={TASK_PRIORITY_OPTIONS}
-                  value={field.value}
-                  onChange={(value) => field.onChange(value as TaskPriority)}
-                  onBlur={field.onBlur}
-                  invalid={!!errors.priority}
-                />
-              )}
-            />
-            <FieldError message={errors.priority?.message} />
-          </div>
-
           <div>
             <label className={FIELD_LABEL_CLASSES}>Działanie</label>
             <Controller
@@ -198,10 +145,101 @@ export default function TaskFormModal({
             <FieldError message={errors.actionId?.message} />
             {actionOptions.length === 0 && (
               <p className="mt-1 text-[11px] text-mutedText">
-                Brak działań w otwartych etapach — najpierw dodaj działanie w
-                Harmonogramie.
+                {NO_OPEN_ACTIONS_MESSAGE}
               </p>
             )}
+          </div>
+
+          <div>
+            <label className={FIELD_LABEL_CLASSES} htmlFor={dueDateId}>
+              Termin
+            </label>
+            <Controller
+              name="dueDate"
+              control={control}
+              rules={{
+                validate: (value) =>
+                  !value ||
+                  !stageStart ||
+                  value >= stageStart ||
+                  'Termin zadania nie może być wcześniejszy niż data rozpoczęcia etapu',
+              }}
+              render={({ field }) => (
+                <DateInput
+                  id={dueDateId}
+                  value={field.value}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  min={stageStart ?? undefined}
+                  invalid={!!errors.dueDate}
+                  aria-describedby={dueDateHintId}
+                />
+              )}
+            />
+            <FieldError message={errors.dueDate?.message} />
+            <div id={dueDateHintId} className="mt-1 text-[11px]">
+              {stage ? (
+                <p className="text-mutedText">
+                  Etap „{stage.name}”:{' '}
+                  {stageStart
+                    ? `${formatNumericDate(stageStart)} – ${formatNumericDate(stage.deadline)}`
+                    : `do ${formatNumericDate(stage.deadline)}`}
+                </p>
+              ) : (
+                !actionId && (
+                  <p className="text-mutedText">
+                    Wybierz działanie, aby zobaczyć ramy czasowe etapu
+                  </p>
+                )
+              )}
+              {isPastStage && (
+                <p className="text-amberDark">
+                  Termin po zakończeniu etapu ({formatNumericDate(stage!.deadline)}),
+                  etap może się opóźnić.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label className={FIELD_LABEL_CLASSES}>Osoba odpowiedzialna</label>
+            <Controller
+              name="ownerId"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  size="md"
+                  placeholder="Bez przypisania"
+                  options={ownerOptions}
+                  value={field.value}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                />
+              )}
+            />
+          </div>
+
+          <div>
+            <label className={FIELD_LABEL_CLASSES}>Priorytet</label>
+            <Controller
+              name="priority"
+              control={control}
+              rules={{ validate: (value) => !!value || 'Wybierz priorytet' }}
+              render={({ field }) => (
+                <Select
+                  size="md"
+                  placeholder="Wybierz"
+                  options={TASK_PRIORITY_OPTIONS}
+                  value={field.value}
+                  onChange={(value) => field.onChange(value as TaskPriorityValue)}
+                  onBlur={field.onBlur}
+                  invalid={!!errors.priority}
+                />
+              )}
+            />
+            <FieldError message={errors.priority?.message} />
           </div>
         </div>
 
