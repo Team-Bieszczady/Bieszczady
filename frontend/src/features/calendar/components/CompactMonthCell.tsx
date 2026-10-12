@@ -1,4 +1,8 @@
-import { pluralizePl, type PluralForms } from '../../../lib/pluralizePl';
+import {
+  MEETING_FORMS,
+  pluralizePl,
+  type PluralForms,
+} from '../../../lib/pluralizePl';
 import { meetingColors } from '../meetingColors';
 import type { CalendarProject, Deadline, Meeting } from '../types';
 import { formatFullDay } from '../utils/calendarView';
@@ -11,7 +15,6 @@ import {
 
 const MAX_DOTS = 3;
 
-const MEETING_FORMS: PluralForms = ['spotkanie', 'spotkania', 'spotkań'];
 const DEADLINE_FORMS: PluralForms = ['termin', 'terminy', 'terminów'];
 
 interface CompactMonthCellProps {

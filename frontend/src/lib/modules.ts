@@ -1,6 +1,7 @@
 export const MODULES = [
   'PROJECTS',
   'PEOPLE',
+  'PARTICIPANTS',
   'CALENDAR',
   'KSEF',
   'DECISIONS',
@@ -30,6 +31,7 @@ export const PROJECT_TAB_MODULES: ModuleKey[] = [
 export const MODULE_LABELS: Record<ModuleKey, string> = {
   PROJECTS: 'Projekty',
   PEOPLE: 'Ludzie',
+  PARTICIPANTS: 'Uczestnicy',
   CALENDAR: 'Kalendarz',
   KSEF: 'Faktury KSeF',
   DECISIONS: 'Decyzje',

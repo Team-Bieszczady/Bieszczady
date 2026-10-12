@@ -13,6 +13,7 @@ import PersonDetailPage from './pages/PersonDetailPage';
 import ProjectsPage from './pages/ProjectsPage';
 import PeoplePage from './pages/PeoplePage';
 import KsefPage from './pages/KsefPage';
+import ParticipantsPage from './pages/ParticipantsPage';
 import CalendarPage from './pages/CalendarPage';
 import DecisionsPage from './pages/DecisionsPage';
 import SettingsPage from './pages/SettingsPage';
@@ -53,6 +54,9 @@ export default function Router() {
             <Route element={<RequireModule module="PEOPLE" />}>
               <Route path="/people" element={<PeoplePage />} />
               <Route path="/people/:id" element={<PersonDetailPage />} />
+            </Route>
+            <Route element={<RequireModule module="PARTICIPANTS" />}>
+              <Route path="/participants" element={<ParticipantsPage />} />
             </Route>
             <Route element={<RequireModule module="KSEF" />}>
               <Route path="/ksef" element={<KsefPage />} />

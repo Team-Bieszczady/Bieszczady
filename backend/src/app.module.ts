@@ -10,6 +10,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { DocumentsModule } from './documents/documents.module';
 import { CalendarModule } from './calendar/calendar.module';
 import { InvoicesModule } from './invoices/invoices.module';
+import { ParticipantsModule } from './participants/participants.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { InvoicesModule } from './invoices/invoices.module';
     ProjectsModule,
     CalendarModule,
     InvoicesModule,
+    ParticipantsModule,
     EventsModule,
     NotificationsModule,
   ],

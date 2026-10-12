@@ -736,7 +736,7 @@ function DocumentsView({ projectId }: { projectId: string }) {
         </section>
       </div>
       <RestoreDocumentModal
-        key={restoreDocumentId ?? 'closed'}
+        key={restoreDocumentId ?? 'restore-closed'}
         documentId={restoreDocumentId}
         folders={folders}
         isPending={restoreDocument.isPending}
@@ -755,7 +755,7 @@ function DocumentsView({ projectId }: { projectId: string }) {
         key={
           showUpload
             ? `${uploadMode}-${uploadDocumentId ?? 'new'}-${signing}`
-            : 'closed'
+            : 'upload-closed'
         }
 
         isOpen={showUpload}
@@ -810,7 +810,7 @@ function DocumentsView({ projectId }: { projectId: string }) {
         onClose={() => setPermanentDeleteId(null)}
       />
       <MoveFolderModal
-        key={moveFolderId ?? 'closed'}
+        key={moveFolderId ?? 'move-closed'}
         folderId={moveFolderId}
         folders={folders}
         isPending={moveFolder.isPending}
