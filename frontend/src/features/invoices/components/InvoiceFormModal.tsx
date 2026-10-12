@@ -1,6 +1,7 @@
-import { useId } from 'react';
+import { useId, useRef } from 'react';
 import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form';
-import { LuPlus, LuTrash2 } from 'react-icons/lu';
+import toast from 'react-hot-toast';
+import { LuFileCode2, LuPlus, LuTrash2 } from 'react-icons/lu';
 import { Button } from '../../../components/ui/Button';
 import { DateInput } from '../../../components/ui/DateInput';
 import { FieldError } from '../../../components/ui/FieldError';
@@ -9,6 +10,8 @@ import { Select, type SelectOption } from '../../../components/ui/Select';
 import { INPUT_CLASSES } from '../../../components/ui/formStyles';
 import type { BackendInvoice } from '../../../lib/api';
 import { todayIso } from '../../projects/utils/isoDate';
+import { formatAmount } from '../invoiceSummary';
+import { invoiceNameFrom, parseKsefInvoice } from '../ksefXml';
 
 export interface InvoiceFormInputs {
   name: string;
@@ -70,16 +73,52 @@ export default function InvoiceFormModal({
   const amountId = useId();
   const dateId = useId();
 
+  const xmlInputRef = useRef<HTMLInputElement>(null);
+
   const {
     register,
     control,
     handleSubmit,
+    setValue,
     setError,
     clearErrors,
     formState: { errors },
   } = useForm<InvoiceFormInputs>({
     defaultValues: startingValues(invoice),
   });
+
+  const loadFromXml = async (file: File) => {
+    const parsed = parseKsefInvoice(await file.text());
+
+    if (!parsed) {
+      toast.error('To nie wygląda na plik faktury z KSeF');
+      return;
+    }
+
+    const filled: string[] = [];
+    const name = invoiceNameFrom(parsed);
+    if (name !== '') {
+      setValue('name', name.slice(0, 200), { shouldValidate: true });
+      filled.push('nazwę');
+    }
+    if (parsed.amount !== null) {
+      setValue('amount', parsed.amount, { shouldValidate: true });
+      filled.push('kwotę');
+    }
+    if (parsed.paymentDate !== null) {
+      setValue('paymentDate', parsed.paymentDate, { shouldValidate: true });
+      filled.push('datę');
+    }
+
+    if (filled.length === 0) {
+      toast.error('Nie udało się odczytać danych z tego pliku');
+      return;
+    }
+
+    toast.success(
+      `Wczytano ${filled.join(', ')}. Zostaje podział na projekty.`,
+    );
+  };
 
   const { fields, append, remove } = useFieldArray({
     control,
@@ -95,7 +134,7 @@ export default function InvoiceFormModal({
 
     if (Math.abs(total - splitTotal) > 0.01) {
       setError('shares', {
-        message: `Suma podziału (${splitTotal.toFixed(2)} zł) musi się zgadzać z kwotą faktury (${total.toFixed(2)} zł)`,
+        message: `Suma podziału (${formatAmount(splitTotal)}) musi się zgadzać z kwotą faktury (${formatAmount(total)})`,
       });
       return;
     }
@@ -112,10 +151,24 @@ export default function InvoiceFormModal({
 
   const splitTotal = sharesTotal(shares);
   const amountNumber = Number(amount);
-  const showMismatch =
-    Number.isFinite(amountNumber) &&
-    amount !== '' &&
-    Math.abs(amountNumber - splitTotal) > 0.01;
+  const knownAmount =
+    amount !== '' && Number.isFinite(amountNumber) && amountNumber > 0;
+  const left = Math.round((amountNumber - splitTotal) * 100) / 100;
+
+  // Dopóki zostało coś do rozdzielenia, podpowiadamy ile. Na czerwono dopiero
+  // wtedy, gdy podział przekracza kwotę faktury, bo to już prawdziwy błąd.
+  let splitHint = `Suma podziału: ${formatAmount(splitTotal)}`;
+  let splitHintClasses = 'text-grayText';
+
+  if (knownAmount && left > 0.01) {
+    splitHint = `Zostało do podziału: ${formatAmount(left)}`;
+  } else if (knownAmount && left < -0.01) {
+    splitHint = `Podział przekracza kwotę faktury o ${formatAmount(Math.abs(left))}`;
+    splitHintClasses = 'text-darkRed';
+  } else if (knownAmount) {
+    splitHint = `Podzielone w całości: ${formatAmount(splitTotal)}`;
+    splitHintClasses = 'text-darkGreen';
+  }
 
   return (
     <Modal
@@ -124,6 +177,34 @@ export default function InvoiceFormModal({
       title={invoice ? 'Edytuj fakturę' : 'Dodaj fakturę'}
     >
       <form onSubmit={submit} noValidate className="flex flex-col gap-5">
+        {!invoice && (
+          <div className="rounded-lg border border-dashed border-gray-300 px-3 py-2.5">
+            <input
+              ref={xmlInputRef}
+              type="file"
+              accept=".xml,text/xml,application/xml"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files ? event.target.files[0] : null;
+                if (file) void loadFromXml(file);
+                event.target.value = '';
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => xmlInputRef.current?.click()}
+              className="flex cursor-pointer items-center gap-1.5 text-xs font-medium text-darkGreen hover:text-darkGreenHover"
+            >
+              <LuFileCode2 size={14} aria-hidden="true" />
+              Wczytaj z pliku XML pobranego z KSeF
+            </button>
+            <p className="mt-1 text-[11px] leading-relaxed text-grayText">
+              Wypełni nazwę, kwotę i datę. Podział na projekty i tak trzeba
+              wskazać ręcznie.
+            </p>
+          </div>
+        )}
+
         <div>
           <label htmlFor={nameId} className={LABEL_CLASSES}>
             Nazwa faktury
@@ -262,9 +343,7 @@ export default function InvoiceFormModal({
           </div>
 
           <div className="mt-2 flex items-center justify-between text-xs">
-            <span className={showMismatch ? 'text-darkRed' : 'text-grayText'}>
-              Suma podziału: {splitTotal.toFixed(2)} zł
-            </span>
+            <span className={splitHintClasses}>{splitHint}</span>
           </div>
           <FieldError message={errors.shares?.message} />
         </div>
