@@ -25,7 +25,7 @@ const HEADERS = [
 ];
 
 const TH_CLASSES =
-  'px-4 py-3 text-left text-xs font-semibold tracking-wide text-gray-600 uppercase';
+  'px-4 py-3 text-left text-xs font-semibold tracking-wide whitespace-nowrap text-gray-600 uppercase';
 
 const STATUS_TONE: Record<InvoiceStatus, string> = {
   TO_PAY: 'bg-amber-100 text-amber-700',
@@ -61,7 +61,7 @@ function FileCell({
       <button
         type="button"
         onClick={() => onOpenInDocuments(invoice)}
-        className="flex cursor-pointer items-center gap-1.5 text-xs font-medium text-darkGreen hover:text-darkGreenHover"
+        className="flex cursor-pointer items-center gap-1.5 text-xs font-medium whitespace-nowrap text-darkGreen hover:text-darkGreenHover"
       >
         <LuPaperclip size={14} aria-hidden="true" />
         Zobacz w dokumentach
@@ -85,7 +85,7 @@ function FileCell({
         type="button"
         onClick={() => inputRef.current?.click()}
         disabled={isUploading}
-        className="flex cursor-pointer items-center gap-1.5 text-xs text-grayText hover:text-darkGreen disabled:cursor-wait disabled:opacity-60"
+        className="flex cursor-pointer items-center gap-1.5 text-xs whitespace-nowrap text-grayText hover:text-darkGreen disabled:cursor-wait disabled:opacity-60"
       >
         <LuFileUp size={14} aria-hidden="true" />
         {isUploading ? 'Wgrywam…' : 'Wgraj plik'}
@@ -114,7 +114,7 @@ export function InvoicesTable({
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[720px]">
+      <table className="w-full min-w-[820px]">
         <thead className="border-b border-gray-200">
           <tr>
             {HEADERS.map((header) => (
@@ -130,10 +130,10 @@ export function InvoicesTable({
               <td className="px-4 py-3 text-sm font-medium text-dark">
                 {invoice.name}
               </td>
-              <td className="px-4 py-3 text-sm text-dark">
+              <td className="px-4 py-3 text-sm whitespace-nowrap text-dark">
                 {formatAmount(invoice.amount)}
               </td>
-              <td className="px-4 py-3 text-sm text-dark">
+              <td className="px-4 py-3 text-sm whitespace-nowrap text-dark">
                 {formatNumericDate(invoice.paymentDate)}
               </td>
               <td className="px-4 py-3 text-xs text-grayText">
@@ -149,7 +149,7 @@ export function InvoicesTable({
                   type="button"
                   onClick={() => onToggleStatus(invoice)}
                   disabled={isTogglingId === invoice.id}
-                  className={`inline-flex cursor-pointer items-center rounded-full px-3 py-1 text-xs font-medium transition-opacity hover:opacity-80 disabled:cursor-wait disabled:opacity-60 ${STATUS_TONE[invoice.status]}`}
+                  className={`inline-flex cursor-pointer items-center rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap transition-opacity hover:opacity-80 disabled:cursor-wait disabled:opacity-60 ${STATUS_TONE[invoice.status]}`}
                 >
                   {STATUS_LABEL[invoice.status]}
                 </button>
