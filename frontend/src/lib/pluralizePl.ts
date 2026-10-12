@@ -26,3 +26,5 @@ export const CATEGORY_FORMS: PluralForms = [
   'kategorii',
 ];
 export const POSITION_FORMS: PluralForms = ['pozycja', 'pozycje', 'pozycji'];
+export const MEETING_FORMS: PluralForms = ['spotkanie', 'spotkania', 'spotkań'];
+export const PERSON_FORMS: PluralForms = ['osoba', 'osoby', 'osób'];

@@ -1,6 +1,7 @@
 export const MODULES = [
   'PROJECTS',
   'PEOPLE',
+  'PARTICIPANTS',
   'CALENDAR',
   'DECISIONS',
   'SETTINGS',

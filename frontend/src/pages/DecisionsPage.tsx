@@ -47,7 +47,7 @@ export default function DecisionsPage() {
   ];
 
   const sentinelRef = useInfiniteScroll<HTMLDivElement>({
-    enabled: !events.isFetchingNextPage,
+    enabled: !events.isFetchingNextPage && !events.isFetchNextPageError,
     hasMore: events.hasNextPage,
     loadedCount: listedEvents.length,
     onLoadMore: () => void events.fetchNextPage(),
@@ -85,7 +85,7 @@ export default function DecisionsPage() {
         >
           <Spinner variant="dark" size="32" />
         </div>
-      ) : events.isError ? (
+      ) : events.isError && !events.data ? (
         <div className="flex flex-col items-center gap-4 py-12 text-center">
           <p className="text-sm text-gray-500">{events.error.message}</p>
           <Button
@@ -106,6 +106,18 @@ export default function DecisionsPage() {
                 : undefined
             }
           />
+          {events.isFetchNextPageError && (
+            <div className="flex flex-col items-center gap-3 py-6 text-center">
+              <p className="text-sm text-gray-500">{events.error?.message}</p>
+              <Button
+                variant="outline"
+                size="compact"
+                onClick={() => void events.fetchNextPage()}
+              >
+                Spróbuj ponownie
+              </Button>
+            </div>
+          )}
         </div>
       )}
 

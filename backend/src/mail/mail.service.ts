@@ -77,6 +77,99 @@ function passwordResetHtml(link: string): string {
 </html>`;
 }
 
+// Nazwę spotkania czy miejsce wpisują ludzie, więc znaki < > " & nie mogą
+// zamienić się w HTML (np. w podstawiony link w mailu z naszego adresu).
+function escapeHtml(text: string): string {
+  return text
+    .split('&')
+    .join('&amp;')
+    .split('<')
+    .join('&lt;')
+    .split('>')
+    .join('&gt;')
+    .split('"')
+    .join('&quot;')
+    .split("'")
+    .join('&#39;');
+}
+
+function meetingInviteHtml(params: {
+  title: string;
+  projectName: string;
+  whenText: string;
+  place: string | null;
+  meetingUrl: string | null;
+}): string {
+  const heading = 'Zaproszenie na spotkanie';
+  const intro =
+    'Zostałeś(-aś) zaproszony(-a) na spotkanie w Wirtualnym Biurze. W załączniku znajdziesz plik, który doda je do Twojego kalendarza (Gmail, Outlook).';
+  const title = escapeHtml(params.title);
+  const projectName = escapeHtml(params.projectName);
+  const whenText = escapeHtml(params.whenText);
+
+  let placeLine = '';
+  if (params.place) {
+    placeLine = `<tr><td style="font-size:14px;color:${DARK};padding-bottom:6px;"><b>Miejsce:</b> ${escapeHtml(params.place)}</td></tr>`;
+  }
+
+  let linkLine = '';
+  if (params.meetingUrl) {
+    const url = escapeHtml(params.meetingUrl);
+    linkLine = `<tr><td style="font-size:14px;color:${DARK};padding-bottom:6px;"><b>Link:</b> <a href="${url}" style="color:${DARK_GREEN};">${url}</a></td></tr>`;
+  }
+
+  return `<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>${heading}</title>
+  </head>
+  <body style="margin:0;padding:0;background-color:#f4f4f5;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f4f4f5;padding:24px 0;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;background-color:#ffffff;border-radius:12px;padding:32px;font-family:Arial,Helvetica,sans-serif;">
+            <tr>
+              <td align="center" style="padding-bottom:24px;">
+                <img src="cid:${LOGO_CID}" width="140" alt="Bieszczadzki Uniwersytet Ludowy" style="display:block;border:0;">
+              </td>
+            </tr>
+            <tr>
+              <td align="center" style="font-size:20px;font-weight:bold;color:${DARK};padding-bottom:16px;">
+                ${heading}
+              </td>
+            </tr>
+            <tr>
+              <td style="font-size:15px;line-height:22px;color:${DARK};padding-bottom:20px;">
+                ${intro}
+              </td>
+            </tr>
+            <tr>
+              <td style="font-size:16px;font-weight:bold;color:${DARK};padding-bottom:8px;">
+                ${title}
+              </td>
+            </tr>
+            <tr>
+              <td style="font-size:14px;color:${DARK};padding-bottom:6px;">
+                <b>Projekt:</b> ${projectName}
+              </td>
+            </tr>
+            <tr>
+              <td style="font-size:14px;color:${DARK};padding-bottom:6px;">
+                <b>Kiedy:</b> ${whenText}
+              </td>
+            </tr>
+            ${placeLine}
+            ${linkLine}
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+}
+
 @Injectable()
 export class MailService {
   private readonly transporter: nodemailer.Transporter;
@@ -90,6 +183,12 @@ export class MailService {
         pass: this.config.getOrThrow<string>('SMTP_PASS'),
       },
     });
+  }
+
+  senderEmail(): string {
+    const from = this.config.getOrThrow<string>('SMTP_FROM');
+    const match = /<([^>]+)>/.exec(from);
+    return match ? match[1] : from;
   }
 
   async sendPasswordReset(to: string, token: string): Promise<void> {
@@ -111,6 +210,38 @@ Jeśli to nie Ty prosiłeś o reset, zignoruj tę wiadomość. Twoje hasło pozo
           filename: 'logo.jpg',
           path: LOGO_PATH,
           cid: LOGO_CID,
+        },
+      ],
+    });
+  }
+
+  async sendMeetingInvite(params: {
+    to: string;
+    title: string;
+    projectName: string;
+    whenText: string;
+    place: string | null;
+    meetingUrl: string | null;
+    ics: string;
+  }): Promise<void> {
+    const subject = `Zaproszenie: ${params.title}`;
+
+    await this.transporter.sendMail({
+      from: this.config.getOrThrow<string>('SMTP_FROM'),
+      to: params.to,
+      subject,
+      text: `${subject}\n\nProjekt: ${params.projectName}\nKiedy: ${params.whenText}${params.place ? `\nMiejsce: ${params.place}` : ''}${params.meetingUrl ? `\nLink: ${params.meetingUrl}` : ''}`,
+      html: meetingInviteHtml(params),
+      attachments: [
+        {
+          filename: 'logo.jpg',
+          path: LOGO_PATH,
+          cid: LOGO_CID,
+        },
+        {
+          filename: 'zaproszenie.ics',
+          content: params.ics,
+          contentType: 'text/calendar; charset=utf-8; method=REQUEST',
         },
       ],
     });

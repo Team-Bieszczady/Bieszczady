@@ -137,6 +137,7 @@ export function DateInput({
           ariaLabel="Kalendarz"
           minWidth={0}
           centerOnMobile
+          onDismiss={close}
           className="p-2 text-xs max-sm:w-auto"
         >
           <DayPicker

@@ -8,6 +8,8 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { validateEnv } from './config/env.validation';
 import { PrismaModule } from './prisma/prisma.module';
 import { DocumentsModule } from './documents/documents.module';
+import { CalendarModule } from './calendar/calendar.module';
+import { ParticipantsModule } from './participants/participants.module';
 
 @Module({
   imports: [
@@ -20,6 +22,8 @@ import { DocumentsModule } from './documents/documents.module';
     UsersModule,
     DocumentsModule,
     ProjectsModule,
+    CalendarModule,
+    ParticipantsModule,
     EventsModule,
     NotificationsModule,
   ],

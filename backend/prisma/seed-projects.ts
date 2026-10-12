@@ -991,6 +991,26 @@ export async function seedProjects(
       });
     }
 
+    for (const event of project.events ?? []) {
+      const eventId = id('event', `${project.key}:${event.key}`);
+      const eventData = {
+        actorId: userIdByKey.get(event.actor)!,
+        source: 'MANUAL',
+        content: event.content,
+        createdAt: new Date(event.at),
+      };
+      await prisma.projectEvent.upsert({
+        where: { id: eventId },
+        update: eventData,
+        create: {
+          id: eventId,
+          projectId,
+          dedupeKey: `seed:${project.key}:${event.key}`,
+          ...eventData,
+        },
+      });
+    }
+
     for (const [index, goal] of project.goals.entries()) {
       const goalId = id('goal', `${project.key}:${index}`);
       await prisma.goal.upsert({

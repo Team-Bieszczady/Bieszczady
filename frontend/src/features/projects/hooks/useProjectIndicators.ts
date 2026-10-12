@@ -80,11 +80,18 @@ export function useProjectIndicators(projectId: string) {
   };
 
   const editIndicator = async (
-    id: string,
+    indicator: IndicatorView,
     values: IndicatorFormValues,
   ): Promise<IndicatorResult> => {
     try {
-      await updateIndicator.mutateAsync({ id, ...toPayload(values) });
+      await updateIndicator.mutateAsync({
+        id: indicator.id,
+        ...toPayload(values),
+        currentValue:
+          values.currentValue === indicator.currentValue
+            ? undefined
+            : values.currentValue,
+      });
       return { ok: true };
     } catch (error) {
       return failure(error, 'Nie udało się zapisać wskaźnika');

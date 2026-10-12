@@ -4,6 +4,7 @@ export const DOCUMENT_KINDS = [
   'RESOLUTION',
   'ANNEX',
   'LETTER',
+  'ATTENDANCE_LIST',
 ] as const;
 
 export const DOCUMENT_STATUSES = [
