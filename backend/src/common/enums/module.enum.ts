@@ -2,6 +2,7 @@ export const MODULES = [
   'PROJECTS',
   'PEOPLE',
   'CALENDAR',
+  'KSEF',
   'DECISIONS',
   'SETTINGS',
   'OVERVIEW',
