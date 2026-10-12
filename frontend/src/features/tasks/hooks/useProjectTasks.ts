@@ -5,6 +5,7 @@ import { useMembers, useStages } from '../../projects/hooks/useProjectsApi';
 import type { TaskFormValues } from '../../projects/types';
 import { mapBackendTask, type TaskRow } from '../data';
 import { canManageTasks } from '../utils/taskPermissions';
+import type { TaskFormStage } from '../components/TaskFormModal';
 import {
   useCreateSubtask,
   useCreateTask,
@@ -58,15 +59,23 @@ export function useProjectTasks(
     })),
   );
 
-  const stageStartByAction = new Map(
+  const stageByAction = new Map(
     openStages.flatMap((stage) =>
       stage.activities.map(
-        (activity) => [activity.id, stage.startDate] as const,
+        (activity) =>
+          [
+            activity.id,
+            {
+              name: stage.name,
+              startDate: stage.startDate,
+              deadline: stage.deadline,
+            },
+          ] as const,
       ),
     ),
   );
-  const stageStartFor = (actionId: string): string | null =>
-    stageStartByAction.get(actionId) ?? null;
+  const stageFor = (actionId: string): TaskFormStage | null =>
+    stageByAction.get(actionId) ?? null;
 
   const optionsForRow = (row: TaskRow): SelectOption[] =>
     actionOptions.some((option) => option.value === row.actionId)
@@ -231,7 +240,7 @@ export function useProjectTasks(
       setStatus.isPending ||
       removeTask.isPending,
     actionOptions,
-    stageStartFor,
+    stageFor,
     optionsForRow,
     ownerOptions,
     addTask,

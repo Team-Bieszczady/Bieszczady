@@ -13,6 +13,8 @@ interface StageCardProps {
   view: StageView;
   index: number;
   canEdit: boolean;
+  isHighlighted: boolean;
+  onHighlightEnd: () => void;
   onEdit: () => void;
   onMoveDeadline: () => void;
   onArchive: () => void;
@@ -24,6 +26,8 @@ export default function StageCard({
   view,
   index,
   canEdit,
+  isHighlighted,
+  onHighlightEnd,
   ...handlers
 }: StageCardProps) {
   const headingId = useId();
@@ -32,7 +36,12 @@ export default function StageCard({
     <article
       id={`etap-${stage.id}`}
       aria-labelledby={headingId}
+      onAnimationEnd={(event) => {
+        if (event.target === event.currentTarget) onHighlightEnd();
+      }}
       className={`scroll-mt-24 rounded-xl border bg-white px-4 py-4 transition-colors hover:bg-gray-50 800:px-6 ${
+        isHighlighted ? 'animate-stage-highlight ' : ''
+      }${
         view.isOverdue
           ? 'border-darkRed/35'
           : view.status === 'in_progress'
@@ -68,7 +77,7 @@ export default function StageCard({
 
       {view.counts.total === 0 ? (
         <p className="mt-4 text-xs text-mutedText">
-          Brak zadań w tym etapie — pozostanie otwarty, dopóki zadania nie
+          Brak zadań w tym etapie. Pozostanie otwarty, dopóki zadania nie
           zostaną dodane i ukończone.
         </p>
       ) : (

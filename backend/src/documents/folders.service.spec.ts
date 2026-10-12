@@ -44,10 +44,6 @@ function matches(row: Record<string, unknown>, where: Where): boolean {
   return Object.entries(where).every(([key, value]) => row[key] === value);
 }
 
-/**
- * Stands in for the folders and documents tables. Only the operations the
- * service actually performs are implemented; anything else would be untested.
- */
 function createFakePrisma() {
   const folders: FolderRow[] = [];
   const documents: DocumentRow[] = [];
@@ -166,7 +162,6 @@ describe('FoldersService', () => {
   const OWNER = 'user-1';
   const ACTOR = { id: OWNER, isDirector: true } as AuthenticatedUser;
 
-  // Most tests cover folder rules, not permissions, so access passes by default.
   let canManage = true;
 
   const fakeAccess = {

@@ -45,11 +45,25 @@
       transform: translateY(0) scale(1);
     }
   }
+
+  --animate-stage-highlight: stage-highlight 1200ms ease-out;
+
+  @keyframes stage-highlight {
+    from {
+      background-color: var(--color-lightGreen);
+      box-shadow: 0 0 0 2px var(--color-darkGreen);
+    }
+    to {
+      background-color: var(--color-white);
+      box-shadow: 0 0 0 2px transparent;
+    }
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-in,
-  .animate-pop-in {
+  .animate-pop-in,
+  .animate-stage-highlight {
     animation: none;
   }
 }

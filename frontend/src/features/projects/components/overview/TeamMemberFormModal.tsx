@@ -105,7 +105,7 @@ export default function TeamMemberFormModal({
             )}
           />
           <p className="mt-1 text-[11px] text-mutedText">
-            Rola obowiązuje tylko w tym projekcie — ta sama osoba może mieć inną
+            Rola obowiązuje tylko w tym projekcie, ta sama osoba może mieć inną
             w innym.
           </p>
         </div>

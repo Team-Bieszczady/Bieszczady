@@ -96,7 +96,7 @@ export default function StageAccordion({
             <p className="text-xs text-mutedText">
               {isFiltered
                 ? 'Żadne działanie w tym etapie nie ma zadań w wybranym oknie czasowym.'
-                : 'Brak działań w tym etapie — dodaj je przyciskiem „Dodaj działanie”.'}
+                : 'Brak działań w tym etapie, dodaj je przyciskiem „Dodaj działanie”.'}
             </p>
           ) : (
             actions.map(({ action, tasks }, actionIndex) => (

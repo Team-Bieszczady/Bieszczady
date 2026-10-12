@@ -60,8 +60,6 @@ export class FoldersService {
         .map((g) => [g.folderId as string, g.level]),
     );
 
-    // Dostęp do samego pliku musi też odsłonić folder, w którym on leży,
-    // inaczej udostępnienie pojedynczego dokumentu byłoby nie do odnalezienia.
     const grantedDocumentIds = granted
       .filter((g) => g.documentId)
       .map((g) => g.documentId as string);

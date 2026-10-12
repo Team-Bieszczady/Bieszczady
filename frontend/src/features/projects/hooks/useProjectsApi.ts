@@ -3,6 +3,7 @@ import { useApiQuery } from '../../../hooks/useApiQuery';
 import {
   activitiesApi,
   goalsApi,
+  indicatorsApi,
   membersApi,
   projectsApi,
   recipientsApi,
@@ -11,9 +12,10 @@ import {
   statusesApi,
   typesApi,
   type CreateProjectPayload,
+  type IndicatorPayload,
   type ProjectRoleValue,
   type UpdateProjectPayload,
-  type RiskLevelValue,
+  type BackendRisk,
   type StageDeleteStrategy,
 } from '../../../lib/projectsApi';
 
@@ -25,6 +27,7 @@ export const projectKeys = {
   recipients: ['project-recipients'] as const,
   goals: (projectId: string) => ['goals', projectId] as const,
   risks: (projectId: string) => ['risks', projectId] as const,
+  indicators: (projectId: string) => ['indicators', projectId] as const,
   members: (projectId: string) => ['members', projectId] as const,
   availableMembers: (projectId: string) =>
     ['available-members', projectId] as const,
@@ -43,10 +46,6 @@ export function useProjects(archived = false, enabled = true) {
   );
 }
 
-/**
- * `archived: true` asks the API to INCLUDE archived projects, not to return only
- * those — the Archiwum page wants only those, so it narrows the result here.
- */
 export function useArchivedProjects(enabled = true) {
   const query = useProjects(true, enabled);
   return {
@@ -84,6 +83,12 @@ export function useGoals(projectId: string) {
 export function useRisks(projectId: string) {
   return useApiQuery(projectKeys.risks(projectId), (token) =>
     risksApi.list(token, projectId),
+  );
+}
+
+export function useIndicators(projectId: string) {
+  return useApiQuery(projectKeys.indicators(projectId), (token) =>
+    indicatorsApi.list(token, projectId),
   );
 }
 
@@ -157,11 +162,6 @@ export function useRestoreProject() {
   });
 }
 
-/**
- * The API refuses to delete a project that has not been archived, so "Usuń" on a
- * live project archives it first. From Archiwum it is already archived and the
- * delete goes straight through.
- */
 export function useDeleteProject() {
   return useApiMutation(
     async (token, project: { id: string; archivedAt: string | null }) => {
@@ -237,12 +237,8 @@ export function useDeleteGoal(projectId: string) {
   });
 }
 
-export interface RiskInput {
-  description: string;
-  probability?: RiskLevelValue;
-  impact?: RiskLevelValue;
-  responsibleUserId?: string | null;
-}
+export type RiskInput = Pick<BackendRisk, 'description'> &
+  Partial<Pick<BackendRisk, 'probability' | 'impact' | 'responsibleUserId'>>;
 
 export function useCreateRisk(projectId: string) {
   return useApiMutation(
@@ -263,6 +259,37 @@ export function useDeleteRisk(projectId: string) {
   return useApiMutation((token, id: string) => risksApi.remove(token, id), {
     invalidates: [projectKeys.risks(projectId)],
   });
+}
+
+export function useCreateIndicator(projectId: string) {
+  return useApiMutation(
+    (token, body: IndicatorPayload) =>
+      indicatorsApi.create(token, projectId, body),
+    { invalidates: [projectKeys.indicators(projectId)] },
+  );
+}
+
+export function useUpdateIndicator(projectId: string) {
+  return useApiMutation(
+    (token, { id, ...body }: IndicatorPayload & { id: string }) =>
+      indicatorsApi.patch(token, id, body),
+    { invalidates: [projectKeys.indicators(projectId)] },
+  );
+}
+
+export function useUpdateIndicatorProgress(projectId: string) {
+  return useApiMutation(
+    (token, { id, delta }: { id: string; delta: 1 | -1 }) =>
+      indicatorsApi.progress(token, id, { delta }),
+    { invalidates: [projectKeys.indicators(projectId)] },
+  );
+}
+
+export function useDeleteIndicator(projectId: string) {
+  return useApiMutation(
+    (token, id: string) => indicatorsApi.remove(token, id),
+    { invalidates: [projectKeys.indicators(projectId)] },
+  );
 }
 
 function memberKeys(projectId: string) {
@@ -311,12 +338,20 @@ export function useSetMemberRole(projectId: string) {
 
 export function useRemoveMember(projectId: string) {
   return useApiMutation((token, id: string) => membersApi.remove(token, id), {
-    invalidates: [...memberKeys(projectId), projectKeys.risks(projectId)],
+    invalidates: [
+      ...memberKeys(projectId),
+      projectKeys.risks(projectId),
+      projectKeys.indicators(projectId),
+    ],
   });
 }
 
 function stageKeys(projectId: string) {
-  return [projectKeys.stagesFor(projectId), ...projectLists];
+  return [
+    projectKeys.stagesFor(projectId),
+    projectKeys.indicators(projectId),
+    ...projectLists,
+  ];
 }
 
 export function useCreateStage(projectId: string) {

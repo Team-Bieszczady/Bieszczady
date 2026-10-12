@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
 import toast from 'react-hot-toast';
+import { BsArrowRight } from 'react-icons/bs';
+import { GoPlus } from 'react-icons/go';
 import {
   ActionMenu,
   type ActionMenuItem,
@@ -96,9 +98,10 @@ export default function TeamSection({ projectId, canEdit }: TeamSectionProps) {
         canEdit && (
           <Link
             to="/people"
-            className="text-xs font-medium text-darkGreen hover:underline"
+            className="inline-flex items-center gap-1 text-xs font-medium text-darkGreen hover:underline"
           >
-            Zobacz wszystkich w Ludzie →
+            Zobacz wszystkich w Ludzie
+            <BsArrowRight aria-hidden="true" />
           </Link>
         )
       }
@@ -108,9 +111,10 @@ export default function TeamSection({ projectId, canEdit }: TeamSectionProps) {
             variant="primary"
             size="small"
             onClick={() => setDialog({ kind: 'add' })}
-            className="text-xs max-lg:h-7 max-lg:px-4 max-lg:py-1"
+            className="gap-1 text-xs max-lg:h-7 max-lg:px-4 max-lg:py-1"
           >
-            + Dodaj członka
+            <GoPlus className="h-3.5 w-3.5" aria-hidden="true" />
+            Dodaj członka
           </Button>
         )
       }

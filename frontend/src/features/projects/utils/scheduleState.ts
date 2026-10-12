@@ -1,8 +1,4 @@
-import type {
-  ProjectSchedule,
-  ScheduleAction,
-  ScheduleTask,
-} from '../types';
+import type { ProjectSchedule, ScheduleAction, ScheduleTask } from '../types';
 
 export interface TaskCounts {
   actions: number;
@@ -24,14 +20,12 @@ export interface ScheduleIndex {
   actionsByStage: Map<string, ScheduleAction[]>;
   tasksByAction: Map<string, ScheduleTask[]>;
   actionById: Map<string, ScheduleAction>;
-  stageIdByTask: Map<string, string>;
 }
 
 export function buildScheduleIndex(schedule: ProjectSchedule): ScheduleIndex {
   const actionsByStage = new Map<string, ScheduleAction[]>();
   const tasksByAction = new Map<string, ScheduleTask[]>();
   const actionById = new Map<string, ScheduleAction>();
-  const stageIdByTask = new Map<string, string>();
 
   for (const action of schedule.actions) {
     actionById.set(action.id, action);
@@ -45,11 +39,9 @@ export function buildScheduleIndex(schedule: ProjectSchedule): ScheduleIndex {
     const siblings = tasksByAction.get(task.actionId);
     if (siblings) siblings.push(task);
     else tasksByAction.set(task.actionId, [task]);
-    const action = actionById.get(task.actionId);
-    if (action) stageIdByTask.set(task.id, action.stageId);
   }
 
-  return { actionsByStage, tasksByAction, actionById, stageIdByTask };
+  return { actionsByStage, tasksByAction, actionById };
 }
 
 export function actionsForStage(

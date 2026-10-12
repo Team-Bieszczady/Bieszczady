@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
+import { GoPlus } from 'react-icons/go';
 import { Button } from '../../../../../components/ui/Button';
 import { ConfirmDialog } from '../../../../../components/ui/ConfirmDialog';
 import type { SelectOption } from '../../../../../components/ui/Select';
@@ -13,7 +14,11 @@ import type {
   ActionResult,
   ProjectPlanApi,
 } from '../../../hooks/useProjectPlanApi';
-import type { ScheduleAction, ScheduleTask } from '../../../types';
+import type {
+  ActionFormValues,
+  ScheduleAction,
+  ScheduleTask,
+} from '../../../types';
 import type { Stage } from '../../../types';
 import {
   SCHEDULE_ISSUE_MESSAGES,
@@ -24,7 +29,7 @@ import { isInPeriod, type SchedulePeriod } from '../../../utils/schedulePeriod';
 import { describeStage } from '../../../utils/stageState';
 import EmptySectionState from '../EmptySectionState';
 import OverviewSection from '../OverviewSection';
-import ActionFormModal, { type ActionFormInputs } from './ActionFormModal';
+import ActionFormModal from './ActionFormModal';
 import OverdueList from './OverdueList';
 import ScheduleFilters from './ScheduleFilters';
 import StageAccordion, { type VisibleStage } from './StageAccordion';
@@ -138,7 +143,7 @@ export default function ScheduleSection({
     setDialog({ kind: 'add-action' });
   };
 
-  const submitAddAction = (values: ActionFormInputs) => {
+  const submitAddAction = (values: ActionFormValues) => {
     void report(plan.addAction(values), 'Działanie dodane');
   };
 
@@ -183,9 +188,10 @@ export default function ScheduleSection({
             variant="primary"
             size="small"
             onClick={requestAddAction}
-            className="text-xs max-lg:h-7 max-lg:px-4 max-lg:py-1"
+            className="gap-1 text-xs max-lg:h-7 max-lg:px-4 max-lg:py-1"
           >
-            + Dodaj działanie
+            <GoPlus className="h-3.5 w-3.5" aria-hidden="true" />
+            Dodaj działanie
           </Button>
         )
       }
@@ -212,14 +218,14 @@ export default function ScheduleSection({
           <EmptySectionState
             className="800:mt-5 800:rounded-lg"
             title="Utwórz działania dla etapów"
-            hint="Działanie zawsze należy do etapu — zacznij od dodania etapu w sekcji „Etapy”."
+            hint="Działanie zawsze należy do etapu, zacznij od dodania etapu w sekcji „Etapy”."
             canEdit={canEdit}
           />
         ) : activeActionCount === 0 ? (
           <EmptySectionState
             className="800:mt-5 800:rounded-lg"
             title="Utwórz działania dla etapów"
-            hint="Działanie przypisujesz do etapu, a zadania do działania — dzięki temu każde zadanie wiadomo, do którego etapu należy."
+            hint="Działanie przypisujesz do etapu, a zadania do działania. Dzięki temu każde zadanie wiadomo, do którego etapu należy."
             canEdit={canEdit}
           />
         ) : (
