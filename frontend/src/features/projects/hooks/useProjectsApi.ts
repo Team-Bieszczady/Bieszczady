@@ -36,7 +36,6 @@ export const projectKeys = {
   availableMembers: (projectId: string) =>
     ['available-members', projectId] as const,
   budgetAccess: (projectId: string) => ['budget-access', projectId] as const,
-  userProjects: (userId: string) => ['user-projects', userId] as const,
   stages: (projectId: string, archived: boolean) =>
     ['stages', projectId, { archived }] as const,
   stagesFor: (projectId: string) => ['stages', projectId] as const,
@@ -127,14 +126,6 @@ export function useBudgetAccess(projectId: string, enabled = true) {
   return useApiQuery(
     projectKeys.budgetAccess(projectId),
     (token) => budgetAccessApi.list(token, projectId),
-    { enabled },
-  );
-}
-
-export function useUserProjects(userId: string, enabled = true) {
-  return useApiQuery(
-    projectKeys.userProjects(userId),
-    (token) => membersApi.forUser(token, userId),
     { enabled },
   );
 }

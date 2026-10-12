@@ -12,6 +12,8 @@ interface StoredRow {
   expiresAt: Date;
   usedAt: Date | null;
 }
+
+function createFakePrisma() {
   const rows: StoredRow[] = [];
   let nextId = 1;
 

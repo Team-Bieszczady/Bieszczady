@@ -11,12 +11,19 @@ describe('BudgetService', () => {
   const makeClient = () => ({
     project: { findUnique: jest.fn() },
     projectMember: { findUnique: jest.fn() },
+    budgetAccess: { count: jest.fn(), create: jest.fn() },
+    budgetPosition: {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      delete: jest.fn(),
+    },
     partner: { findMany: jest.fn(), findFirst: jest.fn() },
     folder: { findMany: jest.fn(), count: jest.fn() },
     document: { findMany: jest.fn(), count: jest.fn() },
     budgetVersion: {
       count: jest.fn(),
       findMany: jest.fn(),
+      findFirst: jest.fn(),
       findUnique: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
@@ -49,9 +56,11 @@ describe('BudgetService', () => {
     assertCanRead: jest.fn(),
     canEditBudget: jest.fn(),
     canManageTasks: jest.fn(),
+    canUseModule: jest.fn(),
     assertCanEditBudget: jest.fn(),
     assertNotArchived: jest.fn(),
     assertCanUseModule: jest.fn(),
+    assertCanManageBudgetAccess: jest.fn(),
   };
 
   const viewer = { id: 'u1', isDirector: false } as never;
@@ -211,8 +220,55 @@ describe('BudgetService', () => {
       expect(store.actuals).toEqual({});
     });
 
+    it('hides document links from a viewer without Dokumenty in the project', async () => {
+      seedRead();
+      prisma.budgetCategorySettings.findMany.mockResolvedValue([
+        {
+          categoryKey: 'shared',
+          detailed: true,
+          partnerCanEdit: false,
+          visibleToPartner: true,
+          documentFolderId: 'f1',
+          documentId: 'd1',
+        },
+      ]);
+      access.canEditBudget.mockResolvedValue(true);
+      access.canUseModule.mockResolvedValue(false);
+
+      const store = await service.getStore('p1', viewer);
+
+      expect(store.categorySettings.shared.document).toBeNull();
+      expect(prisma.document.findMany).not.toHaveBeenCalled();
+    });
+
+    it('does not create the budget for a reader without edit rights', async () => {
+      seedRead();
+      prisma.budgetVersion.count.mockResolvedValue(0);
+      access.canEditBudget.mockResolvedValue(false);
+
+      await service.getStore('p1', viewer);
+
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('treats a concurrent first read as already created', async () => {
+      seedRead();
+      prisma.budgetVersion.count.mockResolvedValue(0);
+      prisma.project.findUnique.mockResolvedValue({ archivedAt: null });
+      access.canEditBudget.mockResolvedValue(true);
+      prisma.$transaction.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError('deadlock', {
+          code: 'P2034',
+          clientVersion: 'test',
+        }),
+      );
+
+      await expect(service.getStore('p1', viewer)).resolves.toBeDefined();
+    });
+
     it('creates the base version and default columns on the first read', async () => {
       seedRead();
+      access.canEditBudget.mockResolvedValue(true);
       prisma.budgetVersion.count.mockResolvedValue(0);
       prisma.project.findUnique.mockResolvedValue({ archivedAt: null });
       tx.budgetVersion.count.mockResolvedValue(0);
@@ -241,6 +297,7 @@ describe('BudgetService', () => {
 
     it('does not create anything on an archived project', async () => {
       seedRead();
+      access.canEditBudget.mockResolvedValue(true);
       prisma.budgetVersion.count.mockResolvedValue(0);
       prisma.project.findUnique.mockResolvedValue({ archivedAt: new Date() });
 
@@ -322,6 +379,101 @@ describe('BudgetService', () => {
       expect(tx.budgetHistoryEntry.create).toHaveBeenCalledWith({
         data: expect.objectContaining({ kind: 'EDITED' }) as object,
       });
+    });
+  });
+
+  describe('plan edits', () => {
+    const draft = {
+      id: 'v2',
+      projectId: 'p1',
+      name: 'Aneks 2',
+      status: 'DRAFT',
+    };
+
+    it('refuses to edit an aneks waiting for approval', async () => {
+      tx.budgetVersion.findUnique.mockResolvedValue({
+        ...draft,
+        status: 'PENDING',
+      });
+
+      await expect(
+        service.createCategory('v2', { name: 'Nowa' }, viewer),
+      ).rejects.toThrow(/Wycofaj/);
+    });
+
+    it('refuses to delete a draft-only position that already has invoices', async () => {
+      tx.budgetVersion.findUnique.mockResolvedValue(draft);
+      tx.budgetPosition.findUnique.mockResolvedValue({
+        id: 'row',
+        key: 'new-pos',
+        name: 'Nowa pozycja',
+      });
+      tx.budgetVersion.findFirst.mockResolvedValue({ id: 'v1' });
+      tx.budgetPosition.findMany.mockResolvedValue([{ key: 'old-pos' }]);
+      tx.budgetActual.findMany.mockResolvedValue([
+        { positionKey: 'new-pos', _count: { invoices: 2 }, values: [] },
+      ]);
+
+      await expect(
+        service.deletePosition('v2', 'new-pos', viewer),
+      ).rejects.toThrow(/ma już wydatki/);
+      expect(tx.budgetPosition.delete).not.toHaveBeenCalled();
+    });
+
+    it('lets a position still in the current version be deleted from the draft', async () => {
+      tx.budgetVersion.findUnique.mockResolvedValue(draft);
+      tx.budgetPosition.findUnique.mockResolvedValue({
+        id: 'row',
+        key: 'old-pos',
+        name: 'Stara',
+      });
+      tx.budgetVersion.findFirst.mockResolvedValue({ id: 'v1' });
+      tx.budgetPosition.findMany.mockResolvedValue([{ key: 'old-pos' }]);
+      tx.budgetHistoryEntry.findFirst.mockResolvedValue(null);
+
+      await service.deletePosition('v2', 'old-pos', viewer);
+
+      expect(tx.budgetActual.findMany).not.toHaveBeenCalled();
+      expect(tx.budgetPosition.delete).toHaveBeenCalledWith({
+        where: { id: 'row' },
+      });
+    });
+  });
+
+  describe('grantAccess', () => {
+    const member = (overrides: Record<string, unknown> = {}) => ({
+      projectRole: 'EXECUTOR',
+      modules: [{ id: 'm1' }],
+      user: { accountStatus: 'ACTIVE', deletedAt: null },
+      ...overrides,
+    });
+
+    it('refuses a member without Budżet in the project', async () => {
+      tx.projectMember.findUnique.mockResolvedValue(member({ modules: [] }));
+
+      await expect(
+        service.grantAccess('p1', { userId: 'u2' }, viewer),
+      ).rejects.toThrow(ConflictException);
+      expect(tx.budgetAccess.create).not.toHaveBeenCalled();
+    });
+
+    it('refuses an inactive account', async () => {
+      tx.projectMember.findUnique.mockResolvedValue(
+        member({ user: { accountStatus: 'INACTIVE', deletedAt: null } }),
+      );
+
+      await expect(
+        service.grantAccess('p1', { userId: 'u2' }, viewer),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('grants a member who has Budżet', async () => {
+      tx.projectMember.findUnique.mockResolvedValue(member());
+      tx.budgetAccess.count.mockResolvedValue(0);
+
+      await service.grantAccess('p1', { userId: 'u2' }, viewer);
+
+      expect(tx.budgetAccess.create).toHaveBeenCalled();
     });
   });
 

@@ -37,14 +37,16 @@
   `PROJECTS, PEOPLE, CALENDAR, DECISIONS, SETTINGS, OVERVIEW, TASKS, BUDGET,
   DOCUMENTS`.
 - `AuthContext`'s `user.modules` (populated straight from the backend's
-  login/refresh/me response) is the org-wide source of truth. `TASKS`,
-  `BUDGET` and `DOCUMENTS` (`PROJECT_SCOPED_MODULES`) are also scoped per
-  project: the project card's `viewerModules` from `GET /projects` says which
-  the viewer has in that project. Check them with `hasProjectModule(user,
-  project, module)`, or `useCanUseProjectModule(projectId, module)` inside a
-  page — never `hasModule` alone for those three.
+  login/refresh/me response) is the org-wide source of truth for every module
+  except `TASKS`, `BUDGET` and `DOCUMENTS` (`PROJECT_SCOPED_MODULES`). Those
+  three are granted per project only: the project card's `viewerModules` from
+  `GET /projects` says which the viewer has in that project. Check them with
+  `hasProjectModule(user, project, module)`, or
+  `useCanUseProjectModule(projectId, module)` inside a page — never
+  `hasModule` for those three.
 - Per-project modules are set per member in Przegląd → Zespół
-  (`TeamMemberFormModal`), director only; Ludzie → Dostęp shows them read-only.
+  (`TeamMemberFormModal`: osoba, rola, dostęp), director only. Ludzie has no
+  "Dostęp" menu, and `AddUserModal` doesn't offer the three scoped modules.
 - Two enforcement points, both required for every gated route — neither
   alone is sufficient:
   1. **Nav filtering** — `ORG_NAV_ITEMS` / `PROJECT_NAV_ITEMS` items each

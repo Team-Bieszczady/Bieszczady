@@ -76,15 +76,25 @@ export class PartnersService {
       if (!existing) throw new NotFoundException('Nie znaleziono partnera');
       if (dto.projectIds !== undefined) {
         await this.assertProjectsExist(dto.projectIds, tx);
-        const inBudget = await tx.budgetCategory.count({
-          where: {
-            partnerId: id,
-            version: { projectId: { notIn: dto.projectIds } },
-          },
-        });
+        const [inBudget, linkedMembers] = await Promise.all([
+          tx.budgetCategory.count({
+            where: {
+              partnerId: id,
+              version: { projectId: { notIn: dto.projectIds } },
+            },
+          }),
+          tx.projectMember.count({
+            where: { partnerId: id, projectId: { notIn: dto.projectIds } },
+          }),
+        ]);
         if (inBudget > 0) {
           throw new ConflictException(
             'Partner realizuje kategorię w budżecie projektu, którego nie można odpiąć',
+          );
+        }
+        if (linkedMembers > 0) {
+          throw new ConflictException(
+            'Partner jest przypisany do członków projektu, którego nie można odpiąć',
           );
         }
       }

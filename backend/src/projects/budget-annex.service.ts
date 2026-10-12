@@ -3,10 +3,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { SERIALIZABLE } from '../prisma/transaction-options';
 import type { AuthenticatedUser } from '../auth/types/auth.types';
-import {
-  BUDGET_PLAN_FIELDS,
-  BUDGET_SPENT_COLUMN,
-} from '../common/enums/project.enums';
+import { BUDGET_PLAN_FIELDS } from '../common/enums/project.enums';
 import { ProjectAccessService } from './project-access.service';
 import { BudgetService } from './budget.service';
 import {
@@ -142,7 +139,15 @@ export class BudgetAnnexService {
         );
       }
       await this.assertHasChanges(version, tx);
-      await this.assertNoOrphanedSpending(version, tx);
+      const current = await this.budget.currentVersion(version.projectId, tx);
+      if (current && current.id !== version.id) {
+        await this.budget.assertNoOrphanedSpending(
+          version.projectId,
+          (await this.plan(current.id, tx)).positions,
+          version.id,
+          tx,
+        );
+      }
 
       await tx.budgetVersion.updateMany({
         where: { projectId: version.projectId, id: { not: id } },
@@ -210,6 +215,12 @@ export class BudgetAnnexService {
       if (!restored) {
         throw new ConflictException('Brak wcześniejszej zatwierdzonej wersji');
       }
+      await this.budget.assertNoOrphanedSpending(
+        version.projectId,
+        (await this.plan(version.id, tx)).positions,
+        restored.id,
+        tx,
+      );
 
       await tx.budgetVersion.update({
         where: { id },
@@ -234,6 +245,13 @@ export class BudgetAnnexService {
       if (version.status !== 'DRAFT') {
         throw new ConflictException('Usunąć można tylko wersję roboczą');
       }
+      const current = await this.budget.currentVersion(version.projectId, tx);
+      await this.budget.assertNoOrphanedSpending(
+        version.projectId,
+        (await this.plan(id, tx)).positions,
+        current?.id ?? null,
+        tx,
+      );
 
       await tx.budgetPosition.deleteMany({ where: { versionId: id } });
       await tx.budgetCategory.deleteMany({ where: { versionId: id } });
@@ -327,7 +345,9 @@ export class BudgetAnnexService {
     }
 
     const previous = await this.plan(current.id, db);
-    const previousCategories = new Set(previous.categories.map((c) => c.key));
+    const previousCategories = new Map(
+      previous.categories.map((c) => [c.key, c]),
+    );
     const nextCategories = new Set(next.categories.map((c) => c.key));
     const previousPositions = new Map(
       previous.positions.map((p) => [p.key, p]),
@@ -335,13 +355,21 @@ export class BudgetAnnexService {
     const nextPositions = new Set(next.positions.map((p) => p.key));
 
     const changed =
-      next.categories.some((c) => !previousCategories.has(c.key)) ||
+      next.categories.some((category) => {
+        const before = previousCategories.get(category.key);
+        return (
+          !before ||
+          before.name !== category.name ||
+          before.partnerId !== category.partnerId
+        );
+      }) ||
       previous.categories.some((c) => !nextCategories.has(c.key)) ||
       previous.positions.some((p) => !nextPositions.has(p.key)) ||
       next.positions.some((position) => {
         const before = previousPositions.get(position.key);
         return (
           !before ||
+          before.name !== position.name ||
           BUDGET_PLAN_FIELDS.some(
             (field) => !before[field].equals(position[field]),
           )
@@ -350,50 +378,6 @@ export class BudgetAnnexService {
 
     if (!changed) {
       throw new ConflictException('Brak zmian względem obowiązującej wersji');
-    }
-  }
-
-  private async assertNoOrphanedSpending(
-    version: VersionRow,
-    db: Db,
-  ): Promise<void> {
-    const current = await this.budget.currentVersion(version.projectId, db);
-    if (!current || current.id === version.id) return;
-
-    const [previous, next] = await Promise.all([
-      db.budgetPosition.findMany({
-        where: { versionId: current.id },
-        select: { key: true, name: true },
-      }),
-      db.budgetPosition.findMany({
-        where: { versionId: version.id },
-        select: { key: true },
-      }),
-    ]);
-    const kept = new Set(next.map((position) => position.key));
-    const removed = previous.filter((position) => !kept.has(position.key));
-    if (removed.length === 0) return;
-
-    const actuals = await db.budgetActual.findMany({
-      where: {
-        projectId: version.projectId,
-        positionKey: { in: removed.map((position) => position.key) },
-      },
-      include: {
-        _count: { select: { invoices: true } },
-        values: { where: { columnKey: BUDGET_SPENT_COLUMN } },
-      },
-    });
-    const orphaned = actuals.find(
-      (actual) =>
-        actual._count.invoices > 0 ||
-        actual.values.some((value) => Number(value.value) > 0),
-    );
-    if (orphaned) {
-      const name = removed.find((p) => p.key === orphaned.positionKey)?.name;
-      throw new ConflictException(
-        `Usuwana pozycja „${name}” ma już wydatki. Przed akceptacją przenieś je do innej pozycji`,
-      );
     }
   }
 

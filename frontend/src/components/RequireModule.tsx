@@ -15,7 +15,7 @@ export default function RequireModule({ module }: { module: ModuleKey }) {
   const isScoped = PROJECT_SCOPED_MODULES.includes(module);
   const projects = useProjects(false, isScoped && hasModule(user, 'PROJECTS'));
 
-  if (!hasModule(user, module)) {
+  if (!isScoped && !hasModule(user, module)) {
     return <Navigate to="/" replace />;
   }
   if (isScoped && projects.isLoading) {

@@ -10,6 +10,7 @@ import { SERIALIZABLE } from '../prisma/transaction-options';
 import type { AuthenticatedUser } from '../auth/types/auth.types';
 import {
   BUDGET_DEFAULT_COLUMNS,
+  BUDGET_SPENT_COLUMN,
   type BudgetHistoryKind,
 } from '../common/enums/project.enums';
 import { ProjectAccessService } from './project-access.service';
@@ -77,13 +78,15 @@ export class BudgetService {
 
   async getStore(projectId: string, viewer: AuthenticatedUser) {
     await this.access.assertCanRead(viewer, projectId);
-    await this.ensureInitialised(projectId, viewer);
 
-    const [canEdit, canManageAccess, scope] = await Promise.all([
-      this.access.canEditBudget(viewer, projectId),
-      this.access.canManageTasks(viewer, projectId),
-      this.partnerScope(viewer, projectId),
-    ]);
+    const [canEdit, canManageAccess, canSeeDocuments, scope] =
+      await Promise.all([
+        this.access.canEditBudget(viewer, projectId),
+        this.access.canManageTasks(viewer, projectId),
+        this.access.canUseModule(viewer, projectId, 'DOCUMENTS'),
+        this.partnerScope(viewer, projectId),
+      ]);
+    if (canEdit) await this.ensureInitialised(projectId, viewer);
     const restrictTo = scope && !canEdit ? scope.partnerId : undefined;
 
     const [versions, columns, actuals, settings, history, partners] =
@@ -132,11 +135,13 @@ export class BudgetService {
       }
     }
 
-    const links = await this.resolveLinks(projectId, [
-      ...actuals,
-      ...actuals.flatMap((actual) => actual.invoices),
-      ...settings,
-    ]);
+    const links = canSeeDocuments
+      ? await this.resolveLinks(projectId, [
+          ...actuals,
+          ...actuals.flatMap((actual) => actual.invoices),
+          ...settings,
+        ])
+      : () => null;
 
     return {
       columns: columns.map((column) => ({
@@ -194,7 +199,13 @@ export class BudgetService {
 
   async listPartners(projectId: string, viewer: AuthenticatedUser) {
     await this.access.assertCanRead(viewer, projectId);
-    return this.partnersFor(projectId, this.prisma);
+    const [canEdit, scope, partners] = await Promise.all([
+      this.access.canEditBudget(viewer, projectId),
+      this.partnerScope(viewer, projectId),
+      this.partnersFor(projectId, this.prisma),
+    ]);
+    if (!scope || canEdit) return partners;
+    return partners.filter((partner) => partner.id === scope.partnerId);
   }
 
   async createCategory(
@@ -270,6 +281,17 @@ export class BudgetService {
     await this.prisma.$transaction(async (tx) => {
       const version = await this.locateEditableVersion(versionId, actor, tx);
       const category = await this.locateCategory(versionId, key, tx);
+      const positions = await tx.budgetPosition.findMany({
+        where: { versionId, categoryKey: key },
+        select: { key: true, name: true },
+      });
+      const current = await this.currentVersion(version.projectId, tx);
+      await this.assertNoOrphanedSpending(
+        version.projectId,
+        positions,
+        current?.id ?? null,
+        tx,
+      );
 
       await tx.budgetPosition.deleteMany({
         where: { versionId, categoryKey: key },
@@ -344,6 +366,13 @@ export class BudgetService {
     await this.prisma.$transaction(async (tx) => {
       const version = await this.locateEditableVersion(versionId, actor, tx);
       const position = await this.locatePosition(versionId, key, tx);
+      const current = await this.currentVersion(version.projectId, tx);
+      await this.assertNoOrphanedSpending(
+        version.projectId,
+        [position],
+        current?.id ?? null,
+        tx,
+      );
 
       await tx.budgetPosition.delete({ where: { id: position.id } });
       await this.touchPlan(version, actor, tx);
@@ -477,6 +506,7 @@ export class BudgetService {
 
   async listAccess(projectId: string, viewer: AuthenticatedUser) {
     await this.access.assertCanRead(viewer, projectId);
+    await this.access.assertCanManageBudgetAccess(viewer, projectId);
 
     return this.prisma.budgetAccess.findMany({
       where: { projectId },
@@ -495,12 +525,27 @@ export class BudgetService {
       await this.access.assertCanManageBudgetAccess(actor, projectId, tx);
       await this.access.assertNotArchived(projectId, tx);
 
-      const member = await tx.projectMember.count({
-        where: { projectId, userId: dto.userId },
+      const member = await tx.projectMember.findUnique({
+        where: { projectId_userId: { projectId, userId: dto.userId } },
+        select: {
+          projectRole: true,
+          modules: { where: { module: 'BUDGET' }, select: { id: true } },
+          user: { select: { accountStatus: true, deletedAt: true } },
+        },
       });
-      if (member === 0) {
+      if (!member) {
         throw new ConflictException(
           'Dostęp do budżetu można nadać tylko członkowi projektu',
+        );
+      }
+      if (member.user.accountStatus !== 'ACTIVE' || member.user.deletedAt) {
+        throw new ConflictException(
+          'Dostęp do budżetu można nadać tylko aktywnemu kontu',
+        );
+      }
+      if (member.projectRole !== 'COORDINATOR' && member.modules.length === 0) {
+        throw new ConflictException(
+          'Ta osoba nie ma dostępu do Budżetu w tym projekcie',
         );
       }
       const already = await tx.budgetAccess.count({
@@ -563,6 +608,47 @@ export class BudgetService {
     return db.budgetVersion.findFirst({
       where: { projectId, status: { in: ['DRAFT', 'PENDING'] } },
     });
+  }
+
+  async assertNoOrphanedSpending(
+    projectId: string,
+    dropped: { key: string; name: string }[],
+    keptVersionId: string | null,
+    db: Db,
+  ): Promise<void> {
+    if (dropped.length === 0) return;
+
+    const kept = keptVersionId
+      ? await db.budgetPosition.findMany({
+          where: { versionId: keptVersionId },
+          select: { key: true },
+        })
+      : [];
+    const keptKeys = new Set(kept.map((position) => position.key));
+    const orphans = dropped.filter((position) => !keptKeys.has(position.key));
+    if (orphans.length === 0) return;
+
+    const actuals = await db.budgetActual.findMany({
+      where: {
+        projectId,
+        positionKey: { in: orphans.map((position) => position.key) },
+      },
+      include: {
+        _count: { select: { invoices: true } },
+        values: { where: { columnKey: BUDGET_SPENT_COLUMN } },
+      },
+    });
+    const spent = actuals.find(
+      (actual) =>
+        actual._count.invoices > 0 ||
+        actual.values.some((value) => Number(value.value) > 0),
+    );
+    if (spent) {
+      const name = orphans.find((p) => p.key === spent.positionKey)?.name;
+      throw new ConflictException(
+        `Pozycja „${name}” ma już wydatki. Najpierw przenieś je do innej pozycji`,
+      );
+    }
   }
 
   async log(
@@ -792,37 +878,47 @@ export class BudgetService {
     });
     if (project?.archivedAt) return;
 
-    await this.prisma.$transaction(async (tx) => {
-      const again = await tx.budgetVersion.count({ where: { projectId } });
-      if (again > 0) return;
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        const again = await tx.budgetVersion.count({ where: { projectId } });
+        if (again > 0) return;
 
-      const version = await tx.budgetVersion.create({
-        data: {
-          projectId,
-          number: 0,
-          name: 'Wersja podstawowa',
-          status: 'DRAFT',
-          createdById: actor.id,
-        },
-      });
-      const columns = await tx.budgetColumn.count({ where: { projectId } });
-      if (columns === 0) {
-        await tx.budgetColumn.createMany({
-          data: BUDGET_DEFAULT_COLUMNS.map((column, index) => ({
+        const version = await tx.budgetVersion.create({
+          data: {
             projectId,
-            ...column,
-            sortOrder: index + 1,
-          })),
+            number: 0,
+            name: 'Wersja podstawowa',
+            status: 'DRAFT',
+            createdById: actor.id,
+          },
         });
+        const columns = await tx.budgetColumn.count({ where: { projectId } });
+        if (columns === 0) {
+          await tx.budgetColumn.createMany({
+            data: BUDGET_DEFAULT_COLUMNS.map((column, index) => ({
+              projectId,
+              ...column,
+              sortOrder: index + 1,
+            })),
+          });
+        }
+        await this.log(tx, {
+          projectId,
+          versionId: version.id,
+          versionName: version.name,
+          kind: 'CREATED',
+          actorId: actor.id,
+        });
+      }, SERIALIZABLE);
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        (error.code === 'P2002' || error.code === 'P2034')
+      ) {
+        return;
       }
-      await this.log(tx, {
-        projectId,
-        versionId: version.id,
-        versionName: version.name,
-        kind: 'CREATED',
-        actorId: actor.id,
-      });
-    }, SERIALIZABLE);
+      throw error;
+    }
   }
 
   private async partnersFor(projectId: string, db: Db) {
@@ -856,6 +952,11 @@ export class BudgetService {
     if (version.status === 'APPROVED') {
       throw new ConflictException(
         'Zatwierdzona wersja jest tylko do odczytu. Zmiany wprowadza się kolejnym aneksem',
+      );
+    }
+    if (version.status === 'PENDING') {
+      throw new ConflictException(
+        'Aneks czeka na akceptację. Wycofaj go, aby edytować',
       );
     }
     return version;

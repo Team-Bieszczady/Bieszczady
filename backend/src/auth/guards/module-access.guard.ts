@@ -34,16 +34,19 @@ export class ModuleAccessGuard implements CanActivate {
     if (user.isDirector) {
       return true;
     }
-    const hasAccess = await this.moduleAccess.userHasModule(
-      user.id,
-      requiredModule,
-    );
-    if (!hasAccess) {
-      throw new ForbiddenException('Nie masz dostępu do tej sekcji');
+    if (!isProjectScopedModule(requiredModule)) {
+      const hasAccess = await this.moduleAccess.userHasModule(
+        user.id,
+        requiredModule,
+      );
+      if (!hasAccess) {
+        throw new ForbiddenException('Nie masz dostępu do tej sekcji');
+      }
+      return true;
     }
 
     const projectId = params?.projectId;
-    if (projectId && isProjectScopedModule(requiredModule)) {
+    if (projectId) {
       const hasProjectAccess = await this.moduleAccess.memberHasProjectModule(
         user.id,
         projectId,

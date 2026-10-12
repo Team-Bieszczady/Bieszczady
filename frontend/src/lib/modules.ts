@@ -87,8 +87,8 @@ export function hasProjectModule(
   project: { viewerModules: ModuleKey[] } | undefined,
   module: ModuleKey,
 ): boolean {
-  if (!hasModule(user, module)) return false;
-  if (!project || user?.isDirector) return true;
-  if (!PROJECT_SCOPED_MODULES.includes(module)) return true;
-  return project.viewerModules.includes(module);
+  if (!PROJECT_SCOPED_MODULES.includes(module)) return hasModule(user, module);
+  if (!hasModule(user, 'PROJECTS')) return false;
+  if (user?.isDirector) return true;
+  return !!project && project.viewerModules.includes(module);
 }

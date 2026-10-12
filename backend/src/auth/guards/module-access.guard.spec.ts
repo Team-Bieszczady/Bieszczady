@@ -82,9 +82,8 @@ describe('ModuleAccessGuard', () => {
   describe('per-project modules', () => {
     const member = { id: '1', isDirector: false };
 
-    it('requires the module in the project from the route', async () => {
+    it('requires only the module in the project from the route', async () => {
       getAllAndOverride.mockReturnValue('DOCUMENTS');
-      userHasModule.mockResolvedValue(true);
       memberHasProjectModule.mockResolvedValue(true);
 
       await expect(
@@ -95,11 +94,11 @@ describe('ModuleAccessGuard', () => {
         'p1',
         'DOCUMENTS',
       );
+      expect(userHasModule).not.toHaveBeenCalled();
     });
 
     it('rejects when the module is not ticked in that project', async () => {
       getAllAndOverride.mockReturnValue('BUDGET');
-      userHasModule.mockResolvedValue(true);
       memberHasProjectModule.mockResolvedValue(false);
 
       await expect(
@@ -117,12 +116,12 @@ describe('ModuleAccessGuard', () => {
       expect(memberHasProjectModule).not.toHaveBeenCalled();
     });
 
-    it('skips the project check when the route has no projectId', async () => {
+    it('leaves a route with no projectId to the service', async () => {
       getAllAndOverride.mockReturnValue('TASKS');
-      userHasModule.mockResolvedValue(true);
 
       await expect(guard.canActivate(contextFor(member))).resolves.toBe(true);
       expect(memberHasProjectModule).not.toHaveBeenCalled();
+      expect(userHasModule).not.toHaveBeenCalled();
     });
 
     it('never checks a director', async () => {

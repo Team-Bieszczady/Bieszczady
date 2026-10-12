@@ -203,14 +203,6 @@ export interface BackendBudgetAccess {
   userId: string;
 }
 
-export interface BackendUserProject {
-  projectId: string;
-  projectName: string;
-  projectRole: ProjectRoleValue;
-  modules: ModuleKey[];
-  canEditBudget: boolean;
-}
-
 export interface MemberPayload {
   projectRole: ProjectRoleValue;
   modules?: ModuleKey[];
@@ -629,12 +621,6 @@ export const membersApi = {
       accessToken,
       `/projects/${projectId}/available-members`,
       'Nie udało się pobrać dostępnych osób',
-    ),
-  forUser: (accessToken: string, userId: string) =>
-    get<BackendUserProject[]>(
-      accessToken,
-      `/users/${userId}/projects`,
-      'Nie udało się pobrać projektów użytkownika',
     ),
 };
 

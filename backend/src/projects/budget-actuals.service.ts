@@ -278,8 +278,22 @@ export class BudgetActualsService {
       await this.access.assertCanRead(actor, projectId, tx);
       await this.access.assertCanEditBudget(actor, projectId, tx);
       await this.access.assertNotArchived(projectId, tx);
-      await this.locatePosition(projectId, dto.fromPositionKey, tx);
-      await this.locatePosition(projectId, dto.toPositionKey, tx);
+      const from = await this.locatePosition(
+        projectId,
+        dto.fromPositionKey,
+        tx,
+      );
+      const to = await this.locatePosition(projectId, dto.toPositionKey, tx);
+      if (this.isSummary(to)) {
+        throw new ConflictException(
+          'Do pozycji rozliczanej zbiorczo nie można przenieść faktur',
+        );
+      }
+      if (from.partnerId !== to.partnerId) {
+        throw new ConflictException(
+          'Wydatki można przenieść tylko do pozycji tego samego realizatora',
+        );
+      }
 
       const source = await tx.budgetActual.findUnique({
         where: {
@@ -322,7 +336,7 @@ export class BudgetActualsService {
     const open = await this.budget.openVersion(projectId, db);
     const current = await this.budget.currentVersion(projectId, db);
 
-    for (const version of [open, current]) {
+    for (const version of [current, open]) {
       if (!version) continue;
       const position = await db.budgetPosition.findUnique({
         where: { versionId_key: { versionId: version.id, key: positionKey } },

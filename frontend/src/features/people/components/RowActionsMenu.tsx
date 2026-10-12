@@ -1,21 +1,19 @@
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router';
 import { PiDotsThreeOutlineFill } from 'react-icons/pi';
-import { IoEyeOutline, IoKeyOutline } from 'react-icons/io5';
+import { IoEyeOutline } from 'react-icons/io5';
 import { useAnchoredPopup } from '../../../hooks/useAnchoredPopup';
 
 export interface RowActionsMenuProps {
   personId: string;
   canDelete?: boolean;
   onDelete?: () => void;
-  onManageModules?: () => void;
 }
 
 export default function RowActionsMenu({
   personId,
   canDelete = false,
   onDelete,
-  onManageModules,
 }: RowActionsMenuProps) {
   const navigate = useNavigate();
   const {
@@ -71,21 +69,6 @@ export default function RowActionsMenu({
                 <IoEyeOutline className="h-3.5 w-3.5" aria-hidden="true" />
                 Zobacz więcej
               </button>
-
-              {onManageModules && (
-                <button
-                  role="menuitem"
-                  type="button"
-                  onClick={() => {
-                    close();
-                    onManageModules();
-                  }}
-                  className={`${itemClass} text-gray-700`}
-                >
-                  <IoKeyOutline className="h-3.5 w-3.5" aria-hidden="true" />
-                  Dostęp
-                </button>
-              )}
 
               {canDelete && onDelete && (
                 <button

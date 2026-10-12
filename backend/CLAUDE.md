@@ -94,15 +94,18 @@
 ### Per-project modules
 `project_member_modules` (`memberId`, `module`) says which of
 `PROJECT_SCOPED_MODULES` = `TASKS, BUDGET, DOCUMENTS` a member may use in that
-project. `user_module_access` stays the outer gate: effective access in a
-project = director, or the org module AND (COORDINATOR of that project, or a
-row). Przegląd (`PROJECTS`/`OVERVIEW`) is never scoped; every member sees it.
-- Enforced twice. `ModuleAccessGuard` checks the row whenever the route has a
+project. This is the only grant for those three: `user_module_access` is not
+checked for them. Effective access in a project = director, or COORDINATOR of
+that project, or a row. They're set in Przegląd → Zespół; Ludzie has no
+"Dostęp" menu any more. Przegląd (`PROJECTS`/`OVERVIEW`) is never scoped;
+every member sees it.
+- Enforced twice. For a scoped module `ModuleAccessGuard` skips
+  `user_module_access` and checks the row whenever the route has a
   `:projectId` param (`ModuleAccessService.memberHasProjectModule`; a
   non-member passes so the service's `assertCanRead` still answers 404). That
   covers every documents route without touching `documents/*`. Routes that
   find their project from an entity id (`tasks/:id`, subtasks,
-  `budget-versions/:id`, the actuals writers) call
+  `budget-versions/:id`, the actuals writers) pass the guard and call
   `ProjectAccessService.assertCanUseModule` after locating it. Manager-only
   writes need no extra check: a coordinator always has every module.
 - Members get all three when `POST .../members` (or project create) sends no
@@ -343,10 +346,19 @@ route is gated on `BUDGET`.
   their own draft directly. Only the latest approved aneks can be reverted, never
   the base version, and only with no aneks open. Rejections aren't stored
   separately; the read derives them from `REJECTED` history rows.
-- **First read creates the budget.** If a project has no versions, `GET budget`
-  creates `Wersja podstawowa` as a DRAFT plus the two default columns (Plan,
-  Poniesione); everything else is added through "Dodaj kolumnę". It skips this
-  on an archived project.
+- **First read by an editor creates the budget.** If a project has no versions,
+  `GET budget` by someone with `canEditBudget` creates `Wersja podstawowa` as a
+  DRAFT plus the two default columns (Plan, Poniesione); everything else is
+  added through "Dodaj kolumnę". Other readers get an empty store. It skips this
+  on an archived project, and a concurrent first read (P2002/P2034) is treated
+  as already created.
+- **Spending is never orphaned.** Approving, reverting or discarding an aneks,
+  and deleting a position or category from a draft, are refused (409) while a
+  position that drops out of the budget still has invoices or incurred
+  spending (`BudgetService.assertNoOrphanedSpending`). A PENDING aneks can't be
+  edited; withdraw it first.
+- Document links in `GET budget` are `null` for a viewer without `DOCUMENTS`
+  in that project. `GET .../budget/access` is director or coordinator only.
 - **History.** Consecutive `EDITED` entries by the same person on the same version
   within 30 minutes are merged, as in the frontend reducer. `budget_history.version_id`
   has no FK, so history survives a discarded draft.

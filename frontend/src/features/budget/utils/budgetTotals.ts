@@ -172,6 +172,20 @@ export function diffVersions(
     }
   }
 
+  const detailsChanged = next.some((category) => {
+    const before = previousCategories.get(category.id);
+    return (
+      !!before &&
+      (before.name !== category.name ||
+        before.partnerId !== category.partnerId ||
+        category.positions.some(
+          (position) =>
+            previousPositions.has(position.id) &&
+            previousPositions.get(position.id)?.name !== position.name,
+        ))
+    );
+  });
+
   return {
     addedCategoryIds,
     removedCategories,
@@ -184,7 +198,8 @@ export function diffVersions(
       removedCategories.length > 0 ||
       addedPositionIds.size > 0 ||
       removedCount > 0 ||
-      changed.size > 0,
+      changed.size > 0 ||
+      detailsChanged,
   };
 }
 

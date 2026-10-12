@@ -43,6 +43,7 @@ describe('BudgetAnnexService', () => {
     currentVersion: jest.fn(),
     openVersion: jest.fn(),
     log: jest.fn(),
+    assertNoOrphanedSpending: jest.fn(),
   };
 
   const director = { id: 'dir', isDirector: true } as never;
@@ -213,14 +214,40 @@ describe('BudgetAnnexService', () => {
         v1: [position('a', 100), position('b', 50)],
         v2: [position('a', 100)],
       });
-      tx.budgetActual.findMany.mockResolvedValue([
-        { positionKey: 'b', _count: { invoices: 1 }, values: [] },
-      ]);
+      budget.assertNoOrphanedSpending.mockRejectedValue(
+        new ConflictException(),
+      );
 
       await expect(
         service.approve('v2', { description: 'x' }, director),
       ).rejects.toThrow(ConflictException);
+      expect(budget.assertNoOrphanedSpending).toHaveBeenCalledWith(
+        'p1',
+        [position('a', 100), position('b', 50)],
+        'v2',
+        tx,
+      );
       expect(tx.budgetVersion.update).not.toHaveBeenCalled();
+    });
+
+    it('counts a category moved to another partner as a change', async () => {
+      budget.locateVersion.mockResolvedValue(version({ status: 'PENDING' }));
+      tx.budgetPosition.findMany.mockResolvedValue([position('a', 100)]);
+      tx.budgetCategory.findMany.mockImplementation(
+        ({ where }: { where: { versionId: string } }) =>
+          Promise.resolve([
+            {
+              key: 'cat',
+              name: 'Kategoria',
+              partnerId: where.versionId === 'v2' ? 'gl' : null,
+              sortOrder: 1,
+            },
+          ]),
+      );
+
+      await service.approve('v2', { description: 'x' }, director);
+
+      expect(tx.budgetVersion.update).toHaveBeenCalled();
     });
 
     it('refuses someone else’s draft', async () => {
@@ -294,6 +321,31 @@ describe('BudgetAnnexService', () => {
       });
     });
 
+    it('refuses when the reverted aneks added a position that has spending', async () => {
+      const approved = version({ status: 'APPROVED', isCurrent: true });
+      budget.locateVersion.mockResolvedValue(approved);
+      tx.budgetVersion.findFirst
+        .mockResolvedValueOnce(approved)
+        .mockResolvedValueOnce(
+          version({ id: 'v1', number: 1, status: 'APPROVED' }),
+        );
+      planOf({ v2: [position('y', 10)] });
+      budget.assertNoOrphanedSpending.mockRejectedValue(
+        new ConflictException(),
+      );
+
+      await expect(
+        service.revert('v2', { reason: 'x' }, director),
+      ).rejects.toThrow(ConflictException);
+      expect(budget.assertNoOrphanedSpending).toHaveBeenCalledWith(
+        'p1',
+        [position('y', 10)],
+        'v1',
+        tx,
+      );
+      expect(tx.budgetVersion.update).not.toHaveBeenCalled();
+    });
+
     it('never reverts the base version', async () => {
       budget.locateVersion.mockResolvedValue(
         version({ id: 'v0', number: 0, status: 'APPROVED' }),
@@ -343,6 +395,25 @@ describe('BudgetAnnexService', () => {
       await expect(service.discard('v2', coordinator)).rejects.toThrow(
         ConflictException,
       );
+    });
+
+    it('refuses while a draft-only position has spending', async () => {
+      budget.locateVersion.mockResolvedValue(version());
+      planOf({ v2: [position('y', 10)] });
+      budget.assertNoOrphanedSpending.mockRejectedValue(
+        new ConflictException(),
+      );
+
+      await expect(service.discard('v2', coordinator)).rejects.toThrow(
+        ConflictException,
+      );
+      expect(budget.assertNoOrphanedSpending).toHaveBeenCalledWith(
+        'p1',
+        [position('y', 10)],
+        'v1',
+        tx,
+      );
+      expect(tx.budgetVersion.delete).not.toHaveBeenCalled();
     });
   });
 });

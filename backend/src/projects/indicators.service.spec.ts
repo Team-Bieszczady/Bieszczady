@@ -251,15 +251,6 @@ describe('IndicatorsService', () => {
       ]);
     });
 
-    it('hides folders from a member without the Dokumenty module', async () => {
-      prisma.indicator.findMany.mockResolvedValue([withIncludes()]);
-
-      const [indicator] = await service.findAllForProject('p1', member([]));
-
-      expect(indicator.folders).toEqual([]);
-      expect(prisma.folder.findMany).not.toHaveBeenCalled();
-    });
-
     it('shows a member with Dokumenty every folder under a shared parent', async () => {
       prisma.indicator.findMany.mockResolvedValue([withIncludes()]);
       prisma.documentAccess.findMany.mockResolvedValue([

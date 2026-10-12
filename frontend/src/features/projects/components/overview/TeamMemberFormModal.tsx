@@ -6,7 +6,6 @@ import { Select, type SelectOption } from '../../../../components/ui/Select';
 import { FIELD_LABEL_CLASSES } from '../../../../components/ui/formStyles';
 import { MODULE_LABELS, PROJECT_SCOPED_MODULES } from '../../../../lib/modules';
 import type { ProjectRoleValue } from '../../../../lib/projectsApi';
-import { useUserModules } from '../../../people/hooks/useUpdateUserModules';
 import { PROJECT_ROLE_OPTIONS } from '../../labels';
 import type {
   TeamMemberValues,
@@ -42,12 +41,14 @@ export default function TeamMemberFormModal({
   });
 
   const isAdding = mode === 'add';
-  const [userId, role, modules] = useWatch({
+  const [role, modules] = useWatch({
     control,
-    name: ['userId', 'role', 'modules'],
+    name: ['role', 'modules'],
   });
-  const orgModules = useUserModules(userId, !!userId);
   const isCoordinator = role === 'COORDINATOR';
+  const roleOptions = PROJECT_ROLE_OPTIONS.filter(
+    (option) => option.value !== 'PARTNER' || member?.role === 'PARTNER',
+  );
 
   return (
     <Modal
@@ -57,12 +58,7 @@ export default function TeamMemberFormModal({
     >
       <form
         onSubmit={handleSubmit(async (values) => {
-          await onSubmit({
-            ...values,
-            modules: values.modules.filter(
-              (module) => !orgModules.data || orgModules.data.includes(module),
-            ),
-          });
+          await onSubmit(values);
         })}
         className="space-y-5"
       >
@@ -110,7 +106,7 @@ export default function TeamMemberFormModal({
               <Select
                 size="md"
                 placeholder="Wybierz rolę"
-                options={PROJECT_ROLE_OPTIONS}
+                options={roleOptions}
                 value={field.value}
                 onChange={(value) => field.onChange(value as ProjectRoleValue)}
                 onBlur={field.onBlur}
@@ -136,41 +132,29 @@ export default function TeamMemberFormModal({
                 control={control}
                 render={({ field }) => (
                   <div className="space-y-2">
-                    {PROJECT_SCOPED_MODULES.map((module) => {
-                      const missing =
-                        !!orgModules.data && !orgModules.data.includes(module);
-                      return (
-                        <label
-                          key={module}
-                          className="flex items-center gap-2 cursor-pointer"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={!missing && field.value.includes(module)}
-                            disabled={missing}
-                            onChange={(event) =>
-                              field.onChange(
-                                event.target.checked
-                                  ? [...field.value, module]
-                                  : field.value.filter(
-                                      (item) => item !== module,
-                                    ),
-                              )
-                            }
-                            onBlur={field.onBlur}
-                            className="w-4 h-4 rounded border-gray-300"
-                          />
-                          <span className="text-sm text-gray-700">
-                            {MODULE_LABELS[module]}
-                          </span>
-                          {missing && (
-                            <span className="text-[11px] text-mutedText">
-                              brak w Ludzie → Dostęp
-                            </span>
-                          )}
-                        </label>
-                      );
-                    })}
+                    {PROJECT_SCOPED_MODULES.map((module) => (
+                      <label
+                        key={module}
+                        className="flex items-center gap-2 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={field.value.includes(module)}
+                          onChange={(event) =>
+                            field.onChange(
+                              event.target.checked
+                                ? [...field.value, module]
+                                : field.value.filter((item) => item !== module),
+                            )
+                          }
+                          onBlur={field.onBlur}
+                          className="w-4 h-4 rounded border-gray-300"
+                        />
+                        <span className="text-sm text-gray-700">
+                          {MODULE_LABELS[module]}
+                        </span>
+                      </label>
+                    ))}
                   </div>
                 )}
               />

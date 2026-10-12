@@ -169,12 +169,10 @@ export class UpdateBudgetInvoiceStatusDto {
 }
 
 export class MoveBudgetActualsDto {
-  @TrimmedString()
-  @IsNotEmpty()
+  @IsUUID()
   fromPositionKey!: string;
 
-  @TrimmedString()
-  @IsNotEmpty()
+  @IsUUID()
   toPositionKey!: string;
 }
 
