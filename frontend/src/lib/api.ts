@@ -73,6 +73,37 @@ export interface BackendUser {
   updatedAt: string;
   deletedAt: string | null;
 }
+export type InvoiceStatus = 'TO_PAY' | 'PAID';
+
+export interface InvoiceShare {
+  id: string;
+  projectId: string;
+  projectName: string;
+  amount: string;
+}
+
+export interface BackendInvoice {
+  id: string;
+  name: string;
+  amount: string;
+  paymentDate: string;
+  status: InvoiceStatus;
+  createdAt: string;
+  shares: InvoiceShare[];
+}
+
+export interface InvoiceShareInput {
+  projectId: string;
+  amount: string;
+}
+
+export interface InvoiceChanges {
+  name: string;
+  amount: string;
+  paymentDate: string;
+  shares: InvoiceShareInput[];
+}
+
 export interface NewMeeting {
   projectId: string;
   title: string;
@@ -1024,6 +1055,64 @@ export const api = {
         fallbackMessage: 'Nie udało się usunąć skanu',
       },
     );
+  },
+
+  async getInvoices(
+    accessToken: string,
+    filters: { status?: InvoiceStatus; projectId?: string } = {},
+  ): Promise<BackendInvoice[]> {
+    const params = new URLSearchParams();
+    if (filters.status) params.set('status', filters.status);
+    if (filters.projectId) params.set('projectId', filters.projectId);
+    const query = params.toString() ? `?${params.toString()}` : '';
+
+    return request<BackendInvoice[]>(`/api/v1/invoices${query}`, {
+      method: 'GET',
+      accessToken,
+      fallbackMessage: 'Nie udało się pobrać faktur',
+    });
+  },
+  async createInvoice(
+    accessToken: string,
+    invoice: InvoiceChanges,
+  ): Promise<BackendInvoice> {
+    return request<BackendInvoice>('/api/v1/invoices', {
+      method: 'POST',
+      accessToken,
+      body: invoice,
+      fallbackMessage: 'Nie udało się dodać faktury',
+    });
+  },
+  async updateInvoice(
+    accessToken: string,
+    id: string,
+    changes: InvoiceChanges,
+  ): Promise<BackendInvoice> {
+    return request<BackendInvoice>(`/api/v1/invoices/${id}`, {
+      method: 'PATCH',
+      accessToken,
+      body: changes,
+      fallbackMessage: 'Nie udało się zapisać faktury',
+    });
+  },
+  async updateInvoiceStatus(
+    accessToken: string,
+    id: string,
+    status: InvoiceStatus,
+  ): Promise<BackendInvoice> {
+    return request<BackendInvoice>(`/api/v1/invoices/${id}/status`, {
+      method: 'PATCH',
+      accessToken,
+      body: { status },
+      fallbackMessage: 'Nie udało się zmienić statusu faktury',
+    });
+  },
+  async deleteInvoice(accessToken: string, id: string): Promise<void> {
+    return request<void>(`/api/v1/invoices/${id}`, {
+      method: 'DELETE',
+      accessToken,
+      fallbackMessage: 'Nie udało się usunąć faktury',
+    });
   },
 };
 
