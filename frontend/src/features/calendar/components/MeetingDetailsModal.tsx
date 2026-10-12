@@ -31,6 +31,7 @@ import {
   MeetingOutcomeForm,
 } from './MeetingOutcomeForm';
 import { ProjectName } from './ProjectName';
+import { MeetingParticipantsSection } from '../../participants/components/MeetingParticipantsSection';
 
 interface MeetingDetailsModalProps {
   meetingId: string;
@@ -192,6 +193,12 @@ export default function MeetingDetailsModal({
     !!meeting && (meeting.canManage || meeting.status !== 'PLANNED');
   const canOpenProject =
     hasModule(user, 'PROJECTS') && hasModule(user, 'OVERVIEW');
+  const showParticipants =
+    !!meeting &&
+    meeting.canManage &&
+    !isUpcoming(meeting) &&
+    meeting.status !== 'CANCELLED' &&
+    hasModule(user, 'PARTICIPANTS');
 
   const submitOutcome = (outcome: MeetingOutcome) => {
     let message = 'Zmiany zapisane';
@@ -346,6 +353,12 @@ export default function MeetingDetailsModal({
                   <span className="sr-only">Notatka: </span>
                   {meeting.note}
                 </p>
+              </div>
+            )}
+
+            {showParticipants && (
+              <div className="border-t border-gray-200 pt-5">
+                <MeetingParticipantsSection meetingId={meeting.id} />
               </div>
             )}
 

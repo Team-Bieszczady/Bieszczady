@@ -349,7 +349,7 @@ export class MeetingsService {
     return meeting;
   }
 
-  private visibleTo(viewer: Viewer): Prisma.MeetingWhereInput {
+  visibleTo(viewer: Viewer): Prisma.MeetingWhereInput {
     if (viewer.isDirector) return {};
 
     return {

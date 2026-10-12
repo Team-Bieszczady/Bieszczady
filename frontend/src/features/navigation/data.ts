@@ -12,6 +12,12 @@ export interface NavItem {
 export const ORG_NAV_ITEMS: NavItem[] = [
   { id: 'projects', label: 'Projekty', path: '/projects', module: 'PROJECTS' },
   { id: 'people', label: 'Ludzie', path: '/people', module: 'PEOPLE' },
+  {
+    id: 'participants',
+    label: 'Uczestnicy',
+    path: '/participants',
+    module: 'PARTICIPANTS',
+  },
   { id: 'calendar', label: 'Kalendarz', path: '/calendar', module: 'CALENDAR' },
   {
     id: 'decisions',

@@ -16,6 +16,73 @@ export interface AuthenticatedUser {
 }
 export type MeetingStatus = 'PLANNED' | 'HELD' | 'CANCELLED';
 
+export interface BackendParticipant {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  note: string;
+  consentAt: string | null;
+  meetingCount: number;
+}
+
+export interface DuplicateParticipant {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+}
+
+export interface ProjectParticipant {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  meetingCount: number;
+}
+
+export interface ProjectParticipantsExport {
+  projectName: string;
+  participants: ProjectParticipant[];
+}
+
+export interface MeetingParticipant {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  consentAt: string | null;
+}
+
+export interface ParticipantMeeting {
+  id: string;
+  title: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  status: MeetingStatus;
+  projectName: string;
+}
+
+export interface ParticipantHistory {
+  meetings: ParticipantMeeting[];
+  hiddenCount: number;
+}
+
+export interface ParticipantChanges {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  address: string;
+  note: string;
+  hasConsent: boolean;
+}
+
 export interface BackendMeeting {
   id: string;
   projectId: string;
@@ -333,6 +400,147 @@ export const api = {
       accessToken,
       fallbackMessage: 'Nie udało się pobrać listy użytkowników',
     });
+  },
+
+  async getParticipants(
+    accessToken: string,
+    search: string,
+  ): Promise<BackendParticipant[]> {
+    const query = search ? `?search=${encodeURIComponent(search)}` : '';
+    return request<BackendParticipant[]>(`/api/v1/participants${query}`, {
+      method: 'GET',
+      accessToken,
+      fallbackMessage: 'Nie udało się pobrać listy uczestników',
+    });
+  },
+
+  async getDuplicateParticipants(
+    accessToken: string,
+    params: {
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+      excludeId?: string;
+    },
+  ): Promise<DuplicateParticipant[]> {
+    const query = new URLSearchParams();
+    if (params.firstName) query.set('firstName', params.firstName);
+    if (params.lastName) query.set('lastName', params.lastName);
+    if (params.email) query.set('email', params.email);
+    if (params.excludeId) query.set('excludeId', params.excludeId);
+
+    return request<DuplicateParticipant[]>(
+      `/api/v1/participants/duplicates?${query.toString()}`,
+      {
+        method: 'GET',
+        accessToken,
+        fallbackMessage:
+          'Nie udało się sprawdzić, czy taka osoba już jest w bazie',
+      },
+    );
+  },
+
+  async getProjectParticipants(
+    accessToken: string,
+    projectId: string,
+  ): Promise<ProjectParticipantsExport> {
+    return request<ProjectParticipantsExport>(
+      `/api/v1/participants/by-project/${projectId}`,
+      {
+        method: 'GET',
+        accessToken,
+        fallbackMessage: 'Nie udało się pobrać uczestników projektu',
+      },
+    );
+  },
+
+  async createParticipant(
+    accessToken: string,
+    participant: ParticipantChanges,
+  ): Promise<{ id: string }> {
+    return request<{ id: string }>('/api/v1/participants', {
+      method: 'POST',
+      accessToken,
+      body: participant,
+      fallbackMessage: 'Nie udało się dodać uczestnika',
+    });
+  },
+
+  async updateParticipant(
+    accessToken: string,
+    id: string,
+    participant: ParticipantChanges,
+  ): Promise<void> {
+    await request(`/api/v1/participants/${id}`, {
+      method: 'PATCH',
+      accessToken,
+      body: participant,
+      fallbackMessage: 'Nie udało się zapisać zmian',
+    });
+  },
+
+  async deleteParticipant(accessToken: string, id: string): Promise<void> {
+    await request(`/api/v1/participants/${id}`, {
+      method: 'DELETE',
+      accessToken,
+      fallbackMessage: 'Nie udało się usunąć uczestnika',
+    });
+  },
+
+  async getParticipantHistory(
+    accessToken: string,
+    participantId: string,
+  ): Promise<ParticipantHistory> {
+    return request<ParticipantHistory>(
+      `/api/v1/participants/${participantId}/meetings`,
+      {
+        method: 'GET',
+        accessToken,
+        fallbackMessage: 'Nie udało się pobrać historii spotkań',
+      },
+    );
+  },
+
+  async getMeetingParticipants(
+    accessToken: string,
+    meetingId: string,
+  ): Promise<MeetingParticipant[]> {
+    return request<MeetingParticipant[]>(
+      `/api/v1/meetings/${meetingId}/participants`,
+      {
+        method: 'GET',
+        accessToken,
+        fallbackMessage: 'Nie udało się pobrać uczestników spotkania',
+      },
+    );
+  },
+
+  async addMeetingParticipant(
+    accessToken: string,
+    meetingId: string,
+    participantId: string,
+  ): Promise<void> {
+    await request(`/api/v1/meetings/${meetingId}/participants`, {
+      method: 'POST',
+      accessToken,
+      body: { participantId },
+      fallbackMessage: 'Nie udało się dopisać uczestnika',
+    });
+  },
+
+  async removeMeetingParticipant(
+    accessToken: string,
+    meetingId: string,
+    participantId: string,
+  ): Promise<void> {
+    await request(
+      `/api/v1/meetings/${meetingId}/participants/${participantId}`,
+      {
+        method: 'DELETE',
+        accessToken,
+        fallbackMessage: 'Nie udało się usunąć uczestnika ze spotkania',
+      },
+    );
   },
 
   async getUserById(accessToken: string, id: string): Promise<BackendUser> {
