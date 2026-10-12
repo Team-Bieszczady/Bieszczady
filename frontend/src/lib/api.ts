@@ -1,5 +1,6 @@
 import type { DocumentKind, DocumentStatus } from './documents';
 import { type ModuleKey } from './modules';
+import type { TaskStatusValue } from './projectsApi';
 
 export type AccountStatus = 'ACTIVE' | 'INACTIVE';
 
@@ -12,6 +13,47 @@ export interface AuthenticatedUser {
   accountStatus: AccountStatus;
   mustChangePassword: boolean;
   modules: ModuleKey[];
+}
+export type MeetingStatus = 'PLANNED' | 'HELD' | 'CANCELLED';
+
+export interface BackendMeeting {
+  id: string;
+  projectId: string;
+  title: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  place: string | null;
+  status: MeetingStatus;
+}
+
+export interface BackendDeadline {
+  id: string;
+  projectId: string;
+  title: string;
+  dueDate: string;
+  status: TaskStatusValue;
+  projectName: string;
+  stageName: string;
+  owner: { firstName: string; lastName: string } | null;
+}
+
+export interface MeetingProjectOption {
+  id: string;
+  name: string;
+}
+
+export interface MeetingOutcome {
+  status: Exclude<MeetingStatus, 'PLANNED'>;
+  attendeeCount?: number;
+}
+
+export interface AttendanceFile {
+  id: string;
+  name: string;
+  fileName: string;
+  sizeBytes: number;
+  canDelete: boolean;
 }
 
 export interface BackendUser {
@@ -30,6 +72,39 @@ export interface BackendUser {
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
+}
+export interface NewMeeting {
+  projectId: string;
+  title: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  place?: string;
+  meetingUrl?: string;
+  note?: string;
+  inviteeIds?: string[];
+}
+
+export type MeetingChanges = Omit<NewMeeting, 'projectId'>;
+
+export interface MeetingPerson {
+  id: string;
+  firstName: string;
+  lastName: string;
+}
+
+export interface BackendMeetingDetails extends BackendMeeting {
+  meetingUrl: string | null;
+  note: string;
+  createdAt: string;
+  project: { name: string };
+  createdBy: MeetingPerson;
+  invitees: { user: MeetingPerson }[];
+  attendeeCount: number | null;
+  confirmedAt: string | null;
+  confirmedBy: Omit<MeetingPerson, 'id'> | null;
+  attendanceFiles: AttendanceFile[];
+  canManage: boolean;
 }
 
 export interface BackendFolder {
@@ -791,6 +866,162 @@ export const api = {
         method: 'DELETE',
         accessToken,
         fallbackMessage: 'Nie udało się odebrać dostępu',
+      },
+    );
+  },
+  async getMeetings(
+    accessToken: string,
+    from: string,
+    to: string,
+  ): Promise<BackendMeeting[]> {
+    return request<BackendMeeting[]>(`/api/v1/meetings?from=${from}&to=${to}`, {
+      method: 'GET',
+      accessToken,
+      fallbackMessage: 'Nie udało się pobrać spotkań',
+    });
+  },
+
+  async getDeadlines(
+    accessToken: string,
+    from: string,
+    to: string,
+  ): Promise<BackendDeadline[]> {
+    return request<BackendDeadline[]>(
+      `/api/v1/deadlines?from=${from}&to=${to}`,
+      {
+        method: 'GET',
+        accessToken,
+        fallbackMessage: 'Nie udało się pobrać terminów',
+      },
+    );
+  },
+
+  async createMeeting(
+    accessToken: string,
+    meeting: NewMeeting,
+  ): Promise<BackendMeeting> {
+    return request<BackendMeeting>('/api/v1/meetings', {
+      method: 'POST',
+      accessToken,
+      body: meeting,
+      fallbackMessage: 'Nie udało się dodać spotkania',
+    });
+  },
+  async getMeeting(
+    accessToken: string,
+    id: string,
+  ): Promise<BackendMeetingDetails> {
+    return request<BackendMeetingDetails>(`/api/v1/meetings/${id}`, {
+      method: 'GET',
+      accessToken,
+      fallbackMessage: 'Nie udało się pobrać spotkania',
+    });
+  },
+  async updateMeeting(
+    accessToken: string,
+    id: string,
+    changes: MeetingChanges,
+  ): Promise<BackendMeeting> {
+    return request<BackendMeeting>(`/api/v1/meetings/${id}`, {
+      method: 'PATCH',
+      accessToken,
+      body: changes,
+      fallbackMessage: 'Nie udało się zapisać spotkania',
+    });
+  },
+  async deleteMeeting(accessToken: string, id: string): Promise<void> {
+    return request<void>(`/api/v1/meetings/${id}`, {
+      method: 'DELETE',
+      accessToken,
+      fallbackMessage: 'Nie udało się usunąć spotkania',
+    });
+  },
+  async getMeetingProjectOptions(
+    accessToken: string,
+  ): Promise<MeetingProjectOption[]> {
+    return request<MeetingProjectOption[]>('/api/v1/meetings/project-options', {
+      method: 'GET',
+      accessToken,
+      fallbackMessage: 'Nie udało się pobrać projektów',
+    });
+  },
+  async getWaitingMeetingCount(
+    accessToken: string,
+  ): Promise<{ count: number }> {
+    return request<{ count: number }>('/api/v1/meetings/waiting-count', {
+      method: 'GET',
+      accessToken,
+      fallbackMessage: 'Nie udało się pobrać liczby spotkań do zatwierdzenia',
+    });
+  },
+  async setMeetingOutcome(
+    accessToken: string,
+    id: string,
+    outcome: MeetingOutcome,
+  ): Promise<BackendMeeting> {
+    return request<BackendMeeting>(`/api/v1/meetings/${id}/outcome`, {
+      method: 'PATCH',
+      accessToken,
+      body: outcome,
+      fallbackMessage: 'Nie udało się zatwierdzić spotkania',
+    });
+  },
+  async restoreMeeting(
+    accessToken: string,
+    id: string,
+  ): Promise<BackendMeeting> {
+    return request<BackendMeeting>(`/api/v1/meetings/${id}/restore`, {
+      method: 'PATCH',
+      accessToken,
+      fallbackMessage: 'Nie udało się przywrócić spotkania',
+    });
+  },
+  async uploadAttendanceFile(
+    accessToken: string,
+    meetingId: string,
+    file: File,
+  ): Promise<AttendanceFile> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await sendWithRefresh(
+      `/api/v1/meetings/${meetingId}/attendance-files`,
+      { method: 'POST', credentials: 'include', body: formData },
+      accessToken,
+    );
+    if (!response.ok) {
+      await throwFromResponse(response, 'Nie udało się wgrać skanu');
+    }
+
+    return response.json();
+  },
+  async downloadAttendanceFile(
+    accessToken: string,
+    meetingId: string,
+    fileId: string,
+  ): Promise<Blob> {
+    const response = await sendWithRefresh(
+      `/api/v1/meetings/${meetingId}/attendance-files/${fileId}/download`,
+      { method: 'GET', credentials: 'include' },
+      accessToken,
+    );
+    if (!response.ok) {
+      await throwFromResponse(response, 'Nie udało się pobrać skanu');
+    }
+
+    return response.blob();
+  },
+  async deleteAttendanceFile(
+    accessToken: string,
+    meetingId: string,
+    fileId: string,
+  ): Promise<void> {
+    return request<void>(
+      `/api/v1/meetings/${meetingId}/attendance-files/${fileId}`,
+      {
+        method: 'DELETE',
+        accessToken,
+        fallbackMessage: 'Nie udało się usunąć skanu',
       },
     );
   },

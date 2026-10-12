@@ -2,6 +2,7 @@
 
 @theme {
   --font-sans: 'Plus Jakarta Sans', system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-calendar: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
   --breakpoint-500: 500px;
   --breakpoint-700: 700px;
   --breakpoint-800: 800px;

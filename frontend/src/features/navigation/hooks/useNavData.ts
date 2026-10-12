@@ -10,6 +10,7 @@ import {
 import type { BackendProjectCard } from '../../../lib/projectsApi';
 import { ORG_NAV_ITEMS, PROJECT_NAV_ITEMS, type NavItem } from '../data';
 import { usePendingCount } from '../../documents/hooks/usePendingCount';
+import { useWaitingMeetingCount } from '../../calendar/hooks/useWaitingMeetingCount';
 
 interface NavData {
   initials: string;
@@ -35,6 +36,9 @@ export function useNavData(): NavData {
     hasModule(user, 'SETTINGS'),
   );
   const { data: pending } = usePendingCount(projectId);
+  const { data: waitingMeetings } = useWaitingMeetingCount(
+    hasModule(user, 'CALENDAR'),
+  );
 
   const { data: me } = useCurrentUser();
 
@@ -43,6 +47,10 @@ export function useNavData(): NavData {
     projects: projects.length,
     ...(archived.length > 0 ? { settings: archived.length } : {}),
   };
+
+  if (waitingMeetings && waitingMeetings.count > 0) {
+    counts.calendar = waitingMeetings.count;
+  }
 
   const selectedProject = projects.find((project) => project.id === projectId);
   const taskBadge = selectedProject
