@@ -116,19 +116,33 @@ export class BudgetService {
     const settingsByKey = new Map(
       settings.map((row) => [row.categoryKey, row]),
     );
-    const visibleCategory = (category: CategoryRow) =>
+    const visiblePosition = (category: CategoryRow, position: PositionRow) =>
       restrictTo === undefined ||
       (restrictTo !== null &&
-        category.partnerId === restrictTo &&
+        (position.partnerId ?? category.partnerId) === restrictTo &&
         settingsByKey.get(category.key)?.visibleToPartner === true);
+    const visibleCategory = (category: CategoryRow, positions: PositionRow[]) =>
+      restrictTo === undefined ||
+      (restrictTo !== null &&
+        settingsByKey.get(category.key)?.visibleToPartner === true &&
+        (category.partnerId === restrictTo ||
+          positions.some(
+            (position) =>
+              position.categoryKey === category.key &&
+              visiblePosition(category, position),
+          )));
 
     const visiblePositionKeys = new Set<string>();
     const visibleCategoryKeys = new Set<string>();
     for (const version of versions) {
-      for (const category of version.categories.filter(visibleCategory)) {
+      for (const category of version.categories) {
+        if (!visibleCategory(category, version.positions)) continue;
         visibleCategoryKeys.add(category.key);
         for (const position of version.positions) {
-          if (position.categoryKey === category.key) {
+          if (
+            position.categoryKey === category.key &&
+            visiblePosition(category, position)
+          ) {
             visiblePositionKeys.add(position.key);
           }
         }
@@ -151,7 +165,7 @@ export class BudgetService {
         locked: column.locked,
       })),
       versions: versions.map((version) =>
-        this.toVersion(version, history, visibleCategory),
+        this.toVersion(version, history, visibleCategory, visiblePosition),
       ),
       actuals: Object.fromEntries(
         actuals
@@ -346,6 +360,14 @@ export class BudgetService {
       if (dto.grant !== undefined) data.grant = dto.grant;
       if (dto.ownContribution !== undefined) {
         data.ownContribution = dto.ownContribution;
+      }
+      if (dto.partnerId !== undefined && dto.partnerId !== position.partnerId) {
+        if (dto.partnerId) {
+          await this.assertPartnerUsable(version.projectId, dto.partnerId, tx);
+        }
+        data.partner = dto.partnerId
+          ? { connect: { id: dto.partnerId } }
+          : { disconnect: true };
       }
 
       const updated = await tx.budgetPosition.update({
@@ -783,6 +805,7 @@ export class BudgetService {
       planned: position.planned.toFixed(2),
       grant: position.grant.toFixed(2),
       ownContribution: position.ownContribution.toFixed(2),
+      partnerId: position.partnerId,
     };
   }
 
@@ -806,7 +829,11 @@ export class BudgetService {
       comment: string | null;
       actor: Person;
     }[],
-    visibleCategory: (category: CategoryRow) => boolean,
+    visibleCategory: (
+      category: CategoryRow,
+      positions: PositionRow[],
+    ) => boolean,
+    visiblePosition: (category: CategoryRow, position: PositionRow) => boolean,
   ) {
     return {
       id: version.id,
@@ -833,8 +860,15 @@ export class BudgetService {
           comment: entry.comment ?? '',
         })),
       categories: version.categories
-        .filter(visibleCategory)
-        .map((category) => this.toCategory(category, version.positions)),
+        .filter((category) => visibleCategory(category, version.positions))
+        .map((category) =>
+          this.toCategory(
+            category,
+            version.positions.filter((position) =>
+              visiblePosition(category, position),
+            ),
+          ),
+        ),
     };
   }
 
@@ -925,8 +959,9 @@ export class BudgetService {
     return db.partner.findMany({
       where: {
         OR: [
-          { status: 'ACTIVE', projects: { some: { projectId } } },
+          { status: 'ACTIVE' },
           { budgetCategories: { some: { version: { projectId } } } },
+          { budgetPositions: { some: { version: { projectId } } } },
         ],
       },
       select: { id: true, name: true, status: true },
@@ -1004,17 +1039,21 @@ export class BudgetService {
     db: Db,
   ): Promise<void> {
     const partner = await db.partner.findFirst({
-      where: { id: partnerId, projects: { some: { projectId } } },
+      where: { id: partnerId },
       select: { status: true },
     });
     if (!partner) {
-      throw new ConflictException(
-        'Ten partner nie jest przypisany do projektu',
-      );
+      throw new ConflictException('Nie znaleziono partnera');
     }
     if (partner.status !== 'ACTIVE') {
       throw new ConflictException('Ten partner jest zatrzymany');
     }
+
+    await db.partnerProject.upsert({
+      where: { partnerId_projectId: { partnerId, projectId } },
+      create: { partnerId, projectId },
+      update: {},
+    });
   }
 
   private async touchPlan(

@@ -335,11 +335,22 @@ route is gated on `BUDGET`.
   | Invoice status | director or coordinator, as in the UI |
   | Approve, reject, revert, edit the description | director only, via `DirectorGuard` and a service check |
 
+- **Partner per row.** A partner can be set on a category or on a single position
+  (`budget_positions.partner_id`). A position's own partner wins over its
+  category's: the effective partner is `position.partnerId ?? category.partnerId`,
+  and summary mode, partner editing and moving spending all use it. Settings
+  (`detailed`, `partnerCanEdit`, `visibleToPartner`) stay per category. An aneks
+  copies `partner_id` with the positions, and a change of it counts as a change.
+- **Choosing a partner.** Any ACTIVE partner from `/partners` can be set on a row;
+  the project checkboxes on Partnerzy are optional. Setting one links the partner
+  to the project (`partner_projects` upsert), so the unlink and delete guards
+  below keep holding. A paused or missing partner is a 409.
 - **Partner users.** A PARTNER member linked to a partner (`project_members.partner_id`,
-  set via `PATCH /members/:id/partner`) who has no edit rights reads a filtered budget:
-  only categories of their partner with `visibleToPartner`, only those actuals, only
-  their own history. They may edit actuals there when `partnerCanEdit` is on, and
-  nothing else. A PARTNER with no partner link sees no categories.
+  set via `PATCH /members/:id/partner`) who has no edit rights reads a filtered budget: in categories with `visibleToPartner`, only
+  the positions whose effective partner is theirs (a category of theirs also shows
+  when empty), only those actuals, only their own history. They may edit actuals
+  there when `partnerCanEdit` is on, and nothing else. A PARTNER with no partner link
+  sees no categories.
 - **Workflow rules.** One open aneks (DRAFT or PENDING) at a time. Submitting and
   approving need changes against the current version. Approval is refused while a
   removed position still has invoices or incurred spending. A director may approve
@@ -402,8 +413,9 @@ module. Every query is scoped to `userId = caller`, and someone else's notificat
   same rows are already readable through the nested stages response.
 - Meetings, documents and participants from the ERD are not modelled.
 - Partners are modelled (`partners`, `partner_projects`): org-wide, director-only
-  CRUD at `/partners`. Deleting a partner that a budget category or a project
-  member uses is a 409, and so is unlinking a project whose budget uses it.
+  CRUD at `/partners`. Deleting a partner that a budget category, a budget position
+  or a project member uses is a 409, and so is unlinking a project whose budget
+  uses it.
 - The Zadania page still reads its in-memory store. Wiring it to the task
   endpoints — a `tasksApi` plus TanStack Query hooks — is the next round.
 

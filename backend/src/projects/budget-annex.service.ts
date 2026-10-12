@@ -78,6 +78,7 @@ export class BudgetAnnexService {
             planned: position.planned,
             grant: position.grant,
             ownContribution: position.ownContribution,
+            partnerId: position.partnerId,
           })),
         });
       }
@@ -370,6 +371,7 @@ export class BudgetAnnexService {
         return (
           !before ||
           before.name !== position.name ||
+          before.partnerId !== position.partnerId ||
           BUDGET_PLAN_FIELDS.some(
             (field) => !before[field].equals(position[field]),
           )

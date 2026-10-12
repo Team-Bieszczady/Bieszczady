@@ -361,7 +361,7 @@ export class BudgetActualsService {
         projectId,
         positionKey,
         categoryKey: position.categoryKey,
-        partnerId: category?.partnerId ?? null,
+        partnerId: position.partnerId ?? category?.partnerId ?? null,
         detailed: settings?.detailed ?? true,
         partnerCanEdit: settings?.partnerCanEdit ?? false,
         visibleToPartner: settings?.visibleToPartner ?? false,

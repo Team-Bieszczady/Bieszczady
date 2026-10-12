@@ -42,7 +42,10 @@ type PendingDelete =
   | { kind: 'category'; id: string; name: string }
   | { kind: 'column'; id: string; name: string };
 
-type CategoryForm = { kind: 'add' } | { kind: 'share'; category: PlanCategory };
+type CategoryForm =
+  | { kind: 'add' }
+  | { kind: 'share'; category: PlanCategory }
+  | { kind: 'share-position'; category: PlanCategory; position: PlanPosition };
 
 type DocumentTarget = {
   kind: 'position' | 'category';
@@ -212,7 +215,6 @@ export function BudgetTable({
             {categoryRows.map(({ category, change }) => {
               const isRemovedCategory = change === 'REMOVED';
               const expanded = !collapsedIds.includes(category.id);
-              const detailed = !isSummaryMode(store, category);
               const canEditCategory =
                 canEditActuals && canEditCategoryActuals(store, category);
               const previousCategory = previousCategories.get(category.id);
@@ -331,6 +333,13 @@ export function BudgetTable({
                       {positionRows.map(({ position, change: rowChange }) => {
                         const positionActuals =
                           actuals[position.id] ?? EMPTY_ACTUALS;
+                        const rowPartnerId =
+                          position.partnerId ?? category.partnerId;
+                        const detailed = !isSummaryMode(
+                          store,
+                          category,
+                          rowPartnerId,
+                        );
                         const isExpanded =
                           detailed &&
                           rowChange !== 'REMOVED' &&
@@ -345,11 +354,21 @@ export function BudgetTable({
                               columns={columns}
                               change={rowChange}
                               previousPlan={diff?.changed.get(position.id)}
+                              partnerName={
+                                store.partners.find(
+                                  ({ id }) => id === position.partnerId,
+                                )?.name ?? null
+                              }
                               detailed={detailed}
                               expanded={isExpanded}
                               canEditPlan={canEditPlan}
                               canEditActuals={
-                                canEditCategory &&
+                                canEditActuals &&
+                                canEditCategoryActuals(
+                                  store,
+                                  category,
+                                  rowPartnerId,
+                                ) &&
                                 currentPositionIds.has(position.id)
                               }
                               canChangeStatus={canChangeStatus}
@@ -401,6 +420,22 @@ export function BudgetTable({
                                   versionId,
                                   categoryId: category.id,
                                   positionId: position.id,
+                                })
+                              }
+                              onShare={() =>
+                                setCategoryForm({
+                                  kind: 'share-position',
+                                  category,
+                                  position,
+                                })
+                              }
+                              onRemovePartner={() =>
+                                dispatch({
+                                  type: 'SET_POSITION_PARTNER',
+                                  versionId,
+                                  categoryId: category.id,
+                                  positionId: position.id,
+                                  partnerId: null,
                                 })
                               }
                               onSetStatus={(status) =>
@@ -589,8 +624,14 @@ export function BudgetTable({
       {categoryForm && (
         <CategoryFormModal
           partners={store.partners}
-          initial={categoryForm.kind === 'share' ? categoryForm.category : null}
-          partnerOnly={categoryForm.kind === 'share'}
+          initial={
+            categoryForm.kind === 'share'
+              ? categoryForm.category
+              : categoryForm.kind === 'share-position'
+                ? categoryForm.position
+                : null
+          }
+          partnerOnly={categoryForm.kind !== 'add'}
           onClose={() => setCategoryForm(null)}
           onSave={({ name, partnerId }) =>
             dispatch(
@@ -602,12 +643,20 @@ export function BudgetTable({
                     name,
                     partnerId,
                   }
-                : {
-                    type: 'ADD_CATEGORY',
-                    versionId,
-                    name,
-                    partnerId,
-                  },
+                : categoryForm.kind === 'share-position'
+                  ? {
+                      type: 'SET_POSITION_PARTNER',
+                      versionId,
+                      categoryId: categoryForm.category.id,
+                      positionId: categoryForm.position.id,
+                      partnerId,
+                    }
+                  : {
+                      type: 'ADD_CATEGORY',
+                      versionId,
+                      name,
+                      partnerId,
+                    },
             )
           }
         />

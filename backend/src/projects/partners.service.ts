@@ -76,8 +76,14 @@ export class PartnersService {
       if (!existing) throw new NotFoundException('Nie znaleziono partnera');
       if (dto.projectIds !== undefined) {
         await this.assertProjectsExist(dto.projectIds, tx);
-        const [inBudget, linkedMembers] = await Promise.all([
+        const [inBudget, inPositions, linkedMembers] = await Promise.all([
           tx.budgetCategory.count({
+            where: {
+              partnerId: id,
+              version: { projectId: { notIn: dto.projectIds } },
+            },
+          }),
+          tx.budgetPosition.count({
             where: {
               partnerId: id,
               version: { projectId: { notIn: dto.projectIds } },
@@ -87,7 +93,7 @@ export class PartnersService {
             where: { partnerId: id, projectId: { notIn: dto.projectIds } },
           }),
         ]);
-        if (inBudget > 0) {
+        if (inBudget > 0 || inPositions > 0) {
           throw new ConflictException(
             'Partner realizuje kategorię w budżecie projektu, którego nie można odpiąć',
           );
@@ -145,11 +151,12 @@ export class PartnersService {
       const partner = await tx.partner.findUnique({ where: { id } });
       if (!partner) throw new NotFoundException('Nie znaleziono partnera');
 
-      const [categories, members] = await Promise.all([
+      const [categories, positions, members] = await Promise.all([
         tx.budgetCategory.count({ where: { partnerId: id } }),
+        tx.budgetPosition.count({ where: { partnerId: id } }),
         tx.projectMember.count({ where: { partnerId: id } }),
       ]);
-      if (categories > 0 || members > 0) {
+      if (categories > 0 || positions > 0 || members > 0) {
         throw new ConflictException(
           'Partner jest przypisany do budżetu lub członków projektu — ustaw status Zatrzymany',
         );

@@ -16,8 +16,10 @@ describe('BudgetService', () => {
       findUnique: jest.fn(),
       findMany: jest.fn(),
       delete: jest.fn(),
+      update: jest.fn(),
     },
     partner: { findMany: jest.fn(), findFirst: jest.fn() },
+    partnerProject: { upsert: jest.fn() },
     folder: { findMany: jest.fn(), count: jest.fn() },
     document: { findMany: jest.fn(), count: jest.fn() },
     budgetVersion: {
@@ -102,6 +104,7 @@ describe('BudgetService', () => {
       planned: money(100),
       grant: money(80),
       ownContribution: money(20),
+      partnerId: null as string | null,
     })),
   };
 
@@ -182,6 +185,7 @@ describe('BudgetService', () => {
         planned: '100.00',
         grant: '80.00',
         ownContribution: '20.00',
+        partnerId: null,
       });
       expect(Object.keys(store.actuals)).toHaveLength(3);
       expect(store.permissions).toEqual(
@@ -204,6 +208,47 @@ describe('BudgetService', () => {
       expect(store.history).toEqual([]);
       expect(store.partners.map((p) => p.id)).toEqual(['gl']);
       expect(store.permissions.partnerId).toBe('gl');
+    });
+
+    it('shows a partner user a position shared with them in another category', async () => {
+      seedRead();
+      prisma.budgetVersion.findMany.mockResolvedValue([
+        {
+          ...storedVersion,
+          positions: [
+            ...storedVersion.positions,
+            {
+              ...storedVersion.positions[0],
+              id: 'p9',
+              key: 'own-shared-pos',
+              partnerId: 'gl',
+            },
+          ],
+        },
+      ]);
+      prisma.budgetCategorySettings.findMany.mockResolvedValue([
+        {
+          categoryKey: 'own',
+          detailed: true,
+          partnerCanEdit: false,
+          visibleToPartner: true,
+          documentFolderId: null,
+          documentId: null,
+        },
+      ]);
+      access.canEditBudget.mockResolvedValue(false);
+      prisma.projectMember.findUnique.mockResolvedValue({
+        projectRole: 'PARTNER',
+        partnerId: 'gl',
+      });
+
+      const store = await service.getStore('p1', viewer);
+
+      expect(store.versions[0].categories.map((c) => c.id)).toEqual(['own']);
+      expect(
+        store.versions[0].categories[0].positions.map((p) => p.id),
+      ).toEqual(['own-shared-pos']);
+      expect(Object.keys(store.actuals)).toEqual([]);
     });
 
     it('shows nothing to a partner user not linked to an organisation', async () => {
@@ -307,6 +352,94 @@ describe('BudgetService', () => {
     });
   });
 
+  describe('updatePosition', () => {
+    const draft = {
+      id: 'v2',
+      projectId: 'p1',
+      name: 'Aneks 1',
+      status: 'DRAFT',
+    };
+
+    it('assigns any active partner and links it to the project', async () => {
+      tx.budgetVersion.findUnique.mockResolvedValue(draft);
+      tx.budgetPosition.findUnique.mockResolvedValue({
+        ...storedVersion.positions[0],
+        partnerId: null,
+      });
+      tx.partner.findFirst.mockResolvedValue({ id: 'gl', status: 'ACTIVE' });
+      tx.budgetPosition.update.mockResolvedValue({
+        ...storedVersion.positions[0],
+        partnerId: 'gl',
+      });
+
+      const position = await service.updatePosition(
+        'v2',
+        'own-pos',
+        { partnerId: 'gl' },
+        viewer,
+      );
+
+      expect(tx.budgetPosition.update).toHaveBeenCalledWith({
+        where: { id: 'p0' },
+        data: { partner: { connect: { id: 'gl' } } },
+      });
+      expect(tx.partnerProject.upsert).toHaveBeenCalledWith({
+        where: { partnerId_projectId: { partnerId: 'gl', projectId: 'p1' } },
+        create: { partnerId: 'gl', projectId: 'p1' },
+        update: {},
+      });
+      expect(position.partnerId).toBe('gl');
+    });
+
+    it('refuses a paused partner', async () => {
+      tx.budgetVersion.findUnique.mockResolvedValue(draft);
+      tx.budgetPosition.findUnique.mockResolvedValue(
+        storedVersion.positions[0],
+      );
+      tx.partner.findFirst.mockResolvedValue({ id: 'gl', status: 'PAUSED' });
+
+      await expect(
+        service.updatePosition('v2', 'own-pos', { partnerId: 'gl' }, viewer),
+      ).rejects.toThrow(ConflictException);
+      expect(tx.partnerProject.upsert).not.toHaveBeenCalled();
+      expect(tx.budgetPosition.update).not.toHaveBeenCalled();
+    });
+
+    it('removes the partner with null', async () => {
+      tx.budgetVersion.findUnique.mockResolvedValue(draft);
+      tx.budgetPosition.findUnique.mockResolvedValue({
+        ...storedVersion.positions[0],
+        partnerId: 'gl',
+      });
+      tx.budgetPosition.update.mockResolvedValue(storedVersion.positions[0]);
+
+      await service.updatePosition(
+        'v2',
+        'own-pos',
+        { partnerId: null },
+        viewer,
+      );
+
+      expect(tx.budgetPosition.update).toHaveBeenCalledWith({
+        where: { id: 'p0' },
+        data: { partner: { disconnect: true } },
+      });
+    });
+
+    it('refuses a partner that does not exist', async () => {
+      tx.budgetVersion.findUnique.mockResolvedValue(draft);
+      tx.budgetPosition.findUnique.mockResolvedValue(
+        storedVersion.positions[0],
+      );
+      tx.partner.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.updatePosition('v2', 'own-pos', { partnerId: 'x' }, viewer),
+      ).rejects.toThrow(ConflictException);
+      expect(tx.budgetPosition.update).not.toHaveBeenCalled();
+    });
+  });
+
   describe('createCategory', () => {
     it('refuses to edit an approved version', async () => {
       tx.budgetVersion.findUnique.mockResolvedValue({
@@ -334,7 +467,7 @@ describe('BudgetService', () => {
       ).rejects.toThrow(ForbiddenException);
     });
 
-    it('refuses a partner not linked to the project', async () => {
+    it('refuses a partner that does not exist', async () => {
       tx.budgetVersion.findUnique.mockResolvedValue({
         id: 'v1',
         projectId: 'p1',

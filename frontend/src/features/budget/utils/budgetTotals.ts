@@ -178,11 +178,14 @@ export function diffVersions(
       !!before &&
       (before.name !== category.name ||
         before.partnerId !== category.partnerId ||
-        category.positions.some(
-          (position) =>
-            previousPositions.has(position.id) &&
-            previousPositions.get(position.id)?.name !== position.name,
-        ))
+        category.positions.some((position) => {
+          const previousPosition = previousPositions.get(position.id);
+          return (
+            !!previousPosition &&
+            (previousPosition.name !== position.name ||
+              previousPosition.partnerId !== position.partnerId)
+          );
+        }))
     );
   });
 

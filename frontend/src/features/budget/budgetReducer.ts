@@ -53,6 +53,13 @@ export type BudgetAction =
       name: string;
     }
   | {
+      type: 'SET_POSITION_PARTNER';
+      versionId: string;
+      categoryId: string;
+      positionId: string;
+      partnerId: string | null;
+    }
+  | {
       type: 'DELETE_POSITION';
       versionId: string;
       categoryId: string;
@@ -138,22 +145,22 @@ export function settingsOf(
 export function isSummaryMode(
   store: BudgetStore,
   category: PlanCategory,
+  rowPartnerId: string | null = category.partnerId,
 ): boolean {
-  return (
-    category.partnerId !== null && !settingsOf(store, category.id).detailed
-  );
+  return rowPartnerId !== null && !settingsOf(store, category.id).detailed;
 }
 
 export function canEditCategoryActuals(
   store: BudgetStore,
   category: PlanCategory,
+  rowPartnerId: string | null = category.partnerId,
 ): boolean {
   const { canEdit, partnerId } = store.permissions;
 
   return (
     canEdit ||
     (partnerId !== null &&
-      category.partnerId === partnerId &&
+      rowPartnerId === partnerId &&
       settingsOf(store, category.id).partnerCanEdit)
   );
 }

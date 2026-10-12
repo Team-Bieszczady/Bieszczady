@@ -178,6 +178,7 @@ interface PositionRowProps {
   columns: Column[];
   change: RowChange | null;
   previousPlan: Partial<Record<PlanField, number>> | undefined;
+  partnerName: string | null;
   detailed: boolean;
   expanded: boolean;
   canEditPlan: boolean;
@@ -194,6 +195,8 @@ interface PositionRowProps {
   onToggle: () => void;
   onAddInvoice: () => void;
   onDelete: () => void;
+  onShare: () => void;
+  onRemovePartner: () => void;
   onSetStatus: (status: InvoiceStatus | null) => void;
   onEditDocument: () => void;
   onRemoveDocument: () => void;
@@ -220,6 +223,7 @@ export function PositionRow({
   columns,
   change,
   previousPlan,
+  partnerName,
   detailed,
   expanded,
   canEditPlan,
@@ -236,12 +240,15 @@ export function PositionRow({
   onToggle,
   onAddInvoice,
   onDelete,
+  onShare,
+  onRemovePartner,
   onSetStatus,
   onEditDocument,
   onRemoveDocument,
   onMoveActuals,
 }: PositionRowProps) {
   const isRemoved = change === 'REMOVED';
+  const hasPartner = position.partnerId !== null;
   const spend = calcSpend(
     Number(values[PLANNED_COLUMN_ID]) || 0,
     Number(values[SPENT_COLUMN_ID]) || 0,
@@ -298,6 +305,17 @@ export function PositionRow({
           : []),
         ...(canEditPlan
           ? [
+              hasPartner
+                ? {
+                    id: 'remove-partner',
+                    label: 'Usuń partnera',
+                    onSelect: onRemovePartner,
+                  }
+                : {
+                    id: 'share',
+                    label: 'Udostępnij partnerowi',
+                    onSelect: onShare,
+                  },
               {
                 id: 'delete',
                 label: 'Usuń pozycję',
@@ -365,6 +383,11 @@ export function PositionRow({
               </div>
             )}
           </div>
+          {hasPartner && (
+            <span className="ml-2 shrink-0 rounded-md border border-darkGreen bg-white px-2 py-0.5 text-[11px] font-medium whitespace-nowrap text-darkGreen">
+              Partner: {partnerName ?? 'nieznany'}
+            </span>
+          )}
           {change && <ChangeTag change={change} className="ml-2" />}
         </div>
       </td>

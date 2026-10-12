@@ -18,6 +18,7 @@ describe('PartnersService', () => {
     partnerProject: { deleteMany: jest.fn(), createMany: jest.fn() },
     project: { count: jest.fn() },
     budgetCategory: { count: jest.fn() },
+    budgetPosition: { count: jest.fn() },
     projectMember: { count: jest.fn() },
   });
 
@@ -177,6 +178,16 @@ describe('PartnersService', () => {
       expect(tx.partnerProject.deleteMany).not.toHaveBeenCalled();
     });
 
+    it('refuses to unlink a project whose budget position uses the partner', async () => {
+      tx.project.count.mockResolvedValue(1);
+      tx.budgetPosition.count.mockResolvedValue(1);
+
+      await expect(
+        service.update('pa1', { projectIds: ['p2'] }),
+      ).rejects.toThrow(ConflictException);
+      expect(tx.partnerProject.deleteMany).not.toHaveBeenCalled();
+    });
+
     it('leaves the links alone when projectIds is not sent', async () => {
       await service.update('pa1', { name: 'Nowa nazwa' });
 
@@ -206,6 +217,13 @@ describe('PartnersService', () => {
   describe('remove', () => {
     it('refuses a partner used by a budget category', async () => {
       tx.budgetCategory.count.mockResolvedValue(1);
+
+      await expect(service.remove('pa1')).rejects.toThrow(ConflictException);
+      expect(tx.partner.delete).not.toHaveBeenCalled();
+    });
+
+    it('refuses a partner used by a budget position', async () => {
+      tx.budgetPosition.count.mockResolvedValue(1);
 
       await expect(service.remove('pa1')).rejects.toThrow(ConflictException);
       expect(tx.partner.delete).not.toHaveBeenCalled();

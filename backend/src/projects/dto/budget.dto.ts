@@ -90,6 +90,11 @@ export class UpdateBudgetPositionDto {
   @TrimmedString()
   @Matches(MONEY_PATTERN, { message: MONEY_MESSAGE })
   ownContribution?: string;
+
+  @ValidateIf((_, value) => value !== null && value !== undefined)
+  @IsUUID()
+  @IsOptional()
+  partnerId?: string | null;
 }
 
 export class CreateBudgetColumnDto {

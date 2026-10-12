@@ -39,6 +39,7 @@ export interface PlanPosition {
   planned: number;
   grant: number;
   ownContribution: number;
+  partnerId: string | null;
 }
 
 export interface PlanCategory {

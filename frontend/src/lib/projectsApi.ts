@@ -262,6 +262,7 @@ export interface BackendBudgetPosition {
   planned: string;
   grant: string;
   ownContribution: string;
+  partnerId: string | null;
 }
 
 export interface BackendBudgetCategory {
@@ -930,6 +931,7 @@ export const budgetApi = {
       planned?: string;
       grant?: string;
       ownContribution?: string;
+      partnerId?: string | null;
     },
   ) =>
     send<BackendBudgetPosition>(

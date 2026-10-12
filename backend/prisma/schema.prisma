@@ -175,6 +175,7 @@ model Partner {
   projects         PartnerProject[] @relation("PartnerProjectsByPartner")
   members          ProjectMember[]  @relation("PartnerMembers")
   budgetCategories BudgetCategory[] @relation("PartnerBudgetCategories")
+  budgetPositions  BudgetPosition[] @relation("PartnerBudgetPositions")
 
   @@map("partners")
 }
@@ -585,11 +586,14 @@ model BudgetPosition {
   planned         Decimal @default(0) @db.Decimal(12, 2)
   grant           Decimal @default(0) @db.Decimal(12, 2)
   ownContribution Decimal @default(0) @map("own_contribution") @db.Decimal(12, 2)
+  partnerId       String? @map("partner_id")
 
   version BudgetVersion @relation("BudgetVersionPositions", fields: [versionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  partner Partner?      @relation("PartnerBudgetPositions", fields: [partnerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([versionId, key])
   @@index([versionId, categoryKey])
+  @@index([partnerId])
   @@map("budget_positions")
 }
 

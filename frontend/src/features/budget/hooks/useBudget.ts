@@ -170,6 +170,14 @@ export function useBudgetAction(projectId: string) {
             { name: action.name },
           );
           return;
+        case 'SET_POSITION_PARTNER':
+          await budgetApi.patchPosition(
+            token,
+            action.versionId,
+            action.positionId,
+            { partnerId: action.partnerId },
+          );
+          return;
         case 'DELETE_POSITION':
           return budgetApi.removePosition(
             token,
