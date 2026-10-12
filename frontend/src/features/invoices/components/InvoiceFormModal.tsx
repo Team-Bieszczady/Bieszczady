@@ -1,7 +1,7 @@
 import { useId, useRef } from 'react';
 import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form';
 import toast from 'react-hot-toast';
-import { LuFileCode2, LuPlus, LuTrash2 } from 'react-icons/lu';
+import { LuFileCode2, LuPlus, LuTrash2, LuTriangleAlert } from 'react-icons/lu';
 import { Button } from '../../../components/ui/Button';
 import { DateInput } from '../../../components/ui/DateInput';
 import { FieldError } from '../../../components/ui/FieldError';
@@ -9,7 +9,7 @@ import { Modal } from '../../../components/ui/Modal';
 import { Select, type SelectOption } from '../../../components/ui/Select';
 import { INPUT_CLASSES } from '../../../components/ui/formStyles';
 import type { BackendInvoice } from '../../../lib/api';
-import { todayIso } from '../../projects/utils/isoDate';
+import { formatNumericDate, todayIso } from '../../projects/utils/isoDate';
 import { formatAmount } from '../invoiceSummary';
 import { invoiceNameFrom, parseKsefInvoice } from '../ksefXml';
 
@@ -22,10 +22,27 @@ export interface InvoiceFormInputs {
 
 interface InvoiceFormModalProps {
   invoice?: BackendInvoice;
+  existingInvoices: BackendInvoice[];
   projectOptions: SelectOption[];
   onClose: () => void;
   onSubmit: (values: InvoiceFormInputs) => void;
   isPending?: boolean;
+}
+
+// Wszystkie faktury i tak są już wczytane, więc duplikat rozpoznajemy u siebie,
+// bez pytania serwera.
+function findDuplicate(
+  invoices: BackendInvoice[],
+  name: string,
+  editedId: string | undefined,
+) {
+  const wanted = name.trim().toLowerCase();
+  if (wanted === '') return undefined;
+
+  return invoices.find(
+    (invoice) =>
+      invoice.id !== editedId && invoice.name.trim().toLowerCase() === wanted,
+  );
 }
 
 const LABEL_CLASSES = 'mb-2 block text-sm text-dark/80';
@@ -64,6 +81,7 @@ function sharesTotal(shares: { amount: string }[]) {
 
 export default function InvoiceFormModal({
   invoice,
+  existingInvoices,
   projectOptions,
   onClose,
   onSubmit,
@@ -127,6 +145,8 @@ export default function InvoiceFormModal({
 
   const amount = useWatch({ control, name: 'amount' });
   const shares = useWatch({ control, name: 'shares' });
+  const typedName = useWatch({ control, name: 'name' });
+  const duplicate = findDuplicate(existingInvoices, typedName, invoice?.id);
 
   const submit = handleSubmit((values) => {
     const total = Number(values.amount);
@@ -220,6 +240,21 @@ export default function InvoiceFormModal({
             className={INPUT_CLASSES}
           />
           <FieldError message={errors.name?.message} />
+          {duplicate && (
+            <p className="-mt-1 flex items-start gap-1.5 text-xs text-amber-700">
+              <LuTriangleAlert
+                size={13}
+                className="mt-0.5 shrink-0"
+                aria-hidden="true"
+              />
+              <span>
+                Taka faktura już jest w rejestrze (
+                {formatNumericDate(duplicate.paymentDate)},{' '}
+                {formatAmount(Number(duplicate.amount))}). Sprawdź, czy nie
+                dodajesz jej drugi raz.
+              </span>
+            </p>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-4">

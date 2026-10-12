@@ -117,13 +117,28 @@ export function matchesSearch(invoice: BackendInvoice, search: string) {
   );
 }
 
+export type InvoiceTab = InvoiceStatus | 'OVERDUE' | null;
+
 export function filterInvoices(
   invoices: BackendInvoice[],
-  status: InvoiceStatus | null,
+  tab: InvoiceTab,
   search: string,
+  projectId: string | null = null,
+  today: string = todayIso(),
 ) {
   return invoices.filter((invoice) => {
-    if (status !== null && invoice.status !== status) return false;
+    if (tab === 'OVERDUE' && !isOverdue(invoice, today)) return false;
+    if (tab !== null && tab !== 'OVERDUE' && invoice.status !== tab) {
+      return false;
+    }
+
+    if (
+      projectId !== null &&
+      !invoice.shares.some((share) => share.projectId === projectId)
+    ) {
+      return false;
+    }
+
     return matchesSearch(invoice, search);
   });
 }

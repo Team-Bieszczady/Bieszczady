@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router';
-import { LuPlus, LuSearch } from 'react-icons/lu';
+import { LuDownload, LuPlus, LuSearch, LuX } from 'react-icons/lu';
 import { Button } from '../components/ui/Button';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { InlineQueryState } from '../components/ui/InlineQueryState';
@@ -15,7 +15,10 @@ import {
   filterInvoices,
   projectTotals,
   summarize,
+  type InvoiceTab,
 } from '../features/invoices/invoiceSummary';
+import { toInvoicesCsv } from '../features/invoices/invoicesCsv';
+import { downloadCsv, safeFileNamePart } from '../lib/csv';
 import { useCreateInvoice } from '../features/invoices/hooks/useCreateInvoice';
 import { useDeleteInvoice } from '../features/invoices/hooks/useDeleteInvoice';
 import { useInvoices } from '../features/invoices/hooks/useInvoices';
@@ -25,19 +28,33 @@ import { useUploadInvoiceDocument } from '../features/invoices/hooks/useInvoiceD
 import { useProjects } from '../features/projects/hooks/useProjectsApi';
 import { useSelectedProject } from '../context/useSelectedProject';
 import { pluralizePl, type PluralForms } from '../lib/pluralizePl';
-import type { BackendInvoice, InvoiceStatus } from '../lib/api';
+import type { BackendInvoice } from '../lib/api';
+import { todayIso } from '../features/projects/utils/isoDate';
 
 const INVOICE_FORMS: PluralForms = ['faktura', 'faktury', 'faktur'];
 
-const STATUS_TABS: { value: InvoiceStatus | null; label: string }[] = [
+function byProjectName(invoices: BackendInvoice[], projectId: string | null) {
+  if (projectId === null) return null;
+
+  for (const invoice of invoices) {
+    for (const share of invoice.shares) {
+      if (share.projectId === projectId) return share.projectName;
+    }
+  }
+  return null;
+}
+
+const STATUS_TABS: { value: InvoiceTab; label: string }[] = [
   { value: null, label: 'Wszystkie' },
   { value: 'TO_PAY', label: 'Do zapłaty' },
+  { value: 'OVERDUE', label: 'Po terminie' },
   { value: 'PAID', label: 'Zapłacone' },
 ];
 
 export default function KsefPage() {
-  const [statusFilter, setStatusFilter] = useState<InvoiceStatus | null>(null);
+  const [statusFilter, setStatusFilter] = useState<InvoiceTab>(null);
   const [search, setSearch] = useState('');
+  const [projectFilter, setProjectFilter] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editedInvoice, setEditedInvoice] = useState<BackendInvoice | null>(
     null,
@@ -59,7 +76,8 @@ export default function KsefPage() {
   const { setProjectId } = useSelectedProject();
 
   const invoices = invoicesQuery.data ?? [];
-  const shown = filterInvoices(invoices, statusFilter, search);
+  const shown = filterInvoices(invoices, statusFilter, search, projectFilter);
+  const filteredProject = byProjectName(invoices, projectFilter);
   const totals = summarize(invoices);
   const byProject = projectTotals(invoices);
   const projectOptions = (projectsQuery.data ?? []).map((project) => ({
@@ -154,6 +172,17 @@ export default function KsefPage() {
     void navigate(`/project/documents?folder=${document.folderId}`);
   };
 
+  const exportCsv = () => {
+    if (shown.length === 0) {
+      toast.error('Nie ma czego eksportować');
+      return;
+    }
+
+    const part = filteredProject ? `-${safeFileNamePart(filteredProject)}` : '';
+    downloadCsv(toInvoicesCsv(shown), `faktury${part}-${todayIso()}.csv`);
+    toast.success(`Pobrano ${pluralizePl(shown.length, INVOICE_FORMS)}`);
+  };
+
   const confirmDelete = () => {
     if (!invoiceToDelete) return;
 
@@ -177,16 +206,30 @@ export default function KsefPage() {
             {pluralizePl(invoices.length, INVOICE_FORMS)} w rejestrze
           </p>
         </div>
-        <Button
-          variant="primary"
-          size="small"
-          type="button"
-          onClick={openAddForm}
-          className="gap-1.5"
-        >
-          <LuPlus size={16} aria-hidden="true" />
-          Dodaj fakturę
-        </Button>
+        <div className="flex items-center gap-2">
+          {invoices.length > 0 && (
+            <Button
+              variant="outline"
+              size="small"
+              type="button"
+              onClick={exportCsv}
+              className="gap-1.5"
+            >
+              <LuDownload size={15} aria-hidden="true" />
+              <span className="max-sm:hidden">Pobierz CSV</span>
+            </Button>
+          )}
+          <Button
+            variant="primary"
+            size="small"
+            type="button"
+            onClick={openAddForm}
+            className="gap-1.5"
+          >
+            <LuPlus size={16} aria-hidden="true" />
+            Dodaj fakturę
+          </Button>
+        </div>
       </div>
 
       {invoices.length > 0 && <InvoiceSummaryCards totals={totals} />}
@@ -235,6 +278,20 @@ export default function KsefPage() {
         </div>
       </div>
 
+      {filteredProject && (
+        <div className="-mb-3 flex flex-wrap items-center gap-2 text-xs">
+          <span className="text-grayText">Pokazuję tylko projekt:</span>
+          <button
+            type="button"
+            onClick={() => setProjectFilter(null)}
+            className="flex cursor-pointer items-center gap-1 rounded-full bg-lightGreen px-3 py-1 font-medium text-darkGreen hover:opacity-80"
+          >
+            {filteredProject}
+            <LuX size={13} aria-hidden="true" />
+          </button>
+        </div>
+      )}
+
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
         <InlineQueryState
           isLoading={invoicesQuery.isPending}
@@ -267,7 +324,15 @@ export default function KsefPage() {
         </InlineQueryState>
       </div>
 
-      <ProjectTotalsSection totals={byProject} />
+      <ProjectTotalsSection
+        totals={byProject}
+        activeProjectId={projectFilter}
+        onPick={(projectId) =>
+          setProjectFilter((current) =>
+            current === projectId ? null : projectId,
+          )
+        }
+      />
 
       <ConfirmDialog
         isOpen={invoiceToDelete !== null}
@@ -283,6 +348,7 @@ export default function KsefPage() {
       {isFormOpen && (
         <InvoiceFormModal
           invoice={editedInvoice ?? undefined}
+          existingInvoices={invoices}
           projectOptions={projectOptions}
           onClose={closeForm}
           onSubmit={submitInvoice}
