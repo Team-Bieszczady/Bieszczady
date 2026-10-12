@@ -103,8 +103,8 @@ ready-but-unbuilt today.
 ## Projects domain
 
 Tables, seed and endpoints are all built. The frontend is wired to them except for
-the Zadania page, which still reads its in-memory mock, and the indicators/budget
-placeholders. `docs/projects.md` is the frontend-facing guide; read this section
+the Zadania page, which still reads its in-memory mock, and the budget
+placeholder. `docs/projects.md` is the frontend-facing guide; read this section
 before changing the backend.
 
 ### Shape
@@ -255,10 +255,61 @@ Two things here run against the grain of the rest of the codebase, on purpose:
   Ownership grants subtask access, so setting it is a privilege grant and is
   validated as one. Re-filing a task into another project is refused for the same
   reason.
-- **Nothing cascades.** `subtasks` has to be deleted before its task, which means
-  four paths, not one: task delete, activity delete, stage delete with
-  `strategy=delete`, and project delete. `strategy=move` must **not** delete them —
-  it re-points activities, so the work travels with them.
+- **Nothing cascades.** `subtasks` and `notifications` have to be deleted before
+  their task, which means four paths, not one: task delete, activity delete, stage
+  delete with `strategy=delete`, and project delete. `strategy=move` must **not**
+  delete them — it re-points activities, so the work travels with them.
+
+## Indicators
+
+`src/projects/indicators.*`: "Wskaźniki projektowe" on Przegląd. Rows are `indicators`;
+the supporting-document folders an indicator points at are `indicator_folders`.
+- **The deadline is never stored.** `indicatorDeadline` derives it on every read:
+  `scope = STAGE` ends with its stage (`stage_id`) or its task (`task_id`, falling back
+  to the task's stage when the task has no due date); `scope = PROJECT` ends with
+  `projects.planned_end_date`, or has none. Moving a stage or a task therefore moves
+  the indicator, with nothing to keep in sync. Exactly one of `stage_id` / `task_id`
+  is set for `STAGE`, both are null for `PROJECT`.
+- **Percent is computed**, never stored. There is no status. `current_value` never
+  exceeds `target_value`; `PATCH /indicators/:id/progress` clamps to 0…target.
+- **Writes follow the task rule**, not the director-only rule of goals and risks: a
+  director or that project's coordinator (`assertCanManageIndicators`), so there is no
+  `DirectorGuard` on the controller. Reads are `PROJECTS` + `assertCanRead`.
+- Stage, task, folders and owner are all validated against the indicator's own
+  project (409). Folders must be live (`deleted_at IS NULL`); a folder soft-deleted
+  later just drops out of the response.
+- **Deletes keep indicators**: deleting a task, an activity or a stage (`strategy=delete`
+  or an empty stage) turns the indicators that end with it into project-wide ones
+  (`scope = PROJECT`), keeping progress, owner and folders. A stage deleted with
+  `strategy=move` re-points its stage indicators to the target stage, and task indicators
+  travel with their tasks. Only a project delete removes indicators, `indicator_folders`
+  first. Removing a member nulls `owner_id`.
+- **Attached folders follow the Dokumenty rule.** A director or the coordinator sees all
+  of them; a user with the `DOCUMENTS` module sees only folders shared with them, under a
+  shared parent, or holding a document shared with them, and the path lists only visible
+  parents. Anyone else gets `folders: []`.
+
+## Document storage
+`StorageService` must never take the API down with it: a failed container check at boot
+is logged, not thrown, and the container is created lazily on the next save. A storage
+error with no HTTP status (ECONNREFUSED to Azurite, DNS, timeout) becomes a **503**;
+one the service answered (e.g. 404) passes through unchanged.
+
+## Notifications
+`src/notifications/`: the bell. Personal, so it's gated by `JwtAuthGuard` only, with no
+module. Every query is scoped to `userId = caller`, and someone else's notification is a 404.
+- `TASK_ASSIGNED` is written inside the task create/update transaction when someone
+  *other than the actor* becomes the owner.
+- `TASK_DUE_SOON` (the day before) and `TASK_OVERDUE` have no request to hang off, so
+  they're written lazily by `GET /notifications`, over the caller's own open tasks. This
+  mirrors the events overdue sweep: `dedupeKey` plus a P2002 catch. The key includes the
+  due date, and moving a task's due date deletes its old deadline notices.
+- Rows store codes, not sentences. The frontend words them at render time, so
+  "N dni po terminie" keeps counting.
+- `dedupe_key` on both `notifications` and `project_events` is a **filtered** unique
+  index (`WHERE dedupe_key IS NOT NULL`), since a SQL Server UNIQUE admits one NULL.
+  Prisma can't express that. `migrate diff`/`migrate dev` will want to re-add a plain
+  constraint on `project_events`, so drop that line from any generated migration.
 
 ### Scope right now
 - Subtask **reordering** is not exposed; `sort_order` is server-assigned on create
@@ -270,7 +321,7 @@ Two things here run against the grain of the rest of the codebase, on purpose:
   non-member out, but anyone with `TASKS` who *is* a member sees every task in that
   project, not only their own. Narrowing further would buy nothing today, since the
   same rows are already readable through the nested stages response.
-- Indicators and budget stay out; budget is hardcoded in the UI for now.
+- Budget stays out; it is hardcoded in the UI for now.
 - Meetings, documents, partners and participants from the ERD are not modelled.
 - The Zadania page still reads its in-memory store. Wiring it to the task
   endpoints — a `tasksApi` plus TanStack Query hooks — is the next round.

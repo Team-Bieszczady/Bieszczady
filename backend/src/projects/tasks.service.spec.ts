@@ -1,5 +1,6 @@
 import { ConflictException, ForbiddenException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { StageCompletionService } from './stage-completion.service';
 import { ProjectAccessService } from './project-access.service';
@@ -8,6 +9,11 @@ import type { AuthenticatedUser } from '../auth/types/auth.types';
 
 describe('TasksService', () => {
   let service: TasksService;
+
+  const eventCreate = jest.fn<
+    Promise<unknown>,
+    [Prisma.ProjectEventCreateArgs]
+  >();
 
   const prisma = {
     project: { count: jest.fn() },
@@ -22,8 +28,15 @@ describe('TasksService', () => {
     stage: { findUnique: jest.fn() },
     subtask: { deleteMany: jest.fn() },
     projectMember: { count: jest.fn() },
+    projectEvent: { create: eventCreate },
+    notification: { create: jest.fn(), deleteMany: jest.fn() },
+    indicator: { deleteMany: jest.fn(), updateMany: jest.fn() },
     $transaction: jest.fn(),
   };
+
+  const eventData = () =>
+    eventCreate.mock.calls[0][0]
+      .data as Prisma.ProjectEventUncheckedCreateInput;
 
   const settle = jest.fn();
   const access = {
@@ -38,9 +51,14 @@ describe('TasksService', () => {
 
   const director = { id: 'd1', isDirector: true } as AuthenticatedUser;
 
-  const row = (stageId: string, subtasks: { done: boolean }[] = []) => ({
+  const row = (
+    stageId: string,
+    subtasks: { done: boolean }[] = [],
+    ownerId: string | null = null,
+  ) => ({
     id: 't1',
     activityId: 'a1',
+    ownerId,
     title: 'Zadanie',
     description: '',
     status: 'NEW',
@@ -92,7 +110,10 @@ describe('TasksService', () => {
       ownerId: 'piotr',
     });
     prisma.stage.findUnique.mockResolvedValue({ startDate: null });
-    prisma.task.findUniqueOrThrow.mockResolvedValue({ dueDate: null });
+    prisma.task.findUniqueOrThrow.mockResolvedValue({
+      dueDate: null,
+      status: 'NEW',
+    });
   });
 
   describe('reads', () => {
@@ -193,6 +214,52 @@ describe('TasksService', () => {
       expect(prisma.projectMember.count).not.toHaveBeenCalled();
       expect(prisma.task.create).toHaveBeenCalled();
     });
+
+    it('records who added the task, naming it and its stage', async () => {
+      await service.create('a1', { title: 'Zadanie' }, director);
+
+      expect(eventData()).toEqual({
+        projectId: 'p1',
+        actorId: 'd1',
+        source: 'AUTOMATIC',
+        content: 'dodał(a) zadanie „Zadanie” w etapie „Etap”',
+      });
+    });
+
+    it('tells the owner someone else handed them the task', async () => {
+      prisma.projectMember.count.mockResolvedValue(1);
+      prisma.task.create.mockResolvedValue(row('s1', [], 'piotr'));
+
+      await service.create(
+        'a1',
+        { title: 'Zadanie', ownerId: 'piotr' },
+        director,
+      );
+
+      expect(prisma.notification.create).toHaveBeenCalledWith({
+        data: {
+          userId: 'piotr',
+          kind: 'TASK_ASSIGNED',
+          taskId: 't1',
+          actorId: 'd1',
+        },
+      });
+    });
+
+    it('does not notify someone who assigned the task to themselves', async () => {
+      prisma.projectMember.count.mockResolvedValue(1);
+      prisma.task.create.mockResolvedValue(row('s1', [], 'd1'));
+
+      await service.create('a1', { title: 'Zadanie', ownerId: 'd1' }, director);
+
+      expect(prisma.notification.create).not.toHaveBeenCalled();
+    });
+
+    it('notifies nobody for an unassigned task', async () => {
+      await service.create('a1', { title: 'Zadanie' }, director);
+
+      expect(prisma.notification.create).not.toHaveBeenCalled();
+    });
   });
 
   describe('update', () => {
@@ -256,6 +323,70 @@ describe('TasksService', () => {
         }),
       );
     });
+
+    it('notifies the new owner on a reassignment', async () => {
+      prisma.projectMember.count.mockResolvedValue(1);
+      prisma.task.findUniqueOrThrow.mockResolvedValue({ ownerId: 'piotr' });
+      prisma.task.update.mockResolvedValue(row('s1', [], 'anna'));
+
+      await service.update('t1', { ownerId: 'anna' }, director);
+
+      expect(prisma.notification.create).toHaveBeenCalledWith({
+        data: {
+          userId: 'anna',
+          kind: 'TASK_ASSIGNED',
+          taskId: 't1',
+          actorId: 'd1',
+        },
+      });
+    });
+
+    it('stays silent when the same owner is resubmitted', async () => {
+      prisma.projectMember.count.mockResolvedValue(1);
+      prisma.task.findUniqueOrThrow.mockResolvedValue({ ownerId: 'piotr' });
+      prisma.task.update.mockResolvedValue(row('s1', [], 'piotr'));
+
+      await service.update('t1', { ownerId: 'piotr' }, director);
+
+      expect(prisma.notification.create).not.toHaveBeenCalled();
+    });
+
+    it('drops deadline notices when the due date moves', async () => {
+      prisma.task.update.mockResolvedValue(row('s1'));
+
+      await service.update('t1', { dueDate: '2026-12-01' }, director);
+
+      expect(prisma.notification.deleteMany).toHaveBeenCalledWith({
+        where: {
+          taskId: 't1',
+          kind: { in: ['TASK_DUE_SOON', 'TASK_OVERDUE'] },
+        },
+      });
+    });
+
+    it('keeps deadline notices when the due date is not touched', async () => {
+      prisma.task.update.mockResolvedValue(row('s1'));
+
+      await service.update('t1', { title: 'Nowa nazwa' }, director);
+
+      expect(prisma.notification.deleteMany).not.toHaveBeenCalled();
+    });
+
+    it('keeps deadline notices when the same due date is resubmitted', async () => {
+      prisma.task.findUniqueOrThrow.mockResolvedValue({
+        ownerId: 'piotr',
+        dueDate: new Date('2026-12-01'),
+      });
+      prisma.task.update.mockResolvedValue(row('s1'));
+
+      await service.update(
+        't1',
+        { title: 'Nowa nazwa', dueDate: '2026-12-01' },
+        director,
+      );
+
+      expect(prisma.notification.deleteMany).not.toHaveBeenCalled();
+    });
   });
 
   describe('updateStatus', () => {
@@ -275,6 +406,27 @@ describe('TasksService', () => {
       expect(settle).toHaveBeenCalledWith(prisma, ['s1']);
     });
 
+    it('records who changed the status, in Polish, with both values', async () => {
+      prisma.task.update.mockResolvedValue(row('s1'));
+
+      await service.updateStatus('t1', { status: 'DONE' }, director);
+
+      expect(eventData()).toEqual({
+        projectId: 'p1',
+        actorId: 'd1',
+        source: 'AUTOMATIC',
+        content: 'zmienił(a) status zadania „Zadanie” z „Nowe” na „Zrobione”',
+      });
+    });
+
+    it('records nothing when the status is resubmitted unchanged', async () => {
+      prisma.task.update.mockResolvedValue(row('s1'));
+
+      await service.updateStatus('t1', { status: 'NEW' }, director);
+
+      expect(eventCreate).not.toHaveBeenCalled();
+    });
+
     it('authorises through the wider status rule, not the manage rule', async () => {
       prisma.task.update.mockResolvedValue(row('s1'));
 
@@ -286,11 +438,19 @@ describe('TasksService', () => {
   });
 
   describe('remove', () => {
-    it('deletes the checklist before the task, then settles', async () => {
+    it('deletes the checklist and notifications before the task, then settles', async () => {
       const order: string[] = [];
       prisma.subtask.deleteMany.mockImplementation(() => {
         order.push('subtasks');
         return Promise.resolve({ count: 2 });
+      });
+      prisma.notification.deleteMany.mockImplementation(() => {
+        order.push('notifications');
+        return Promise.resolve({ count: 1 });
+      });
+      prisma.indicator.updateMany.mockImplementation(() => {
+        order.push('indicators');
+        return Promise.resolve({ count: 1 });
       });
       prisma.task.delete.mockImplementation(() => {
         order.push('task');
@@ -299,7 +459,17 @@ describe('TasksService', () => {
 
       await service.remove('t1', director);
 
-      expect(order).toEqual(['subtasks', 'task']);
+      expect(order).toEqual([
+        'subtasks',
+        'notifications',
+        'indicators',
+        'task',
+      ]);
+      expect(prisma.indicator.updateMany).toHaveBeenCalledWith({
+        where: { taskId: 't1' },
+        data: { scope: 'PROJECT', stageId: null, taskId: null },
+      });
+      expect(prisma.indicator.deleteMany).not.toHaveBeenCalled();
       expect(settle).toHaveBeenCalledWith(prisma, ['s1']);
     });
   });

@@ -1,4 +1,4 @@
-const MS_PER_DAY = 86_400_000;
+export const MS_PER_DAY = 86_400_000;
 
 export interface TimelineStage {
   id: string;

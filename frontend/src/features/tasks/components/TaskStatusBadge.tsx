@@ -1,7 +1,7 @@
 import { TASK_STATUS_LABELS } from '../../projects/labels';
-import type { TaskStatus } from '../../projects/types';
+import type { TaskStatusValue } from '../../../lib/projectsApi';
 
-const TONE: Record<TaskStatus, string> = {
+const TONE: Record<TaskStatusValue, string> = {
   NEW: 'bg-blue-100 text-blue-700',
   IN_PROGRESS: 'bg-amberSoft text-amberDark',
   BLOCKED: 'bg-redSoft text-darkRed',
@@ -9,7 +9,7 @@ const TONE: Record<TaskStatus, string> = {
 };
 
 interface TaskStatusBadgeProps {
-  status: TaskStatus;
+  status: TaskStatusValue;
   className?: string;
 }
 

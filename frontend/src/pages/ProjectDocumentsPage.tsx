@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { useSearchParams } from 'react-router';
 import { useFolders } from '../features/documents/hooks/useFolders';
 import { useDocuments } from '../features/documents/hooks/useDocuments';
 import { DocumentsTable } from '../features/documents/components/DocumentsTable';
@@ -55,12 +56,19 @@ const DELETED_DOCUMENT_FORMS: PluralForms = [
 ];
 
 function DocumentsView({ projectId }: { projectId: string }) {
-  const [folderId, setFolderId] = useState<string | null>(null);
+  const [searchParams] = useSearchParams();
+  const [chosenFolderId, setFolderId] = useState<string | null>(() =>
+    searchParams.get('folder'),
+  );
   const {
     data: folders,
     isError: foldersFailed,
     refetch: refetchFolders,
   } = useFolders(projectId);
+  const folderId =
+    chosenFolderId && folders?.some((folder) => folder.id === chosenFolderId)
+      ? chosenFolderId
+      : null;
   const {
     data: documents,
     isPending: documentsPending,
@@ -234,7 +242,7 @@ function DocumentsView({ projectId }: { projectId: string }) {
     if (!folderId) {
       const doc = trash?.find((el) => el.id === documentId);
       if (doc?.folder?.deletedAt) {
-        setRestoreDocumentId(documentId); // brak folderu → zapytaj i wyjdź
+        setRestoreDocumentId(documentId); 
         return;
       }
     }

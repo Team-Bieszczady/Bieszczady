@@ -26,6 +26,7 @@ import { ModuleAccessGuard } from '../auth/guards/module-access.guard';
 import { RequireModule } from '../auth/decorators/require-module.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { type AuthenticatedUser } from '../auth/types/auth.types';
+import { STAGE_DELETE_STRATEGIES } from '../common/enums/project.enums';
 import { StagesService } from './stages.service';
 import { ListProjectsQueryDto } from './dto/update-project.dto';
 import {
@@ -218,7 +219,7 @@ export class StagesController {
   @ApiQuery({
     name: 'strategy',
     required: false,
-    enum: ['none', 'move', 'delete'],
+    enum: STAGE_DELETE_STRATEGIES,
   })
   @ApiQuery({ name: 'targetStageId', required: false, type: String })
   @ApiResponse({ status: 204, description: 'Stage deleted (no content)' })

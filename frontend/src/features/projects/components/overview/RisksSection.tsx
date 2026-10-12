@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
+import { GoPlus } from 'react-icons/go';
 import { Button } from '../../../../components/ui/Button';
 import { ConfirmDialog } from '../../../../components/ui/ConfirmDialog';
 import {
@@ -112,9 +113,10 @@ export default function RisksSection({
             variant="primary"
             size="small"
             onClick={() => setDialog({ kind: 'add' })}
-            className="text-xs max-lg:h-7 max-lg:px-4 max-lg:py-1"
+            className="gap-1 text-xs max-lg:h-7 max-lg:px-4 max-lg:py-1"
           >
-            + Dodaj ryzyko
+            <GoPlus className="h-3.5 w-3.5" aria-hidden="true" />
+            Dodaj ryzyko
           </Button>
         )
       }

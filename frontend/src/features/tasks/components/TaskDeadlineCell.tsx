@@ -1,19 +1,18 @@
 import {
   DEADLINE_TONE_CLASSES,
   describeDeadline,
+  INHERITED_DEADLINE_TITLE,
 } from '../utils/formatDeadline';
 import type { TaskRow } from '../data';
 
 interface TaskDeadlineCellProps {
   row: TaskRow;
   today: string;
-  align?: 'left' | 'right';
 }
 
 export default function TaskDeadlineCell({
   row,
   today,
-  align = 'left',
 }: TaskDeadlineCellProps) {
   if (!row.effectiveDueDate) {
     return <span className="text-xs text-mutedText">Bez terminu</span>;
@@ -25,16 +24,12 @@ export default function TaskDeadlineCell({
   });
 
   return (
-    <div className={align === 'right' ? 'text-right' : ''}>
+    <div>
       <p
         className={`text-xs whitespace-nowrap text-dark ${
           view.isInherited ? 'italic' : ''
         }`}
-        title={
-          view.isInherited
-            ? 'Zadanie bez własnego terminu — obowiązuje termin etapu'
-            : undefined
-        }
+        title={view.isInherited ? INHERITED_DEADLINE_TITLE : undefined}
       >
         {view.date}
       </p>

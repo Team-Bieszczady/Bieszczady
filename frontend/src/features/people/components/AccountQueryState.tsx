@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import { QueryState } from '../../../components/ui/QueryState';
-import { accountErrorMessage } from '../utils/accountErrorMessage';
 import type { Person } from '../data';
 
 interface AccountQueryStateProps {
@@ -21,11 +20,7 @@ export default function AccountQueryState({
   ...rest
 }: AccountQueryStateProps) {
   return (
-    <QueryState<Person>
-      {...rest}
-      data={person}
-      resolveError={accountErrorMessage}
-    >
+    <QueryState<Person> {...rest} data={person}>
       {children}
     </QueryState>
   );

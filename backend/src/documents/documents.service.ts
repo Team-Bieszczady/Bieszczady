@@ -301,8 +301,6 @@ export class DocumentsService {
       }))
       .filter((document) => document.accessLevel !== null);
 
-    // Ktoś, komu udostępniono jeden plik, folderu nie ma nadanego wcale —
-    // folder jest wtedy dla niego tylko pojemnikiem na ten plik.
     if (visible.length === 0) {
       await this.assertFolderLevel(actor, projectId, folderId, false);
     }

@@ -23,6 +23,8 @@ import { TasksController } from './tasks.controller';
 import { TasksService } from './tasks.service';
 import { SubtasksController } from './subtasks.controller';
 import { SubtasksService } from './subtasks.service';
+import { IndicatorsController } from './indicators.controller';
+import { IndicatorsService } from './indicators.service';
 import { StageCompletionService } from './stage-completion.service';
 import { ProjectAccessService } from './project-access.service';
 
@@ -40,6 +42,7 @@ import { ProjectAccessService } from './project-access.service';
     MembersController,
     TasksController,
     SubtasksController,
+    IndicatorsController,
   ],
   providers: [
     PrismaService,
@@ -52,6 +55,7 @@ import { ProjectAccessService } from './project-access.service';
     MembersService,
     TasksService,
     SubtasksService,
+    IndicatorsService,
     StageCompletionService,
     ProjectAccessService,
   ],

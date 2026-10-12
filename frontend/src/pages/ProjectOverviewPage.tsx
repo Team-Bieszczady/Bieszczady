@@ -1,6 +1,5 @@
 import { FiPlus } from 'react-icons/fi';
 import { Button } from '../components/ui/Button';
-import NotificationBell from '../features/notifications/components/NotificationBell';
 import ProjectHeaderCard from '../features/projects/components/overview/ProjectHeaderCard';
 import StagesSection from '../features/projects/components/overview/stages/StagesSection';
 import GoalsSection from '../features/projects/components/overview/GoalsSection';
@@ -14,7 +13,10 @@ import {
   useMembers,
   useProject,
 } from '../features/projects/hooks/useProjectsApi';
-import { canChangeStatusOf } from '../features/tasks/utils/taskPermissions';
+import {
+  canChangeStatusOf,
+  canManageTasks,
+} from '../features/tasks/utils/taskPermissions';
 import type { BackendProject } from '../lib/projectsApi';
 import { PageMessage } from '../components/ui/PageMessage';
 import { QueryState } from '../components/ui/QueryState';
@@ -36,7 +38,12 @@ function ProjectSections({ project, canEdit }: ProjectSectionsProps) {
       <ProjectHeaderCard project={project} canEdit={canEdit} />
       <StagesSection plan={plan} project={project} canEdit={canEdit} />
       <GoalsSection projectId={project.id} canEdit={canEdit} />
-      <IndicatorsSection canEdit={canEdit} />
+      <IndicatorsSection
+        projectId={project.id}
+        projectEndDate={project.plannedEndDate}
+        plan={plan}
+        canEdit={project.archivedAt === null && canManageTasks(user, members)}
+      />
       <ScheduleSection
         plan={plan}
         canEdit={canEdit}
@@ -65,10 +72,6 @@ export default function ProjectOverviewPage() {
 
   return (
     <div className="px-5 min-[400px]:px-6 sm:px-8 pt-20 pb-16 lg:pt-8 max-w-7xl mx-auto">
-      <div className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-end border-b border-gray-200 bg-white px-5 lg:static lg:mb-5 lg:h-auto lg:border-0 lg:bg-transparent lg:px-0">
-        <NotificationBell />
-      </div>
-
       <QueryState
         isLoading={projectQuery.isLoading}
         isError={projectQuery.isError}

@@ -1,27 +1,24 @@
 import { useId } from 'react';
 import { FieldError } from '../../../../../components/ui/FieldError';
-import { useForm, useWatch } from 'react-hook-form';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import { Modal } from '../../../../../components/ui/Modal';
 import { Button } from '../../../../../components/ui/Button';
+import { DateInput } from '../../../../../components/ui/DateInput';
 import {
   FIELD_LABEL_CLASSES,
   INPUT_CLASSES,
 } from '../../../../../components/ui/formStyles';
 import type { BackendProject } from '../../../../../lib/projectsApi';
-import type { Stage } from '../../../types';
+import type { Stage, StageFormValues } from '../../../types';
 import { STAGE_ISSUE_MESSAGES } from '../../../utils/stageRules';
 
-export interface StageFormInputs {
-  name: string;
-  deadline: string;
+export type StageFormInputs = Omit<StageFormValues, 'startDate'> & {
   startDate: string;
-  description: string;
-}
+};
 
 interface StageFormModalProps {
   mode: 'add' | 'edit';
   stage: Stage | null;
-  /** The window the stage has to fit inside; either end may be unset. */
   project: Pick<BackendProject, 'startDate' | 'plannedEndDate'>;
   onClose: () => void;
   onSubmit: (values: StageFormInputs) => void | Promise<unknown>;
@@ -92,8 +89,10 @@ export default function StageFormModal({
               <label className={FIELD_LABEL_CLASSES} htmlFor={deadlineId}>
                 Termin
               </label>
-              <input
-                {...register('deadline', {
+              <Controller
+                name="deadline"
+                control={control}
+                rules={{
                   required: 'Termin etapu jest wymagany',
                   validate: (value) => {
                     if (startDate && value < startDate) {
@@ -112,13 +111,18 @@ export default function StageFormModal({
                     }
                     return true;
                   },
-                })}
-                id={deadlineId}
-                type="date"
-                min={project.startDate ?? undefined}
-                max={project.plannedEndDate ?? undefined}
-                aria-invalid={!!errors.deadline}
-                className={INPUT_CLASSES}
+                }}
+                render={({ field }) => (
+                  <DateInput
+                    id={deadlineId}
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    min={project.startDate ?? undefined}
+                    max={project.plannedEndDate ?? undefined}
+                    invalid={!!errors.deadline}
+                  />
+                )}
               />
               <FieldError message={errors.deadline?.message} />
             </div>
@@ -130,8 +134,10 @@ export default function StageFormModal({
                   (opcjonalnie)
                 </span>
               </label>
-              <input
-                {...register('startDate', {
+              <Controller
+                name="startDate"
+                control={control}
+                rules={{
                   validate: (value) => {
                     if (!value) return true;
                     if (project.startDate && value < project.startDate) {
@@ -145,20 +151,25 @@ export default function StageFormModal({
                     }
                     return true;
                   },
-                })}
-                id={startId}
-                type="date"
-                min={project.startDate ?? undefined}
-                max={project.plannedEndDate ?? undefined}
-                aria-invalid={!!errors.startDate}
-                className={INPUT_CLASSES}
+                }}
+                render={({ field }) => (
+                  <DateInput
+                    id={startId}
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    min={project.startDate ?? undefined}
+                    max={project.plannedEndDate ?? undefined}
+                    invalid={!!errors.startDate}
+                  />
+                )}
               />
               <FieldError message={errors.startDate?.message} />
             </div>
           </div>
         ) : (
           <p className="rounded-lg bg-gray-50 px-3 py-2.5 text-[11px] leading-relaxed text-grayText">
-            Termin zmienisz przez „Przenieś termin” — dzięki temu każda zmiana
+            Termin zmienisz przez „Przenieś termin”, dzięki temu każda zmiana
             zostawia ślad wraz z komentarzem. Daty rozpoczęcia nie można już
             zmienić.
           </p>
@@ -180,7 +191,7 @@ export default function StageFormModal({
 
         {mode === 'add' && (
           <p className="rounded-lg bg-gray-50 px-3 py-2.5 text-[11px] leading-relaxed text-grayText">
-            Nowy etap powstaje pusty — działania i zadania dodasz w
+            Nowy etap powstaje pusty, działania i zadania dodasz w
             harmonogramie. Do tego czasu etap ma status „Planowany”.
           </p>
         )}

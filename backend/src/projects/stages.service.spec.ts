@@ -463,3 +463,80 @@ describe('StagesService: a stage lives inside its project window', () => {
     });
   });
 });
+
+describe('StagesService.remove: indicators survive the stage', () => {
+  let service: StagesService;
+
+  const access = { assertNotArchived: jest.fn() };
+  const prisma = {
+    stage: { findUnique: jest.fn(), delete: jest.fn() },
+    activity: {
+      count: jest.fn(),
+      updateMany: jest.fn(),
+      deleteMany: jest.fn(),
+    },
+    task: { deleteMany: jest.fn() },
+    subtask: { deleteMany: jest.fn() },
+    notification: { deleteMany: jest.fn() },
+    indicator: { deleteMany: jest.fn(), updateMany: jest.fn() },
+    $transaction: jest.fn(),
+  };
+  const projectWide = { scope: 'PROJECT', stageId: null, taskId: null };
+
+  beforeEach(async () => {
+    jest.resetAllMocks();
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        StagesService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: StageCompletionService, useValue: { settle: jest.fn() } },
+        { provide: ProjectAccessService, useValue: access },
+      ],
+    }).compile();
+
+    service = module.get(StagesService);
+    prisma.$transaction.mockImplementation(
+      (fn: (tx: typeof prisma) => unknown) => fn(prisma),
+    );
+    prisma.stage.findUnique.mockImplementation(
+      ({ where }: { where: { id: string } }) =>
+        Promise.resolve({ id: where.id, projectId: 'p1' }),
+    );
+    prisma.activity.count.mockResolvedValue(1);
+  });
+
+  it('with strategy=delete turns the indicators of the stage and of its tasks into project-wide ones', async () => {
+    await service.remove('s1', { strategy: 'delete' });
+
+    expect(prisma.indicator.updateMany).toHaveBeenCalledWith({
+      where: { task: { activity: { stageId: 's1' } } },
+      data: projectWide,
+    });
+    expect(prisma.indicator.updateMany).toHaveBeenCalledWith({
+      where: { stageId: 's1' },
+      data: projectWide,
+    });
+    expect(
+      prisma.indicator.updateMany.mock.invocationCallOrder[0],
+    ).toBeLessThan(prisma.task.deleteMany.mock.invocationCallOrder[0]);
+    expect(
+      prisma.indicator.updateMany.mock.invocationCallOrder[1],
+    ).toBeLessThan(prisma.stage.delete.mock.invocationCallOrder[0]);
+    expect(prisma.indicator.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it('with strategy=move re-points stage indicators to the target stage', async () => {
+    await service.remove('s1', { strategy: 'move', targetStageId: 's2' });
+
+    expect(prisma.indicator.updateMany).toHaveBeenNthCalledWith(1, {
+      where: { stageId: 's1' },
+      data: { stageId: 's2' },
+    });
+    expect(prisma.indicator.updateMany).not.toHaveBeenCalledWith({
+      where: { task: { activity: { stageId: 's1' } } },
+      data: projectWide,
+    });
+    expect(prisma.indicator.deleteMany).not.toHaveBeenCalled();
+  });
+});

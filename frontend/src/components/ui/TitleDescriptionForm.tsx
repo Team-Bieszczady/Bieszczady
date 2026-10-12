@@ -17,7 +17,6 @@ interface TitleDescriptionFormProps {
   titleEmptyMessage: string;
   descriptionEmptyMessage: string;
   titleInputClassName?: string;
-  /** Resolves false when the save was rejected, so the form can stay open. */
   onSave: (values: TitleDescriptionValues) => Promise<boolean>;
   onCancel: () => void;
 }

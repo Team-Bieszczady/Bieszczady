@@ -41,14 +41,6 @@ export class ProjectAccessService {
     if (member === 0) throw new NotFoundException('Nie znaleziono projektu');
   }
 
-  /**
-   * An archived project is read-only: every write beneath it is refused, for
-   * everyone, a director included. The three exits — archive, restore and
-   * permanent delete — deliberately do not call this.
-   *
-   * Truthiness, not `!== null`: against a real row the two are identical, but a
-   * mock that omits `archivedAt` would read as archived under `!== null`.
-   */
   async assertNotArchived(
     projectId: string,
     db: Db = this.prisma,
@@ -125,6 +117,16 @@ export class ProjectAccessService {
     if (await this.canManageTasks(actor, projectId, db)) return;
     throw new ForbiddenException(
       'Tylko dyrektor lub koordynator tego projektu może zarządzać jego zadaniami',
+    );
+  }
+  async assertCanManageIndicators(
+    actor: AuthenticatedUser,
+    projectId: string,
+    db: Db = this.prisma,
+  ): Promise<void> {
+    if (await this.canManageTasks(actor, projectId, db)) return;
+    throw new ForbiddenException(
+      'Tylko dyrektor lub koordynator tego projektu może zarządzać jego wskaźnikami',
     );
   }
 

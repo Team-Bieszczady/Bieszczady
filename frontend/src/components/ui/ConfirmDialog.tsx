@@ -9,7 +9,6 @@ interface ConfirmDialogProps {
   title: string;
   description: ReactNode;
   confirmLabel: string;
-  cancelLabel?: string;
   tone?: 'default' | 'danger';
   isPending?: boolean;
 }
@@ -21,7 +20,6 @@ export function ConfirmDialog({
   title,
   description,
   confirmLabel,
-  cancelLabel = 'Anuluj',
   tone = 'default',
   isPending = false,
 }: ConfirmDialogProps) {
@@ -38,7 +36,7 @@ export function ConfirmDialog({
             onClick={onClose}
             disabled={isPending}
           >
-            {cancelLabel}
+            Anuluj
           </Button>
           <Button
             type="button"

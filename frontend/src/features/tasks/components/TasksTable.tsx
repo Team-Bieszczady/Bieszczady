@@ -15,7 +15,7 @@ interface TasksTableProps {
 
 const HEADERS = [
   'ZADANIE',
-  'KATEGORIA',
+  'DZIAŁANIE',
   'OSOBA',
   'TERMIN',
   'PRIORYTET',

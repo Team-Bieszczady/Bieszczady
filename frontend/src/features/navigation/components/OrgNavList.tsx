@@ -3,20 +3,18 @@ import type { NavItem } from '../data';
 
 interface OrgNavListProps {
   items: NavItem[];
-  className?: string;
   useDesktopStyle?: boolean;
   onNavigate?: () => void;
 }
 
 export default function OrgNavList({
   items,
-  className = '',
   useDesktopStyle = false,
   onNavigate,
 }: OrgNavListProps) {
   return (
     <div
-      className={`flex flex-col gap-2 lg:gap-1 ${useDesktopStyle ? 'relative' : 'px-4'} ${className}`}
+      className={`flex flex-col gap-2 lg:gap-1 ${useDesktopStyle ? 'relative' : 'px-4'}`}
     >
       {useDesktopStyle && (
         <span className="absolute left-4 top-0 bottom-0 border-l border-dark/30" />

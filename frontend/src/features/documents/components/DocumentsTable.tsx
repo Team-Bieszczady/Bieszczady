@@ -30,9 +30,6 @@ interface Props {
 
 const HEAD_CLASS =
   'px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-400';
-
-// Krótkie kolumny zwężają się do treści, a całą wolną przestrzeń
-// zabiera kolumna z nazwą — to ona jej potrzebuje.
 const HEAD_SHRINK = `${HEAD_CLASS} w-px whitespace-nowrap`;
 
 export function DocumentsTable({
@@ -85,7 +82,6 @@ export function DocumentsTable({
               <IoChevronDown className="h-3 w-3" />
             )
           ) : (
-            // Blada strzałka pod kursorem mówi „w to da się kliknąć".
             <IoChevronDown className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-50" />
           )}
         </button>

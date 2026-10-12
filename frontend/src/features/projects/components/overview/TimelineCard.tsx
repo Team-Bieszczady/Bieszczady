@@ -10,6 +10,7 @@ interface TimelineCardProps {
   views: StageView[];
   startDate: string | null;
   plannedEndDate: string | null;
+  onStageSelect: (stageId: string) => void;
   children?: ReactNode;
 }
 
@@ -48,15 +49,32 @@ function MarkerLink({
   stage,
   view,
   isDesktop,
+  onSelect,
 }: {
   stage: Stage;
   view: StageView;
   isDesktop: boolean;
+  onSelect: (stageId: string) => void;
 }) {
   return (
     <a
       href={`#etap-${stage.id}`}
       aria-label={`Przejdź do etapu ${stage.name}`}
+      onClick={(event) => {
+        const target = document.getElementById(`etap-${stage.id}`);
+        if (!target) return;
+
+        event.preventDefault();
+        target.scrollIntoView({
+          behavior: window.matchMedia('(prefers-reduced-motion: reduce)')
+            .matches
+            ? 'auto'
+            : 'smooth',
+          block: 'start',
+        });
+        window.history.replaceState(null, '', `#etap-${stage.id}`);
+        onSelect(stage.id);
+      }}
       className={`relative block shrink-0 rounded-full transition-transform duration-150 before:absolute before:-inset-2.5 before:content-[''] hover:scale-125 focus-visible:ring-2 focus-visible:ring-darkGreen focus-visible:ring-offset-2 focus-visible:outline-none ${
         isDesktop ? 'h-3.5 w-3.5' : 'z-10 mt-0.5 h-4 w-4'
       } ${markerDotClass(view, isDesktop)}`}
@@ -81,6 +99,7 @@ export default function TimelineCard({
   views,
   startDate,
   plannedEndDate,
+  onStageSelect,
   children,
 }: TimelineCardProps) {
   return (
@@ -116,7 +135,12 @@ export default function TimelineCard({
                 className={`flex gap-3.5 ${isLast ? '' : 'pb-5'}`}
               >
                 <div className="relative flex w-4.5 shrink-0 justify-center">
-                  <MarkerLink stage={stage} view={view} isDesktop={false} />
+                  <MarkerLink
+                    stage={stage}
+                    view={view}
+                    isDesktop={false}
+                    onSelect={onStageSelect}
+                  />
                   {!isLast && (
                     <span
                       className={`absolute top-4 -bottom-1 left-1/2 w-0.5 -translate-x-1/2 ${connectorClass(
@@ -156,7 +180,12 @@ export default function TimelineCard({
                 className="flex min-w-0 flex-1 flex-col items-center last:w-24 last:flex-none"
               >
                 <div className="flex w-full items-center">
-                  <MarkerLink stage={stage} view={view} isDesktop />
+                  <MarkerLink
+                    stage={stage}
+                    view={view}
+                    isDesktop
+                    onSelect={onStageSelect}
+                  />
                   {index < stages.length - 1 && (
                     <span
                       className={`h-0.75 flex-1 rounded-sm ${connectorClass(

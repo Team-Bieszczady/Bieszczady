@@ -22,6 +22,10 @@ export function calendarDaysAgo(date: Date, now: Date = new Date()): number {
   return Math.round(diff / 86_400_000);
 }
 
+export function formatTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString('pl-PL', TIME_OPTIONS);
+}
+
 export function formatDate(iso: string | null, fallback = 'Nigdy'): string {
   if (!iso) return fallback;
   return new Date(iso).toLocaleDateString('pl-PL', DATE_OPTIONS);
@@ -42,7 +46,7 @@ export function formatLastLogin(
   if (!iso) return 'Nigdy';
 
   const date = new Date(iso);
-  const time = date.toLocaleTimeString('pl-PL', TIME_OPTIONS);
+  const time = formatTime(iso);
   const days = calendarDaysAgo(date, now);
 
   if (days <= 0) return `dziś, ${time}`;
