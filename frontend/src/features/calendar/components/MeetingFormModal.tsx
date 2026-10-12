@@ -4,6 +4,7 @@ import { LuClock, LuMapPin, LuUsers } from 'react-icons/lu';
 import { Button } from '../../../components/ui/Button';
 import { FieldError } from '../../../components/ui/FieldError';
 import { Modal } from '../../../components/ui/Modal';
+import { DateInput } from '../../../components/ui/DateInput';
 import { Select, type SelectOption } from '../../../components/ui/Select';
 import { TimeInput } from '../../../components/ui/TimeInput';
 import { INPUT_CLASSES } from '../../../components/ui/formStyles';
@@ -134,6 +135,7 @@ export default function MeetingFormModal({
   const placeId = useId();
   const linkId = useId();
   const noteId = useId();
+  const dateId = useId();
 
   const {
     register,
@@ -147,6 +149,7 @@ export default function MeetingFormModal({
   });
 
   const isCopy = !meeting && !!copyOf;
+  const isHeld = meeting !== undefined && meeting.status === 'HELD';
 
   const keepOnlyTeamMembers = (memberIds: string[]) => {
     if (meeting) {
@@ -232,17 +235,30 @@ export default function MeetingFormModal({
             Kiedy
           </legend>
           <div className="flex flex-wrap items-center gap-2">
-            <input
-              {...register('date', {
-                required: 'Podaj datę spotkania',
-                validate: (value) => heldMeetingDate(value, meeting),
-              })}
-              type="date"
-              autoFocus={isCopy}
-              aria-label="Data"
-              aria-invalid={!!errors.date}
-              className={`${INPUT_CLASSES} sm:w-36!`}
-            />
+            <div className="w-full sm:w-36">
+              <label htmlFor={dateId} className="sr-only">
+                Data
+              </label>
+              <Controller
+                name="date"
+                control={control}
+                rules={{
+                  required: 'Podaj datę spotkania',
+                  validate: (value) => heldMeetingDate(value, meeting),
+                }}
+                render={({ field }) => (
+                  <DateInput
+                    id={dateId}
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    max={isHeld ? todayIso() : undefined}
+                    autoFocus={isCopy}
+                    invalid={!!errors.date}
+                  />
+                )}
+              />
+            </div>
             <div className="flex items-center gap-2">
               <div className="w-24">
                 <Controller
