@@ -3,10 +3,14 @@ import { HiOutlinePlus } from 'react-icons/hi';
 import { Button } from '../../../components/ui/Button';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { useAuth } from '../../../context/useAuth';
-import { usePartners } from '../../partners/hooks/usePartners';
 import { useMembers } from '../../projects/hooks/useProjectsApi';
 import { canManageTasks } from '../../tasks/utils/taskPermissions';
-import { isSummaryMode, settingsOf, type BudgetAction } from '../budgetReducer';
+import {
+  canEditCategoryActuals,
+  isSummaryMode,
+  settingsOf,
+  type BudgetDispatch,
+} from '../budgetReducer';
 import { TH_CLASSES } from '../styles';
 import type {
   BudgetStore,
@@ -53,7 +57,7 @@ interface BudgetTableProps {
   previous: BudgetVersion | null;
   diff: VersionDiff | null;
   folderPaths: Map<string, string> | null;
-  dispatch: (action: BudgetAction) => void;
+  dispatch: BudgetDispatch;
 }
 
 export function BudgetTable({
@@ -78,12 +82,13 @@ export function BudgetTable({
   const [collapsedIds, setCollapsedIds] = useState<string[]>([]);
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
   const membersQuery = useMembers(projectId);
-  const partnersQuery = usePartners();
 
   const { columns, actuals } = store;
   const versionId = version.id;
-  const canEditPlan = version.status !== 'APPROVED';
-  const canEditActuals = version.isCurrent || canEditPlan;
+  const isOpenVersion = version.status !== 'APPROVED';
+  const canEditPlan = store.permissions.canEdit && isOpenVersion;
+  const canEditActuals = version.isCurrent || isOpenVersion;
+  const canEditColumns = store.permissions.canEdit && canEditActuals;
   const canChangeStatus =
     canEditActuals && canManageTasks(user, membersQuery.data ?? []);
   const currentPositionIds = new Set(
@@ -122,17 +127,16 @@ export function BudgetTable({
   const toggleId = (ids: string[], id: string) =>
     ids.includes(id) ? ids.filter((value) => value !== id) : [...ids, id];
 
-  const addPosition = (categoryId: string) => {
-    const id = crypto.randomUUID();
-    dispatch({
-      type: 'ADD_POSITION',
-      versionId,
-      categoryId,
-      id,
-      name: 'Nowa pozycja',
-    });
-    setEditingId(id);
-  };
+  const addPosition = (categoryId: string) =>
+    dispatch(
+      {
+        type: 'ADD_POSITION',
+        versionId,
+        categoryId,
+        name: 'Nowa pozycja',
+      },
+      setEditingId,
+    );
 
   const confirmDelete = () => {
     if (!pendingDelete) return;
@@ -158,7 +162,7 @@ export function BudgetTable({
                 <Fragment key={column.id}>
                   <ColumnHeader
                     column={column}
-                    canEdit={canEditActuals}
+                    canEdit={canEditColumns}
                     isEditing={editingId === column.id}
                     onStartEdit={() => setEditingId(column.id)}
                     onCancelEdit={stopEditing}
@@ -189,12 +193,11 @@ export function BudgetTable({
                 Wykonanie
               </th>
               <th scope="col" className={`${TH_CLASSES} w-10 text-right`}>
-                {canEditActuals && (
+                {canEditColumns && (
                   <AddColumnButton
                     onAdd={(name, columnType) =>
                       dispatch({
                         type: 'ADD_COLUMN',
-                        id: crypto.randomUUID(),
                         name,
                         columnType,
                       })
@@ -210,6 +213,8 @@ export function BudgetTable({
               const isRemovedCategory = change === 'REMOVED';
               const expanded = !collapsedIds.includes(category.id);
               const detailed = !isSummaryMode(store, category);
+              const canEditCategory =
+                canEditActuals && canEditCategoryActuals(store, category);
               const previousCategory = previousCategories.get(category.id);
               const positionRows: {
                 position: PlanPosition;
@@ -249,14 +254,14 @@ export function BudgetTable({
                     change={change}
                     settings={settingsOf(store, category.id)}
                     partnerName={
-                      partnersQuery.data?.find(
+                      store.partners.find(
                         ({ id }) => id === category.partnerId,
                       )?.name ?? null
                     }
                     folderPaths={folderPaths}
                     expanded={expanded}
                     canEditPlan={canEditPlan && !isRemovedCategory}
-                    canEditActuals={canEditActuals}
+                    canEditActuals={canEditCategory}
                     isEditing={editingId === category.id}
                     onStartEdit={() => setEditingId(category.id)}
                     onCancelEdit={stopEditing}
@@ -313,9 +318,10 @@ export function BudgetTable({
                     }
                     onTogglePartnerFlag={(flag) =>
                       dispatch({
-                        type: 'TOGGLE_PARTNER_FLAG',
+                        type: 'SET_PARTNER_FLAG',
                         categoryId: category.id,
                         flag,
+                        value: !settingsOf(store, category.id)[flag],
                       })
                     }
                   />
@@ -343,7 +349,7 @@ export function BudgetTable({
                               expanded={isExpanded}
                               canEditPlan={canEditPlan}
                               canEditActuals={
-                                canEditActuals &&
+                                canEditCategory &&
                                 currentPositionIds.has(position.id)
                               }
                               canChangeStatus={canChangeStatus}
@@ -537,12 +543,15 @@ export function BudgetTable({
           positionName={invoiceTarget.name}
           folderPaths={folderPaths}
           onClose={() => setInvoiceTarget(null)}
-          onAdd={(invoice) =>
-            dispatch({
-              type: 'ADD_INVOICE',
-              positionId: invoiceTarget.id,
-              invoice,
-            })
+          onAdd={(invoice, onDone) =>
+            dispatch(
+              {
+                type: 'ADD_INVOICE',
+                positionId: invoiceTarget.id,
+                invoice,
+              },
+              onDone,
+            )
           }
         />
       )}
@@ -578,6 +587,7 @@ export function BudgetTable({
 
       {categoryForm && (
         <CategoryFormModal
+          partners={store.partners}
           initial={categoryForm.kind === 'share' ? categoryForm.category : null}
           partnerOnly={categoryForm.kind === 'share'}
           onClose={() => setCategoryForm(null)}
@@ -594,7 +604,6 @@ export function BudgetTable({
                 : {
                     type: 'ADD_CATEGORY',
                     versionId,
-                    id: crypto.randomUUID(),
                     name,
                     partnerId,
                   },

@@ -22,6 +22,7 @@ import { PageMessage } from '../components/ui/PageMessage';
 import { QueryState } from '../components/ui/QueryState';
 import { useSelectedProject } from '../context/useSelectedProject';
 import { useAuth } from '../context/useAuth';
+import { hasModule } from '../lib/modules';
 
 interface ProjectSectionsProps {
   project: BackendProject;
@@ -52,7 +53,7 @@ function ProjectSections({ project, canEdit }: ProjectSectionsProps) {
           canChangeStatusOf(user, members, task.ownerId)
         }
       />
-      <BudgetSection canEdit={canEdit} />
+      {hasModule(user, 'BUDGET') && <BudgetSection projectId={project.id} />}
       <RisksSection projectId={project.id} canEdit={canEdit} />
       <TeamSection projectId={project.id} canEdit={canEdit} />
     </>

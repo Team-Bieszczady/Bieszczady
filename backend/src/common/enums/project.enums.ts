@@ -119,10 +119,6 @@ export const BUDGET_DEFAULT_COLUMNS: {
 }[] = [
   { key: 'planned', name: 'Plan', type: 'money', locked: true },
   { key: 'incurred', name: 'Poniesione', type: 'money', locked: true },
-  { key: 'person', name: 'Osoba odpowiedzialna', type: 'text', locked: false },
-  { key: 'source', name: 'Źródło finansowania', type: 'text', locked: false },
-  { key: 'grant', name: 'Dotacja', type: 'money', locked: true },
-  { key: 'ownContribution', name: 'Wkład własny', type: 'money', locked: true },
 ];
 
 export const BUDGET_DOCUMENT_KINDS = ['FOLDER', 'FILE'] as const;

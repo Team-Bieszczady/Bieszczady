@@ -198,7 +198,9 @@ export function previousVersion(
   store: BudgetStore,
   version: BudgetVersion,
 ): BudgetVersion | null {
-  if (version.status !== 'APPROVED') return currentVersion(store);
+  if (version.status !== 'APPROVED') {
+    return store.versions.find((candidate) => candidate.isCurrent) ?? null;
+  }
 
   return (
     store.versions

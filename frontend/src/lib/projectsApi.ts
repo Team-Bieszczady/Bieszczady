@@ -227,6 +227,137 @@ export interface PartnerBody {
   projectIds: string[];
 }
 
+export interface BudgetActorRef {
+  id: string;
+  name: string;
+}
+
+export type BudgetDocumentLink =
+  | { kind: 'FOLDER'; folderId: string }
+  | { kind: 'FILE'; folderId: string; documentId: string; name: string };
+
+export interface BudgetDocumentLinkBody {
+  kind: 'FOLDER' | 'FILE';
+  folderId: string;
+  documentId?: string;
+}
+
+export interface BackendBudgetPosition {
+  id: string;
+  name: string;
+  planned: string;
+  grant: string;
+  ownContribution: string;
+}
+
+export interface BackendBudgetCategory {
+  id: string;
+  name: string;
+  partnerId: string | null;
+  positions: BackendBudgetPosition[];
+}
+
+export type BudgetVersionStatusValue = 'DRAFT' | 'PENDING' | 'APPROVED';
+export type BudgetInvoiceStatusValue = 'TO_BE_PAID' | 'PAID';
+export type BudgetColumnTypeValue = 'text' | 'money' | 'person';
+
+export interface BackendBudgetVersion {
+  id: string;
+  number: number;
+  name: string;
+  status: BudgetVersionStatusValue;
+  isCurrent: boolean;
+  createdBy: BudgetActorRef | null;
+  createdAt: string;
+  submittedBy: BudgetActorRef | null;
+  submittedAt: string | null;
+  approvedBy: BudgetActorRef | null;
+  approvedAt: string | null;
+  description: string;
+  savedAt: string | null;
+  rejections: { by: BudgetActorRef | null; at: string; comment: string }[];
+  categories: BackendBudgetCategory[];
+}
+
+export interface BackendBudgetInvoice {
+  id: string;
+  number: string;
+  amount: string;
+  contractor: string;
+  date: string;
+  grant: string;
+  ownContribution: string;
+  enteredBy: string;
+  status: BudgetInvoiceStatusValue;
+  document: BudgetDocumentLink | null;
+}
+
+export interface BackendBudgetActuals {
+  values: Record<string, string>;
+  invoices: BackendBudgetInvoice[];
+  status: BudgetInvoiceStatusValue | null;
+  document: BudgetDocumentLink | null;
+}
+
+export interface BudgetPartnerRef extends NamedRef {
+  status: PartnerStatusValue;
+}
+
+export interface BudgetPermissions {
+  canEdit: boolean;
+  canApprove: boolean;
+  canManageAccess: boolean;
+  partnerId: string | null;
+}
+
+export interface BackendBudgetStore {
+  columns: {
+    id: string;
+    name: string;
+    type: BudgetColumnTypeValue;
+    locked: boolean;
+  }[];
+  versions: BackendBudgetVersion[];
+  actuals: Record<string, BackendBudgetActuals>;
+  categorySettings: Record<
+    string,
+    {
+      detailed: boolean;
+      partnerCanEdit: boolean;
+      visibleToPartner: boolean;
+      document: BudgetDocumentLink | null;
+    }
+  >;
+  history: {
+    id: string;
+    at: string;
+    by: BudgetActorRef | null;
+    versionId: string;
+    versionName: string;
+    kind: string;
+    comment: string | null;
+  }[];
+  permissions: BudgetPermissions;
+  partners: BudgetPartnerRef[];
+}
+
+export interface BudgetInvoicePayload {
+  number: string;
+  contractor: string;
+  date: string;
+  amount: string;
+  grant?: string;
+  ownContribution?: string;
+  document?: BudgetDocumentLinkBody | null;
+}
+
+export interface BudgetCategorySettingsPayload {
+  detailed?: boolean;
+  partnerCanEdit?: boolean;
+  visibleToPartner?: boolean;
+  document?: BudgetDocumentLinkBody | null;
+}
+
 const get = <T>(accessToken: string, path: string, fallbackMessage: string) =>
   request<T>(`${BASE}${path}`, { method: 'GET', accessToken, fallbackMessage });
 
@@ -695,5 +826,280 @@ export const partnersApi = {
       accessToken,
       `/partners/${id}`,
       'Nie udało się usunąć partnera',
+    ),
+};
+
+export const budgetApi = {
+  get: (accessToken: string, projectId: string) =>
+    get<BackendBudgetStore>(
+      accessToken,
+      `/projects/${projectId}/budget`,
+      'Nie udało się wczytać budżetu',
+    ),
+
+  createCategory: (
+    accessToken: string,
+    versionId: string,
+    body: { name: string; partnerId: string | null },
+  ) =>
+    send<BackendBudgetCategory>(
+      'POST',
+      accessToken,
+      `/budget-versions/${versionId}/categories`,
+      'Nie udało się dodać kategorii',
+      body,
+    ),
+  patchCategory: (
+    accessToken: string,
+    versionId: string,
+    key: string,
+    body: { name?: string; partnerId?: string | null },
+  ) =>
+    send<BackendBudgetCategory>(
+      'PATCH',
+      accessToken,
+      `/budget-versions/${versionId}/categories/${key}`,
+      'Nie udało się zapisać kategorii',
+      body,
+    ),
+  removeCategory: (accessToken: string, versionId: string, key: string) =>
+    send<void>(
+      'DELETE',
+      accessToken,
+      `/budget-versions/${versionId}/categories/${key}`,
+      'Nie udało się usunąć kategorii',
+    ),
+
+  createPosition: (
+    accessToken: string,
+    versionId: string,
+    categoryKey: string,
+    body: { name?: string },
+  ) =>
+    send<BackendBudgetPosition>(
+      'POST',
+      accessToken,
+      `/budget-versions/${versionId}/categories/${categoryKey}/positions`,
+      'Nie udało się dodać pozycji',
+      body,
+    ),
+  patchPosition: (
+    accessToken: string,
+    versionId: string,
+    key: string,
+    body: {
+      name?: string;
+      planned?: string;
+      grant?: string;
+      ownContribution?: string;
+    },
+  ) =>
+    send<BackendBudgetPosition>(
+      'PATCH',
+      accessToken,
+      `/budget-versions/${versionId}/positions/${key}`,
+      'Nie udało się zapisać pozycji',
+      body,
+    ),
+  removePosition: (accessToken: string, versionId: string, key: string) =>
+    send<void>(
+      'DELETE',
+      accessToken,
+      `/budget-versions/${versionId}/positions/${key}`,
+      'Nie udało się usunąć pozycji',
+    ),
+
+  createColumn: (
+    accessToken: string,
+    projectId: string,
+    body: { name: string; type: BudgetColumnTypeValue },
+  ) =>
+    send<BackendBudgetStore['columns'][number]>(
+      'POST',
+      accessToken,
+      `/projects/${projectId}/budget/columns`,
+      'Nie udało się dodać kolumny',
+      body,
+    ),
+  renameColumn: (
+    accessToken: string,
+    projectId: string,
+    key: string,
+    name: string,
+  ) =>
+    send<BackendBudgetStore['columns'][number]>(
+      'PATCH',
+      accessToken,
+      `/projects/${projectId}/budget/columns/${key}`,
+      'Nie udało się zmienić nazwy kolumny',
+      { name },
+    ),
+  removeColumn: (accessToken: string, projectId: string, key: string) =>
+    send<void>(
+      'DELETE',
+      accessToken,
+      `/projects/${projectId}/budget/columns/${key}`,
+      'Nie udało się usunąć kolumny',
+    ),
+
+  patchCategorySettings: (
+    accessToken: string,
+    projectId: string,
+    categoryKey: string,
+    body: BudgetCategorySettingsPayload,
+  ) =>
+    send<unknown>(
+      'PATCH',
+      accessToken,
+      `/projects/${projectId}/budget/category-settings/${categoryKey}`,
+      'Nie udało się zapisać ustawień kategorii',
+      body,
+    ),
+
+  setCell: (
+    accessToken: string,
+    projectId: string,
+    positionKey: string,
+    columnKey: string,
+    value: string,
+  ) =>
+    send<void>(
+      'PATCH',
+      accessToken,
+      `/projects/${projectId}/budget/actuals/${positionKey}/values/${columnKey}`,
+      'Nie udało się zapisać wartości',
+      { value },
+    ),
+  patchActual: (
+    accessToken: string,
+    projectId: string,
+    positionKey: string,
+    body: {
+      status?: BudgetInvoiceStatusValue | null;
+      document?: BudgetDocumentLinkBody | null;
+    },
+  ) =>
+    send<void>(
+      'PATCH',
+      accessToken,
+      `/projects/${projectId}/budget/actuals/${positionKey}`,
+      'Nie udało się zapisać pozycji',
+      body,
+    ),
+  moveActuals: (
+    accessToken: string,
+    projectId: string,
+    body: { fromPositionKey: string; toPositionKey: string },
+  ) =>
+    send<void>(
+      'POST',
+      accessToken,
+      `/projects/${projectId}/budget/actuals/move`,
+      'Nie udało się przenieść wydatków',
+      body,
+    ),
+  addInvoice: (
+    accessToken: string,
+    projectId: string,
+    positionKey: string,
+    body: BudgetInvoicePayload,
+  ) =>
+    send<unknown>(
+      'POST',
+      accessToken,
+      `/projects/${projectId}/budget/actuals/${positionKey}/invoices`,
+      'Nie udało się dodać faktury',
+      body,
+    ),
+  recalculate: (accessToken: string, projectId: string, positionKey: string) =>
+    send<void>(
+      'POST',
+      accessToken,
+      `/projects/${projectId}/budget/actuals/${positionKey}/recalculate`,
+      'Nie udało się przeliczyć wydatków',
+    ),
+  setInvoiceStatus: (
+    accessToken: string,
+    id: string,
+    status: BudgetInvoiceStatusValue,
+  ) =>
+    send<void>(
+      'PATCH',
+      accessToken,
+      `/budget-invoices/${id}`,
+      'Nie udało się zmienić statusu faktury',
+      { status },
+    ),
+  removeInvoice: (accessToken: string, id: string) =>
+    send<void>(
+      'DELETE',
+      accessToken,
+      `/budget-invoices/${id}`,
+      'Nie udało się usunąć faktury',
+    ),
+
+  createAnnex: (accessToken: string, projectId: string) =>
+    send<{ id: string; number: number; name: string }>(
+      'POST',
+      accessToken,
+      `/projects/${projectId}/budget/annexes`,
+      'Nie udało się utworzyć aneksu',
+    ),
+  submit: (accessToken: string, versionId: string) =>
+    send<void>(
+      'POST',
+      accessToken,
+      `/budget-versions/${versionId}/submit`,
+      'Nie udało się wysłać do akceptacji',
+    ),
+  withdraw: (accessToken: string, versionId: string) =>
+    send<void>(
+      'POST',
+      accessToken,
+      `/budget-versions/${versionId}/withdraw`,
+      'Nie udało się wycofać prośby o akceptację',
+    ),
+  approve: (accessToken: string, versionId: string, description: string) =>
+    send<void>(
+      'POST',
+      accessToken,
+      `/budget-versions/${versionId}/approve`,
+      'Nie udało się zatwierdzić wersji',
+      { description },
+    ),
+  reject: (accessToken: string, versionId: string, comment: string) =>
+    send<void>(
+      'POST',
+      accessToken,
+      `/budget-versions/${versionId}/reject`,
+      'Nie udało się odrzucić wersji',
+      { comment },
+    ),
+  revert: (accessToken: string, versionId: string, reason: string) =>
+    send<void>(
+      'POST',
+      accessToken,
+      `/budget-versions/${versionId}/revert`,
+      'Nie udało się cofnąć zatwierdzenia',
+      { reason },
+    ),
+  editDescription: (
+    accessToken: string,
+    versionId: string,
+    description: string,
+  ) =>
+    send<void>(
+      'PATCH',
+      accessToken,
+      `/budget-versions/${versionId}`,
+      'Nie udało się zapisać opisu',
+      { description },
+    ),
+  discard: (accessToken: string, versionId: string) =>
+    send<void>(
+      'DELETE',
+      accessToken,
+      `/budget-versions/${versionId}`,
+      'Nie udało się odrzucić wersji roboczej',
     ),
 };

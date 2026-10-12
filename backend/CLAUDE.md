@@ -329,7 +329,8 @@ route is gated on `BUDGET`.
   the base version, and only with no aneks open. Rejections aren't stored
   separately; the read derives them from `REJECTED` history rows.
 - **First read creates the budget.** If a project has no versions, `GET budget`
-  creates `Wersja podstawowa` as a DRAFT plus the six default columns. It skips this
+  creates `Wersja podstawowa` as a DRAFT plus the two default columns (Plan,
+  Poniesione); everything else is added through "Dodaj kolumnę". It skips this
   on an archived project.
 - **History.** Consecutive `EDITED` entries by the same person on the same version
   within 30 minutes are merged, as in the frontend reducer. `budget_history.version_id`

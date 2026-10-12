@@ -4,10 +4,9 @@ import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { useAuth } from '../../../context/useAuth';
 import { formatDate, formatTime } from '../../people/utils/formatDateTime';
 import {
-  canApproveAnnexes,
   latestApproved,
   openAnnex,
-  type BudgetAction,
+  type BudgetDispatch,
 } from '../budgetReducer';
 import type { BudgetStore, BudgetVersion } from '../types';
 import type { VersionDiff } from '../utils/budgetTotals';
@@ -22,10 +21,11 @@ interface VersionBannerProps {
   version: BudgetVersion;
   previous: BudgetVersion | null;
   diff: VersionDiff | null;
-  dispatch: (action: BudgetAction) => void;
+  dispatch: BudgetDispatch;
 }
 
 const NO_CHANGES = 'Brak zmian względem obowiązującej wersji';
+const NO_POSITIONS = 'Dodaj do budżetu co najmniej jedną pozycję';
 
 function Banner({
   tone,
@@ -56,8 +56,11 @@ export function VersionBanner({
 }: VersionBannerProps) {
   const { user } = useAuth();
   const [dialog, setDialog] = useState<Dialog | null>(null);
-  const canApprove = canApproveAnnexes(user);
-  const hasChanges = diff?.hasChanges ?? false;
+  const { canEdit, canApprove } = store.permissions;
+  const hasChanges = diff
+    ? diff.hasChanges
+    : version.categories.some((category) => category.positions.length > 0);
+  const noChangesHint = previous ? NO_CHANGES : NO_POSITIONS;
   const versionId = version.id;
   const lastRejection = version.rejections.at(-1);
   const showRejection =
@@ -72,12 +75,12 @@ export function VersionBanner({
     canApprove &&
     version.status === 'APPROVED' &&
     version.number > 0 &&
-    latestApproved(store).id === version.id &&
+    latestApproved(store)?.id === version.id &&
     openAnnex(store) === null;
   const close = () => setDialog(null);
 
   const disabledHint = (button: ReactNode) =>
-    hasChanges ? button : <span title={NO_CHANGES}>{button}</span>;
+    hasChanges ? button : <span title={noChangesHint}>{button}</span>;
 
   const approveButton = disabledHint(
     <Button
@@ -117,17 +120,20 @@ export function VersionBanner({
             )}
           </p>
           <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="small"
-              onClick={() => setDialog('discard')}
-            >
-              Odrzuć wersję roboczą
-            </Button>
+            {canEdit && version.number > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                size="small"
+                onClick={() => setDialog('discard')}
+              >
+                Odrzuć wersję roboczą
+              </Button>
+            )}
             {canApproveOwnDraft
               ? approveButton
-              : disabledHint(
+              : canEdit &&
+                disabledHint(
                   <Button
                     type="button"
                     size="small"
@@ -184,15 +190,17 @@ export function VersionBanner({
             )}
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="small"
-              onClick={() => setDialog('metadata')}
-              className="border-darkGreen! bg-transparent! text-darkGreen! hover:bg-lightGreen!"
-            >
-              Edytuj opis
-            </Button>
+            {canApprove && (
+              <Button
+                type="button"
+                variant="outline"
+                size="small"
+                onClick={() => setDialog('metadata')}
+                className="border-darkGreen! bg-transparent! text-darkGreen! hover:bg-lightGreen!"
+              >
+                Edytuj opis
+              </Button>
+            )}
             {canRevert && (
               <Button
                 type="button"

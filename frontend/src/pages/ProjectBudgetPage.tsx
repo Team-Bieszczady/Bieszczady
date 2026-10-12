@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import toast from 'react-hot-toast';
 import { HiOutlinePlus } from 'react-icons/hi';
 import { Button } from '../components/ui/Button';
 import { PageLoading } from '../components/ui/PageLoading';
@@ -6,7 +7,10 @@ import { PageMessage } from '../components/ui/PageMessage';
 import { useAuth } from '../context/useAuth';
 import { useSelectedProject } from '../context/useSelectedProject';
 import { hasModule } from '../lib/modules';
-import { openAnnex } from '../features/budget/budgetReducer';
+import {
+  openAnnex,
+  type BudgetDispatch,
+} from '../features/budget/budgetReducer';
 import { BudgetHistoryModal } from '../features/budget/components/BudgetHistoryModal';
 import { BudgetSummary } from '../features/budget/components/BudgetSummary';
 import { BudgetTable } from '../features/budget/components/BudgetTable';
@@ -76,16 +80,18 @@ function BudgetView({ projectId }: { projectId: string }) {
     ? diffVersions(previous.categories, active.categories)
     : null;
   const pendingAnnex = openAnnex(store);
-  const dispatch = budgetAction.mutate;
+  const dispatch: BudgetDispatch = (action, onDone) =>
+    budgetAction.mutate(action, {
+      onSuccess: (result) => onDone?.(result?.id ?? null),
+      onError: (error) => toast.error(error.message),
+    });
 
   const createAnnex = () => {
     if (pendingAnnex) {
       setActiveId(pendingAnnex.id);
       return;
     }
-    const id = crypto.randomUUID();
-    dispatch({ type: 'CREATE_ANNEX', id });
-    setActiveId(id);
+    dispatch({ type: 'CREATE_ANNEX' }, (id) => setActiveId(id));
   };
 
   return (
@@ -103,6 +109,7 @@ function BudgetView({ projectId }: { projectId: string }) {
           >
             Historia zmian
           </Button>
+          {(pendingAnnex || store.permissions.canEdit) && (
           <Button
             variant="primary"
             size="small"
@@ -114,6 +121,7 @@ function BudgetView({ projectId }: { projectId: string }) {
             )}
             {pendingAnnex ? `Przejdź do: ${pendingAnnex.name}` : 'Utwórz aneks'}
           </Button>
+          )}
         </div>
       </div>
       <BudgetVersionTabs

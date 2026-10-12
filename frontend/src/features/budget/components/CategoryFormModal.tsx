@@ -7,7 +7,7 @@ import {
   FIELD_LABEL_CLASSES,
   INPUT_CLASSES,
 } from '../../../components/ui/formStyles';
-import { usePartners } from '../../partners/hooks/usePartners';
+import type { BudgetPartnerRef } from '../../../lib/projectsApi';
 
 const FOUNDATION = 'FOUNDATION';
 
@@ -17,6 +17,7 @@ interface CategoryFormValues {
 }
 
 interface CategoryFormModalProps {
+  partners: BudgetPartnerRef[];
   initial: { name: string; partnerId: string | null } | null;
   partnerOnly?: boolean;
   onClose: () => void;
@@ -24,12 +25,12 @@ interface CategoryFormModalProps {
 }
 
 export function CategoryFormModal({
+  partners,
   initial,
   partnerOnly = false,
   onClose,
   onSave,
 }: CategoryFormModalProps) {
-  const partnersQuery = usePartners();
   const {
     register,
     control,
@@ -43,7 +44,7 @@ export function CategoryFormModal({
   });
   const realizerOptions = [
     ...(partnerOnly ? [] : [{ value: FOUNDATION, label: 'Fundacja' }]),
-    ...(partnersQuery.data ?? [])
+    ...partners
       .filter(
         (partner) =>
           partner.status === 'ACTIVE' || partner.id === initial?.partnerId,

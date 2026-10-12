@@ -235,14 +235,7 @@ describe('BudgetService', () => {
           { data: { key: string }[] },
         ]
       )[0].data.map((column) => column.key);
-      expect(columns).toEqual([
-        'planned',
-        'incurred',
-        'person',
-        'source',
-        'grant',
-        'ownContribution',
-      ]);
+      expect(columns).toEqual(['planned', 'incurred']);
     });
 
     it('does not create anything on an archived project', async () => {

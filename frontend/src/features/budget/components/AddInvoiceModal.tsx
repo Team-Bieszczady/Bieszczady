@@ -8,8 +8,8 @@ import {
   FIELD_LABEL_CLASSES,
   INPUT_CLASSES,
 } from '../../../components/ui/formStyles';
-import { useAuth } from '../../../context/useAuth';
-import type { DocumentLink, Invoice } from '../types';
+import type { InvoiceInput } from '../budgetReducer';
+import type { DocumentLink } from '../types';
 import { parseMoney } from '../utils/budgetTotals';
 import { DocumentLinkPicker } from './DocumentLinkPicker';
 
@@ -28,7 +28,7 @@ interface AddInvoiceModalProps {
   positionName: string;
   folderPaths: Map<string, string> | null;
   onClose: () => void;
-  onAdd: (invoice: Invoice) => void;
+  onAdd: (invoice: InvoiceInput, onDone: () => void) => void;
 }
 
 const moneyRules = (required: boolean) => ({
@@ -45,7 +45,6 @@ export function AddInvoiceModal({
   onClose,
   onAdd,
 }: AddInvoiceModalProps) {
-  const { user } = useAuth();
   const {
     register,
     handleSubmit,
@@ -63,22 +62,22 @@ export function AddInvoiceModal({
     },
   });
 
-  const onSubmit = (values: AddInvoiceFormValues) => {
-    onAdd({
-      id: crypto.randomUUID(),
-      number: values.number.trim(),
-      amount: parseMoney(values.amount) ?? 0,
-      contractor: values.contractor.trim(),
-      date: values.date,
-      grant: parseMoney(values.grant) ?? 0,
-      ownContribution: parseMoney(values.ownContribution) ?? 0,
-      enteredBy: user ? `${user.firstName} ${user.lastName}` : '',
-      status: 'TO_BE_PAID',
-      document: values.document,
-    });
-    toast.success('Faktura dodana');
-    onClose();
-  };
+  const onSubmit = (values: AddInvoiceFormValues) =>
+    onAdd(
+      {
+        number: values.number.trim(),
+        amount: parseMoney(values.amount) ?? 0,
+        contractor: values.contractor.trim(),
+        date: values.date,
+        grant: parseMoney(values.grant) ?? 0,
+        ownContribution: parseMoney(values.ownContribution) ?? 0,
+        document: values.document,
+      },
+      () => {
+        toast.success('Faktura dodana');
+        onClose();
+      },
+    );
 
   return (
     <Modal isOpen onClose={onClose} title={`Dodaj fakturę: ${positionName}`}>

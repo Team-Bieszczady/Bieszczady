@@ -1,3 +1,8 @@
+import type {
+  BudgetPartnerRef,
+  BudgetPermissions,
+} from '../../lib/projectsApi';
+
 export type ColumnType = 'text' | 'money' | 'person';
 
 export interface Column {
@@ -117,4 +122,6 @@ export interface BudgetStore {
   actuals: Record<string, PositionActuals>;
   categorySettings: Record<string, CategorySettings>;
   history: HistoryEntry[];
+  permissions: BudgetPermissions;
+  partners: BudgetPartnerRef[];
 }
