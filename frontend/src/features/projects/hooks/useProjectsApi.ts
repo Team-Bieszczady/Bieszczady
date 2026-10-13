@@ -1,7 +1,10 @@
+import { useAuth } from '../../../context/useAuth';
 import { useApiMutation } from '../../../hooks/useApiMutation';
 import { useApiQuery } from '../../../hooks/useApiQuery';
+import { hasProjectModule, type ModuleKey } from '../../../lib/modules';
 import {
   activitiesApi,
+  budgetAccessApi,
   goalsApi,
   indicatorsApi,
   membersApi,
@@ -13,6 +16,7 @@ import {
   typesApi,
   type CreateProjectPayload,
   type IndicatorPayload,
+  type MemberPayload,
   type ProjectRoleValue,
   type UpdateProjectPayload,
   type BackendRisk,
@@ -31,6 +35,7 @@ export const projectKeys = {
   members: (projectId: string) => ['members', projectId] as const,
   availableMembers: (projectId: string) =>
     ['available-members', projectId] as const,
+  budgetAccess: (projectId: string) => ['budget-access', projectId] as const,
   stages: (projectId: string, archived: boolean) =>
     ['stages', projectId, { archived }] as const,
   stagesFor: (projectId: string) => ['stages', projectId] as const,
@@ -43,6 +48,17 @@ export function useProjects(archived = false, enabled = true) {
     projectKeys.list(archived),
     (token) => projectsApi.list(token, { archived }),
     { enabled },
+  );
+}
+
+export function useCanUseProjectModule(projectId: string, module: ModuleKey) {
+  const { user } = useAuth();
+  const { data: projects } = useProjects();
+
+  return hasProjectModule(
+    user,
+    projects?.find((project) => project.id === projectId),
+    module,
   );
 }
 
@@ -102,6 +118,14 @@ export function useAvailableMembers(projectId: string, enabled = true) {
   return useApiQuery(
     projectKeys.availableMembers(projectId),
     (token) => membersApi.available(token, projectId),
+    { enabled },
+  );
+}
+
+export function useBudgetAccess(projectId: string, enabled = true) {
+  return useApiQuery(
+    projectKeys.budgetAccess(projectId),
+    (token) => budgetAccessApi.list(token, projectId),
     { enabled },
   );
 }
@@ -296,13 +320,15 @@ function memberKeys(projectId: string) {
   return [
     projectKeys.members(projectId),
     projectKeys.availableMembers(projectId),
+    projectKeys.budgetAccess(projectId),
+    ['user-projects'],
     ...projectLists,
   ];
 }
 
 export function useAddMember(projectId: string) {
   return useApiMutation(
-    (token, body: { userId: string; projectRole: ProjectRoleValue }) =>
+    (token, body: MemberPayload & { userId: string }) =>
       membersApi.create(token, projectId, body),
     { invalidates: memberKeys(projectId) },
   );
@@ -328,11 +354,35 @@ export function useAddMemberToProject() {
 
 export function useSetMemberRole(projectId: string) {
   return useApiMutation(
-    (
-      token,
-      { id, projectRole }: { id: string; projectRole: ProjectRoleValue },
-    ) => membersApi.patch(token, id, { projectRole }),
+    (token, { id, ...body }: MemberPayload & { id: string }) =>
+      membersApi.patch(token, id, body),
     { invalidates: memberKeys(projectId) },
+  );
+}
+
+export function useGrantBudgetAccess(projectId: string) {
+  return useApiMutation(
+    (token, userId: string) => budgetAccessApi.grant(token, projectId, userId),
+    {
+      invalidates: [
+        projectKeys.budgetAccess(projectId),
+        ['user-projects'],
+        ['budget', projectId],
+      ],
+    },
+  );
+}
+
+export function useRevokeBudgetAccess(projectId: string) {
+  return useApiMutation(
+    (token, id: string) => budgetAccessApi.revoke(token, id),
+    {
+      invalidates: [
+        projectKeys.budgetAccess(projectId),
+        ['user-projects'],
+        ['budget', projectId],
+      ],
+    },
   );
 }
 

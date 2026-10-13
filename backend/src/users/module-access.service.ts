@@ -5,6 +5,7 @@ import {
   MODULES,
   DEFAULT_USER_MODULES,
   isModule,
+  type ProjectScopedModule,
 } from '../common/enums/module.enum';
 import { PrismaService } from '../prisma/prisma.service';
 import { SERIALIZABLE } from '../prisma/transaction-options';
@@ -47,6 +48,26 @@ export class ModuleAccessService {
     }
 
     return user.isDirector || user.moduleAccess.length > 0;
+  }
+
+  async memberHasProjectModule(
+    userId: string,
+    projectId: string,
+    module: ProjectScopedModule,
+  ): Promise<boolean> {
+    const member = await this.prisma.projectMember.findFirst({
+      where: { projectId, userId },
+      select: {
+        projectRole: true,
+        modules: { where: { module }, select: { id: true } },
+      },
+    });
+
+    if (!member) {
+      return true;
+    }
+
+    return member.projectRole === 'COORDINATOR' || member.modules.length > 0;
   }
 
   async grantInitialModules(

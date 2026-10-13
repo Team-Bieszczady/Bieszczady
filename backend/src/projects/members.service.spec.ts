@@ -25,6 +25,8 @@ describe('MembersService', () => {
     task: { updateMany: jest.fn() },
     indicator: { updateMany: jest.fn() },
     documentAccess: { deleteMany: jest.fn() },
+    budgetAccess: { deleteMany: jest.fn() },
+    projectMemberModule: { deleteMany: jest.fn() },
   });
 
   const tx = makeClient();
@@ -67,6 +69,14 @@ describe('MembersService', () => {
       });
     });
 
+    it('takes away the budget access the person had in that project', async () => {
+      await service.remove('m1');
+
+      expect(tx.budgetAccess.deleteMany).toHaveBeenCalledWith({
+        where: { projectId: 'p1', userId: 'anna' },
+      });
+    });
+
     it('does it inside the removal transaction, never outside it', async () => {
       await service.remove('m1');
 
@@ -105,6 +115,7 @@ describe('MembersService', () => {
       });
       tx.projectMember.count.mockResolvedValue(0);
       tx.projectMember.create.mockResolvedValue({ id: 'm2' });
+      tx.projectMember.create.mockResolvedValue({ id: 'm2', modules: [] });
     });
 
     it('clears shares left from an earlier membership before adding the person', async () => {

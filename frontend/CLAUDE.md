@@ -37,16 +37,25 @@
   `PROJECTS, PEOPLE, CALENDAR, DECISIONS, SETTINGS, OVERVIEW, TASKS, BUDGET,
   DOCUMENTS`.
 - `AuthContext`'s `user.modules` (populated straight from the backend's
-  login/refresh/me response) is the sole source of truth for what a user can
-  see/reach. Never derive access client-side from anything else.
+  login/refresh/me response) is the org-wide source of truth for every module
+  except `TASKS`, `BUDGET` and `DOCUMENTS` (`PROJECT_SCOPED_MODULES`). Those
+  three are granted per project only: the project card's `viewerModules` from
+  `GET /projects` says which the viewer has in that project. Check them with
+  `hasProjectModule(user, project, module)`, or
+  `useCanUseProjectModule(projectId, module)` inside a page — never
+  `hasModule` for those three.
+- Per-project modules are set per member in Przegląd → Zespół
+  (`TeamMemberFormModal`: osoba, rola, dostęp), director only. Ludzie has no
+  "Dostęp" menu, and `AddUserModal` doesn't offer the three scoped modules.
 - Two enforcement points, both required for every gated route — neither
   alone is sufficient:
   1. **Nav filtering** — `ORG_NAV_ITEMS` / `PROJECT_NAV_ITEMS` items each
-     carry a `module` key; `DesktopSidebar`/`MobileNav` filter through
-     `hasModule(user, item.module)` before rendering.
+     carry a `module` key; `useNavData`'s `canSee` filters through
+     `hasProjectModule(user, selectedProject, item.module)`.
   2. **Route guarding** — every gated route in `Router.tsx` is wrapped in
      `<RequireModule module="X" />` (mirrors `RequireAuth.tsx`), so direct
-     URL entry is blocked, not just hidden nav links.
+     URL entry is blocked, not just hidden nav links. For a project-scoped
+     module it also checks the selected project's `viewerModules`.
 - A nav item may instead carry `directorOnly: true` and no `module` — a page
   no grant can unlock, gated on `is_director` at both points (`canSee` in
   `useNavData`, `<RequireDirector />` in `Router.tsx`). Partnerzy is the one

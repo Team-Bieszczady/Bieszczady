@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { FieldError } from './FieldError';
 
@@ -8,6 +9,7 @@ interface InlineEditFormProps {
   inputClassName: string;
   onSave: (value: string) => void | Promise<unknown>;
   onCancel: () => void;
+  saveOnBlur: boolean;
 }
 
 function InlineEditForm({
@@ -16,8 +18,10 @@ function InlineEditForm({
   emptyMessage,
   inputClassName,
   onSave,
-  onCancel,
+  onCancel: cancelEdit,
+  saveOnBlur,
 }: InlineEditFormProps) {
+  const isClosingRef = useRef(false);
   const {
     register,
     handleSubmit,
@@ -27,13 +31,23 @@ function InlineEditForm({
   const submit = handleSubmit(async ({ value }) => {
     await onSave(value.trim());
   });
+  const field = register('value', {
+    validate: (value) => value.trim().length > 0 || emptyMessage,
+  });
+
+  const onCancel = () => {
+    isClosingRef.current = true;
+    cancelEdit();
+  };
 
   return (
-    <form onSubmit={submit} className="w-full">
+    <form onSubmit={submit} className="relative w-full">
       <input
-        {...register('value', {
-          validate: (value) => value.trim().length > 0 || emptyMessage,
-        })}
+        {...field}
+        onBlur={(event) => {
+          field.onBlur(event);
+          if (saveOnBlur && !isClosingRef.current) submit();
+        }}
         autoFocus
         type="text"
         disabled={isSubmitting}
@@ -46,7 +60,9 @@ function InlineEditForm({
         }}
         className={`w-full rounded-lg border border-gray-300 px-2 py-1 focus:border-transparent focus:ring-1 focus:ring-darkGreen focus:outline-none ${inputClassName}`}
       />
-      <FieldError message={errors.value?.message} />
+      <div className="absolute top-full left-0 z-10 whitespace-nowrap">
+        <FieldError message={errors.value?.message} />
+      </div>
     </form>
   );
 }
@@ -62,6 +78,7 @@ interface InlineEditFieldProps {
   emptyMessage?: string;
   displayClassName?: string;
   inputClassName?: string;
+  saveOnBlur?: boolean;
 }
 
 export function InlineEditField({
@@ -75,6 +92,7 @@ export function InlineEditField({
   emptyMessage = 'Pole nie może być puste',
   displayClassName = '',
   inputClassName = '',
+  saveOnBlur = false,
 }: InlineEditFieldProps) {
   if (isEditing && canEdit) {
     return (
@@ -85,6 +103,7 @@ export function InlineEditField({
         inputClassName={inputClassName}
         onSave={onSave}
         onCancel={onCancel}
+        saveOnBlur={saveOnBlur}
       />
     );
   }

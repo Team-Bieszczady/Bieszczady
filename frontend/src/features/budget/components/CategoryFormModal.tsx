@@ -1,0 +1,127 @@
+import { Controller, useForm } from 'react-hook-form';
+import { Button } from '../../../components/ui/Button';
+import { FieldError } from '../../../components/ui/FieldError';
+import { Modal } from '../../../components/ui/Modal';
+import { Select } from '../../../components/ui/Select';
+import {
+  FIELD_LABEL_CLASSES,
+  INPUT_CLASSES,
+} from '../../../components/ui/formStyles';
+import type { BudgetPartnerRef } from '../../../lib/projectsApi';
+
+interface CategoryFormValues {
+  name: string;
+  realizer: string;
+}
+
+interface CategoryFormModalProps {
+  partners: BudgetPartnerRef[];
+  initial: { name: string; partnerId: string | null } | null;
+  partnerOnly?: boolean;
+  onClose: () => void;
+  onSave: (values: { name: string; partnerId: string | null }) => void;
+}
+
+export function CategoryFormModal({
+  partners,
+  initial,
+  partnerOnly = false,
+  onClose,
+  onSave,
+}: CategoryFormModalProps) {
+  const {
+    register,
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<CategoryFormValues>({
+    defaultValues: {
+      name: initial?.name ?? '',
+      realizer: initial?.partnerId ?? '',
+    },
+  });
+  const realizerOptions = partners
+    .filter(
+      (partner) =>
+        partner.status === 'ACTIVE' || partner.id === initial?.partnerId,
+    )
+    .map((partner) => ({ value: partner.id, label: partner.name }));
+
+  const submit = handleSubmit(({ name, realizer }) => {
+    onSave({
+      name: name.trim(),
+      partnerId: partnerOnly ? realizer : null,
+    });
+    onClose();
+  });
+
+  return (
+    <Modal
+      isOpen
+      onClose={onClose}
+      title={
+        partnerOnly
+          ? 'Udostępnij partnerowi'
+          : initial
+            ? 'Edytuj kategorię'
+            : 'Nowa kategoria'
+      }
+    >
+      <form onSubmit={submit} className="space-y-5">
+        {!partnerOnly && (
+          <div>
+            <label className={FIELD_LABEL_CLASSES}>Nazwa kategorii</label>
+            <input
+              type="text"
+              autoFocus
+              className={INPUT_CLASSES}
+              {...register('name', {
+                validate: (value) =>
+                  value.trim() !== '' || 'Podaj nazwę kategorii',
+              })}
+            />
+            <FieldError message={errors.name?.message} />
+          </div>
+        )}
+        {partnerOnly && (
+          <div>
+            <label className={FIELD_LABEL_CLASSES}>Partner</label>
+            <Controller
+              control={control}
+              name="realizer"
+              rules={{
+                validate: (value) => value !== '' || 'Wybierz partnera',
+              }}
+              render={({ field }) => (
+                <Select
+                  value={field.value}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  options={realizerOptions}
+                  placeholder="Wybierz partnera"
+                  size="md"
+                  allowEmpty={false}
+                />
+              )}
+            />
+            <FieldError message={errors.realizer?.message} />
+          </div>
+        )}
+
+        <div className="flex justify-end gap-3 border-t border-gray-200 pt-4">
+          <Button
+            type="button"
+            variant="outline"
+            size="small"
+            onClick={onClose}
+          >
+            Anuluj
+          </Button>
+          <Button type="submit" variant="primary" size="small">
+            {partnerOnly ? 'Udostępnij' : 'Zapisz'}
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  );
+}

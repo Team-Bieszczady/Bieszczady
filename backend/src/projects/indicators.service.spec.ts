@@ -144,6 +144,7 @@ describe('IndicatorsService', () => {
     assertNotArchived: jest.fn(),
     locateTask: jest.fn(),
     canManageTasks: jest.fn(),
+    canUseModule: jest.fn(),
   };
 
   const coordinator = {
@@ -204,6 +205,7 @@ describe('IndicatorsService', () => {
     access.canManageTasks.mockImplementation(
       (viewer: AuthenticatedUser) => viewer === coordinator,
     );
+    access.canUseModule.mockResolvedValue(true);
     prisma.stage.findUnique.mockResolvedValue({ projectId: 'p1' });
     prisma.folder.count.mockResolvedValue(2);
     prisma.folder.findMany.mockResolvedValue([
@@ -247,15 +249,6 @@ describe('IndicatorsService', () => {
       expect(indicator.folders).toEqual([
         { id: 'f-lists', name: 'Listy obecności', path: '' },
       ]);
-    });
-
-    it('hides folders from a member without the Dokumenty module', async () => {
-      prisma.indicator.findMany.mockResolvedValue([withIncludes()]);
-
-      const [indicator] = await service.findAllForProject('p1', member([]));
-
-      expect(indicator.folders).toEqual([]);
-      expect(prisma.folder.findMany).not.toHaveBeenCalled();
     });
 
     it('shows a member with Dokumenty every folder under a shared parent', async () => {
@@ -319,6 +312,19 @@ describe('IndicatorsService', () => {
 
       expect(indicator.folders).toEqual([]);
       expect(prisma.document.findMany).not.toHaveBeenCalled();
+    });
+
+    it('shows nothing to a member whose Dokumenty is not ticked in this project', async () => {
+      access.canUseModule.mockResolvedValue(false);
+      prisma.indicator.findMany.mockResolvedValue([withIncludes()]);
+
+      const [indicator] = await service.findAllForProject(
+        'p1',
+        member(['DOCUMENTS']),
+      );
+
+      expect(indicator.folders).toEqual([]);
+      expect(prisma.documentAccess.findMany).not.toHaveBeenCalled();
     });
   });
 

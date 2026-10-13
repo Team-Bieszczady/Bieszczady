@@ -13,8 +13,9 @@ describe('ProjectAccessService', () => {
   const prisma = {
     task: { findUnique: jest.fn() },
     activity: { findUnique: jest.fn() },
-    projectMember: { count: jest.fn() },
+    projectMember: { count: jest.fn(), findFirst: jest.fn() },
     project: { count: jest.fn(), findUnique: jest.fn() },
+    budgetAccess: { count: jest.fn() },
   };
 
   const user = (id: string, isDirector = false): AuthenticatedUser => ({
@@ -293,6 +294,110 @@ describe('ProjectAccessService', () => {
       expect(() => service.assertOwnsTask(user('anna'), task(null))).toThrow(
         ForbiddenException,
       );
+    });
+  });
+
+  describe('budget edit rights', () => {
+    it('lets a director edit without any lookup', async () => {
+      await expect(
+        service.canEditBudget(user('dir', true), 'p1'),
+      ).resolves.toBe(true);
+      expect(prisma.budgetAccess.count).not.toHaveBeenCalled();
+    });
+
+    it('lets the coordinator edit', async () => {
+      prisma.projectMember.count.mockResolvedValue(1);
+
+      await expect(service.canEditBudget(user('anna'), 'p1')).resolves.toBe(
+        true,
+      );
+    });
+
+    it('lets a member with granted access edit', async () => {
+      prisma.projectMember.count.mockResolvedValue(0);
+      prisma.budgetAccess.count.mockResolvedValue(1);
+
+      await expect(service.canEditBudget(user('ewa'), 'p1')).resolves.toBe(
+        true,
+      );
+      expect(prisma.budgetAccess.count).toHaveBeenCalledWith({
+        where: { projectId: 'p1', userId: 'ewa' },
+      });
+    });
+
+    it('refuses everyone else', async () => {
+      prisma.projectMember.count.mockResolvedValue(0);
+      prisma.budgetAccess.count.mockResolvedValue(0);
+
+      await expect(
+        service.assertCanEditBudget(user('jan'), 'p1'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('lets only directors approve', () => {
+      expect(() => service.assertCanApproveBudget(user('anna'))).toThrow(
+        ForbiddenException,
+      );
+      expect(() =>
+        service.assertCanApproveBudget(user('dir', true)),
+      ).not.toThrow();
+    });
+  });
+
+  describe('per-project modules', () => {
+    it('lets a director use every module without a lookup', async () => {
+      await expect(
+        service.canUseModule(user('d1', true), 'p1', 'BUDGET'),
+      ).resolves.toBe(true);
+      expect(prisma.projectMember.findFirst).not.toHaveBeenCalled();
+    });
+
+    it('lets the coordinator use every module of their project', async () => {
+      prisma.projectMember.findFirst.mockResolvedValue({
+        projectRole: 'COORDINATOR',
+        modules: [],
+      });
+
+      await expect(
+        service.canUseModule(user('anna'), 'p1', 'DOCUMENTS'),
+      ).resolves.toBe(true);
+    });
+
+    it('lets a member use a module ticked for them in that project', async () => {
+      prisma.projectMember.findFirst.mockResolvedValue({
+        projectRole: 'EXECUTOR',
+        modules: [{ id: 'mm1' }],
+      });
+
+      await expect(
+        service.canUseModule(user('piotr'), 'p1', 'TASKS'),
+      ).resolves.toBe(true);
+      expect(prisma.projectMember.findFirst).toHaveBeenCalledWith({
+        where: { projectId: 'p1', userId: 'piotr' },
+        select: {
+          projectRole: true,
+          modules: { where: { module: 'TASKS' }, select: { id: true } },
+        },
+      });
+    });
+
+    it('refuses a member without the module in that project', async () => {
+      prisma.projectMember.findFirst.mockResolvedValue({
+        projectRole: 'EXECUTOR',
+        modules: [],
+      });
+
+      await expect(
+        service.assertCanUseModule(user('piotr'), 'p1', 'BUDGET'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('refuses a non-member', async () => {
+      prisma.projectMember.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.canUseModule(user('piotr'), 'p1', 'BUDGET'),
+      ).resolves.toBe(false);
     });
   });
 });

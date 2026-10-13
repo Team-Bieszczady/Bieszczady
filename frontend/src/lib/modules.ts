@@ -28,6 +28,12 @@ export const PROJECT_TAB_MODULES: ModuleKey[] = [
   'DOCUMENTS',
 ];
 
+export const PROJECT_SCOPED_MODULES: ModuleKey[] = [
+  'TASKS',
+  'BUDGET',
+  'DOCUMENTS',
+];
+
 export const MODULE_LABELS: Record<ModuleKey, string> = {
   PROJECTS: 'Projekty',
   PEOPLE: 'Ludzie',
@@ -78,4 +84,15 @@ export function hasModule(
   module: ModuleKey,
 ): boolean {
   return !!user && (user.isDirector || (user.modules ?? []).includes(module));
+}
+
+export function hasProjectModule(
+  user: { isDirector: boolean; modules?: ModuleKey[] } | null,
+  project: { viewerModules: ModuleKey[] } | undefined,
+  module: ModuleKey,
+): boolean {
+  if (!PROJECT_SCOPED_MODULES.includes(module)) return hasModule(user, module);
+  if (!hasModule(user, 'PROJECTS')) return false;
+  if (user?.isDirector) return true;
+  return !!project && project.viewerModules.includes(module);
 }

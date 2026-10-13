@@ -47,6 +47,7 @@ describe('TasksService', () => {
     assertCanChangeTaskStatus: jest.fn(),
     assertOwnsTask: jest.fn(),
     assertNotArchived: jest.fn(),
+    assertCanUseModule: jest.fn(),
   };
 
   const director = { id: 'd1', isDirector: true } as AuthenticatedUser;

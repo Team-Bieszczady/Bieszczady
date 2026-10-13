@@ -22,6 +22,18 @@ describe('ProjectsService date order', () => {
     projectEvent: { deleteMany: jest.fn() },
     indicator: { deleteMany: jest.fn() },
     indicatorFolder: { deleteMany: jest.fn() },
+    partnerProject: { deleteMany: jest.fn() },
+    budgetInvoice: { deleteMany: jest.fn() },
+    budgetActualValue: { deleteMany: jest.fn() },
+    budgetActual: { deleteMany: jest.fn() },
+    budgetPosition: { deleteMany: jest.fn() },
+    budgetCategory: { deleteMany: jest.fn() },
+    budgetVersion: { deleteMany: jest.fn() },
+    budgetCategorySettings: { deleteMany: jest.fn() },
+    budgetColumn: { deleteMany: jest.fn() },
+    budgetHistoryEntry: { deleteMany: jest.fn() },
+    budgetAccess: { deleteMany: jest.fn() },
+    projectMemberModule: { deleteMany: jest.fn() },
     $transaction: jest.fn(),
   };
 
@@ -281,6 +293,64 @@ describe('ProjectsService date order', () => {
       ).toBeLessThan(prisma.indicator.deleteMany.mock.invocationCallOrder[0]);
       expect(
         prisma.indicator.deleteMany.mock.invocationCallOrder[0],
+      ).toBeLessThan(prisma.project.delete.mock.invocationCallOrder[0]);
+    });
+
+    it('deletes the budget, invoices first, before the project', async () => {
+      prisma.$transaction.mockImplementation(
+        (fn: (tx: typeof prisma) => unknown) => fn(prisma),
+      );
+      prisma.project.findUnique.mockResolvedValue({
+        id: 'p1',
+        archivedAt: new Date('2026-09-01'),
+      });
+      prisma.stage.findMany.mockResolvedValue([]);
+
+      await service.remove('p1');
+
+      const order = [
+        prisma.budgetInvoice,
+        prisma.budgetActualValue,
+        prisma.budgetActual,
+        prisma.budgetPosition,
+        prisma.budgetCategory,
+        prisma.budgetVersion,
+        prisma.project,
+      ].map((model) =>
+        'deleteMany' in model
+          ? model.deleteMany.mock.invocationCallOrder[0]
+          : model.delete.mock.invocationCallOrder[0],
+      );
+      expect(order).toEqual([...order].sort((a, b) => a - b));
+      for (const model of [
+        prisma.budgetCategorySettings,
+        prisma.budgetColumn,
+        prisma.budgetHistoryEntry,
+        prisma.budgetAccess,
+      ]) {
+        expect(model.deleteMany).toHaveBeenCalledWith({
+          where: { projectId: 'p1' },
+        });
+      }
+    });
+
+    it('unlinks the partners before the project', async () => {
+      prisma.$transaction.mockImplementation(
+        (fn: (tx: typeof prisma) => unknown) => fn(prisma),
+      );
+      prisma.project.findUnique.mockResolvedValue({
+        id: 'p1',
+        archivedAt: new Date('2026-09-01'),
+      });
+      prisma.stage.findMany.mockResolvedValue([]);
+
+      await service.remove('p1');
+
+      expect(prisma.partnerProject.deleteMany).toHaveBeenCalledWith({
+        where: { projectId: 'p1' },
+      });
+      expect(
+        prisma.partnerProject.deleteMany.mock.invocationCallOrder[0],
       ).toBeLessThan(prisma.project.delete.mock.invocationCallOrder[0]);
     });
   });

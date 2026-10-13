@@ -613,30 +613,6 @@ export const api = {
     });
   },
 
-  async getUserModules(
-    accessToken: string,
-    id: string,
-  ): Promise<{ modules: ModuleKey[] }> {
-    return request<{ modules: ModuleKey[] }>(`/api/v1/users/${id}/modules`, {
-      method: 'GET',
-      accessToken,
-      fallbackMessage: 'Nie udało się pobrać dostępu do modułów',
-    });
-  },
-
-  async updateUserModules(
-    accessToken: string,
-    id: string,
-    modules: ModuleKey[],
-  ): Promise<{ modules: ModuleKey[] }> {
-    return request<{ modules: ModuleKey[] }>(`/api/v1/users/${id}/modules`, {
-      method: 'PATCH',
-      accessToken,
-      body: { modules },
-      fallbackMessage: 'Nie udało się zaktualizować dostępu do modułów',
-    });
-  },
-
   async updateSelf(
     accessToken: string,
     id: string,
