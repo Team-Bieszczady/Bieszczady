@@ -18,6 +18,7 @@ export const ORG_NAV_ITEMS: NavItem[] = [
     path: '/participants',
     module: 'PARTICIPANTS',
   },
+  { id: 'ksef', label: 'Faktury KSeF', path: '/ksef', module: 'KSEF' },
   { id: 'calendar', label: 'Kalendarz', path: '/calendar', module: 'CALENDAR' },
   {
     id: 'decisions',

@@ -9,6 +9,7 @@ import { validateEnv } from './config/env.validation';
 import { PrismaModule } from './prisma/prisma.module';
 import { DocumentsModule } from './documents/documents.module';
 import { CalendarModule } from './calendar/calendar.module';
+import { InvoicesModule } from './invoices/invoices.module';
 import { ParticipantsModule } from './participants/participants.module';
 
 @Module({
@@ -23,6 +24,7 @@ import { ParticipantsModule } from './participants/participants.module';
     DocumentsModule,
     ProjectsModule,
     CalendarModule,
+    InvoicesModule,
     ParticipantsModule,
     EventsModule,
     NotificationsModule,

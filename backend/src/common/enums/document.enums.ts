@@ -5,6 +5,7 @@ export const DOCUMENT_KINDS = [
   'ANNEX',
   'LETTER',
   'ATTENDANCE_LIST',
+  'INVOICE',
 ] as const;
 
 export const DOCUMENT_STATUSES = [

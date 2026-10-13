@@ -12,6 +12,7 @@ import NotificationsPage from './pages/NotificationsPage';
 import PersonDetailPage from './pages/PersonDetailPage';
 import ProjectsPage from './pages/ProjectsPage';
 import PeoplePage from './pages/PeoplePage';
+import KsefPage from './pages/KsefPage';
 import ParticipantsPage from './pages/ParticipantsPage';
 import CalendarPage from './pages/CalendarPage';
 import DecisionsPage from './pages/DecisionsPage';
@@ -56,6 +57,9 @@ export default function Router() {
             </Route>
             <Route element={<RequireModule module="PARTICIPANTS" />}>
               <Route path="/participants" element={<ParticipantsPage />} />
+            </Route>
+            <Route element={<RequireModule module="KSEF" />}>
+              <Route path="/ksef" element={<KsefPage />} />
             </Route>
             <Route element={<RequireModule module="CALENDAR" />}>
               <Route path="/calendar" element={<CalendarPage />} />
