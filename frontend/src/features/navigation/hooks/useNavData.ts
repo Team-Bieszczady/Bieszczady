@@ -1,6 +1,6 @@
 import { useAuth } from '../../../context/useAuth';
 import { useSelectedProject } from '../../../context/useSelectedProject';
-import { hasModule } from '../../../lib/modules';
+import { hasModule, hasProjectModule } from '../../../lib/modules';
 import { usePeople } from '../../people/hooks/usePeople';
 import { useCurrentUser } from '../../people/hooks/useCurrentUser';
 import {
@@ -64,7 +64,7 @@ export function useNavData(): NavData {
   const canSee = (item: NavItem) =>
     item.directorOnly
       ? isDirector
-      : !!item.module && hasModule(user, item.module);
+      : !!item.module && hasProjectModule(user, selectedProject, item.module);
 
   const orgNavItems = ORG_NAV_ITEMS.filter(canSee).map((item) =>
     item.id in counts ? { ...item, count: counts[item.id] } : item,

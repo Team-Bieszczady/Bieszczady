@@ -23,3 +23,13 @@ export const DEFAULT_USER_MODULES: Module[] = [
   'TASKS',
   'CALENDAR',
 ];
+
+export const PROJECT_SCOPED_MODULES = ['TASKS', 'BUDGET', 'DOCUMENTS'] as const;
+
+export type ProjectScopedModule = (typeof PROJECT_SCOPED_MODULES)[number];
+
+export function isProjectScopedModule(
+  value: string,
+): value is ProjectScopedModule {
+  return (PROJECT_SCOPED_MODULES as readonly string[]).includes(value);
+}

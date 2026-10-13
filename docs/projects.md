@@ -308,6 +308,53 @@ rows survive with no owner rather than disappearing. Their folder and document
 shares on that project are deleted in the same transaction, so adding them back
 later does not silently bring back old access.
 
+## Partners
+
+```
+GET    /partners
+GET    /partners/:id
+POST   /partners
+PATCH  /partners/:id                    { ...fields, projectIds? }  projectIds is a full replace
+DELETE /partners/:id
+```
+
+Partners are organisation-wide, not per project, so the routes are not nested.
+Every endpoint is **director only** and needs no module. The Partnerzy page is
+`directorOnly` too.
+
+- `type`, `agreement` and `status` are closed lists in `common/enums/project.enums.ts`.
+  They mirror `features/partners/constants.ts`.
+- `nip` is stored without dashes or spaces. It is either empty or exactly 10 digits.
+- `agreementValidUntil` goes over the wire as `YYYY-MM-DD`, and comes back as `''`
+  when there is no expiry. Send `null` for no expiry. With `agreement: 'Brak umowy'`
+  the date is always cleared.
+- `projects` comes back as `{ id, name }[]`. Linking a project that does not exist is a 409.
+- Deleting a project removes its partner links, never the partners.
+
+## Budget
+
+Everything is gated on the `BUDGET` module. `GET /projects/:projectId/budget` returns
+the whole page in the frontend's `BudgetStore` shape, plus `permissions`
+(`canEdit`, `canApprove`, `canManageAccess`, `partnerId`) and `partners`
+(`{ id, name, status }`, for the "Kto realizuje" picker).
+
+- Category and position ids are **stable across versions**: an aneks copies them.
+  Actuals and category settings are keyed by those ids and shared by all versions.
+- Money comes back as a decimal string (`"1500.00"`) and goes in the same way.
+  Invoice dates are `YYYY-MM-DD`.
+- The first read creates `Wersja podstawowa` as a draft with the default columns.
+  The director fills it in and approves it.
+- Plan writes work only on a DRAFT or PENDING version; an approved one is a 409.
+- Edit rights: director, coordinator, or anyone granted through
+  `/projects/:projectId/budget/access`. Approve, reject, revert and editing the
+  description are director only.
+- A PARTNER member linked to a partner (`PATCH /members/:id/partner`) sees only that
+  partner's categories with "Widoczne dla partnera" on. They can edit those actuals
+  when "Pozwól partnerowi edytować" is on.
+- Plan amounts (`planned`, `grant`, `ownContribution`) are edited on the position,
+  never as a cell. `incurred` is a cell only in summary mode; otherwise it follows
+  the invoices.
+
 ## Archive is the trash
 
 `DELETE /projects/:id` is refused with a 409 unless the project is already
@@ -407,6 +454,50 @@ GET    /projects/:projectId/available-members
 POST   /projects/:projectId/members      D
 PATCH  /members/:id                      D  { projectRole }
 DELETE /members/:id                      D
+
+PATCH  /members/:id/partner              D  { partnerId | null }  PARTNER members only
+
+GET    /partners                         D  no module, not nested
+GET    /partners/:id                     D
+POST   /partners                         D
+PATCH  /partners/:id                     D  projectIds replaces the set
+DELETE /partners/:id                     D
+```
+
+Budget endpoints are gated on `BUDGET`. `E` = director, coordinator or a budget
+access grant; partner users may also write actuals in their own editable categories.
+
+```
+GET    /projects/:projectId/budget                                    whole store
+GET    /projects/:projectId/budget/partners
+POST   /budget-versions/:versionId/categories             E  { name, partnerId? }
+PATCH  /budget-versions/:versionId/categories/:key        E  { name?, partnerId? }
+DELETE /budget-versions/:versionId/categories/:key        E  takes its positions
+POST   /budget-versions/:versionId/categories/:key/positions  E  { name? }
+PATCH  /budget-versions/:versionId/positions/:key         E  { name?, planned?, grant?, ownContribution? }
+DELETE /budget-versions/:versionId/positions/:key         E
+POST   /projects/:projectId/budget/columns                E  { name, type }
+PATCH  /projects/:projectId/budget/columns/:key           E  409 if locked
+DELETE /projects/:projectId/budget/columns/:key           E  409 if locked
+PATCH  /projects/:projectId/budget/category-settings/:categoryKey  E  flags / document
+PATCH  /projects/:projectId/budget/actuals/:positionKey/values/:columnKey  E  { value }
+PATCH  /projects/:projectId/budget/actuals/:positionKey   E  { status?, document? }
+POST   /projects/:projectId/budget/actuals/:positionKey/invoices     E
+POST   /projects/:projectId/budget/actuals/:positionKey/recalculate  E
+POST   /projects/:projectId/budget/actuals/move           E  { fromPositionKey, toPositionKey }
+PATCH  /budget-invoices/:id                               DC { status }
+DELETE /budget-invoices/:id                               E
+GET    /projects/:projectId/budget/access
+POST   /projects/:projectId/budget/access                 DC { userId }
+DELETE /budget-access/:id                                 DC
+POST   /projects/:projectId/budget/annexes                E
+POST   /budget-versions/:id/submit                        E
+POST   /budget-versions/:id/withdraw                      E
+POST   /budget-versions/:id/approve                       D  { description }
+POST   /budget-versions/:id/reject                        D  { comment }
+POST   /budget-versions/:id/revert                        D  { reason }
+PATCH  /budget-versions/:id                               D  { description }
+DELETE /budget-versions/:id                               E  drafts only
 ```
 
 Tasks and subtasks are gated on `TASKS`, not `PROJECTS`:

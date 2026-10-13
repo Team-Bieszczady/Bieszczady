@@ -55,8 +55,8 @@
   get a native Prisma `enum`; the `user_module_access.module` column is a
   validated `String`.
 - Access is flat/binary: a row in `user_module_access` = access granted, no
-  row = no access. There is no per-action or per-project/activity scoping yet
-  (see "Future extension" below).
+  row = no access. `TASKS`, `BUDGET` and `DOCUMENTS` are additionally scoped
+  per project (see "Per-project modules" below).
 - `is_director` bypasses module access entirely—a director is never checked
   against `user_module_access` and always has every module.
 - Defaults: `PROJECTS`, `OVERVIEW`, `TASKS`, `CALENDAR` are inserted as real
@@ -91,20 +91,37 @@
   login/refresh/`/auth/me` response. The frontend never has to make a
   separate call to know what it can show.
 
-### Future extension (do NOT build yet)
-The separately-provided ERD models a richer `PERMISSION(module, action,
-project_id?, activity_id?)` system once `projects`/`activities` tables exist.
-This flat `user_module_access` table is intentionally the stepping stone: when
-that lands, keep `user_module_access` as the "has any access to this module
-at all" gate, and add the finer-grained table alongside it rather than
-replacing it outright, mirroring how `project_members`/`ProjectRole` are kept
-ready-but-unbuilt today.
+### Per-project modules
+`project_member_modules` (`memberId`, `module`) says which of
+`PROJECT_SCOPED_MODULES` = `TASKS, BUDGET, DOCUMENTS` a member may use in that
+project. This is the only grant for those three: `user_module_access` is not
+checked for them. Effective access in a project = director, or COORDINATOR of
+that project, or a row. They're set in Przegląd → Zespół; Ludzie has no
+"Dostęp" menu any more. Przegląd (`PROJECTS`/`OVERVIEW`) is never scoped;
+every member sees it.
+- Enforced twice. For a scoped module `ModuleAccessGuard` skips
+  `user_module_access` and checks the row whenever the route has a
+  `:projectId` param (`ModuleAccessService.memberHasProjectModule`; a
+  non-member passes so the service's `assertCanRead` still answers 404). That
+  covers every documents route without touching `documents/*`. Routes that
+  find their project from an entity id (`tasks/:id`, subtasks,
+  `budget-versions/:id`, the actuals writers) pass the guard and call
+  `ProjectAccessService.assertCanUseModule` after locating it. Manager-only
+  writes need no extra check: a coordinator always has every module.
+- Members get all three when `POST .../members` (or project create) sends no
+  `modules`; the migration backfilled all three for existing members.
+  `PATCH members/:id` replaces the list when `modules` is sent, and dropping
+  `BUDGET` also deletes that member's `budget_access`. `budget_access` stays the
+  separate "may edit the budget" right on top of seeing the tab.
+- `GET /projects` returns `viewerModules`; `GET users/:userId/projects`
+  (director, `PEOPLE`) lists a person's live projects with their modules.
+- Member and project delete remove `project_member_modules` rows first.
 
 ## Projects domain
 
 Tables, seed and endpoints are all built. The frontend is wired to them except for
-the Zadania page, which still reads its in-memory mock, and the budget
-placeholder. `docs/projects.md` is the frontend-facing guide; read this section
+the Zadania page, which still reads its in-memory mock, and the Budżet page,
+whose backend is built (see "Budget") but not yet wired. `docs/projects.md` is the frontend-facing guide; read this section
 before changing the backend.
 
 ### Shape
@@ -289,6 +306,79 @@ the supporting-document folders an indicator points at are `indicator_folders`.
   shared parent, or holding a document shared with them, and the path lists only visible
   parents. Anyone else gets `folders: []`.
 
+## Budget
+
+`src/projects/budget*.ts`: the Budżet tab. `BudgetService` (read, plan, columns,
+category settings, access), `BudgetActualsService` (cells, invoices, status,
+documents, moving spending) and `BudgetAnnexService` (the aneks workflow). Every
+route is gated on `BUDGET`.
+
+- **A category or position keeps its id across versions.** Each row has a row PK
+  (`id`) and a stable `key`; an aneks copies the plan with the same keys and new
+  row ids. The API sends `key` as `id` and never exposes the row PK. The frontend's
+  `diffVersions` and the actuals both depend on this, so never regenerate keys when
+  copying.
+- **Two layers.** The plan (`budget_versions` → `budget_categories` /
+  `budget_positions`) is versioned. Actuals, columns and category settings are not:
+  they're keyed by `positionKey` / `categoryKey` and shared by every version.
+  "Poniesione" is the `incurred` row in `budget_actual_values`, kept in step with
+  invoices (adding or deleting an invoice moves it, `recalculate` resets it).
+  Anyone with `canEditBudget` may also type it by hand; a partner user only in
+  summary mode (a partner is set and `detailed = false`).
+- **Who can do what.**
+
+  | Action | Who |
+  |---|---|
+  | Read | any project member (`assertCanRead`) |
+  | Plan, columns, settings, actuals, create/submit/withdraw/discard an aneks | director, coordinator, or a `budget_access` grant (`canEditBudget`) |
+  | Grant or revoke `budget_access` | director or coordinator |
+  | Invoice status | director or coordinator, as in the UI |
+  | Approve, reject, revert, edit the description | director only, via `DirectorGuard` and a service check |
+
+- **Partner per row.** A partner can be set on a category or on a single position
+  (`budget_positions.partner_id`). A position's own partner wins over its
+  category's: the effective partner is `position.partnerId ?? category.partnerId`,
+  and summary mode, partner editing and moving spending all use it. Settings
+  (`detailed`, `partnerCanEdit`, `visibleToPartner`) stay per category. An aneks
+  copies `partner_id` with the positions, and a change of it counts as a change.
+- **Choosing a partner.** Any ACTIVE partner from `/partners` can be set on a row;
+  the project checkboxes on Partnerzy are optional. Setting one links the partner
+  to the project (`partner_projects` upsert), so the unlink and delete guards
+  below keep holding. A paused or missing partner is a 409.
+- **Partner users.** A PARTNER member linked to a partner (`project_members.partner_id`,
+  set via `PATCH /members/:id/partner`) who has no edit rights reads a filtered budget: in categories with `visibleToPartner`, only
+  the positions whose effective partner is theirs (a category of theirs also shows
+  when empty), only those actuals, only their own history. They may edit actuals
+  there when `partnerCanEdit` is on, and nothing else. A PARTNER with no partner link
+  sees no categories.
+- **Workflow rules.** One open aneks (DRAFT or PENDING) at a time. Submitting and
+  approving need changes against the current version. Approval is refused while a
+  removed position still has invoices or incurred spending. A director may approve
+  their own draft directly. Only the latest approved aneks can be reverted, never
+  the base version, and only with no aneks open. Rejections aren't stored
+  separately; the read derives them from `REJECTED` history rows.
+- **First read by an editor creates the budget.** If a project has no versions,
+  `GET budget` by someone with `canEditBudget` creates `Wersja podstawowa` as a
+  DRAFT plus the two default columns (Plan, Poniesione); everything else is
+  added through "Dodaj kolumnę". Other readers get an empty store. It skips this
+  on an archived project, and a concurrent first read (P2002/P2034) is treated
+  as already created.
+- **Spending is never orphaned.** Approving, reverting or discarding an aneks,
+  and deleting a position or category from a draft, are refused (409) while a
+  position that drops out of the budget still has invoices or incurred
+  spending (`BudgetService.assertNoOrphanedSpending`). A PENDING aneks can't be
+  edited; withdraw it first.
+- Document links in `GET budget` are `null` for a viewer without `DOCUMENTS`
+  in that project. `GET .../budget/access` is director or coordinator only.
+- **History.** Consecutive `EDITED` entries by the same person on the same version
+  within 30 minutes are merged, as in the frontend reducer. `budget_history.version_id`
+  has no FK, so history survives a discarded draft.
+- **Document links** are checked against `folders` / `documents` of the same project
+  directly through Prisma. A link to a deleted document reads back as `null`.
+- **Cleanup.** Project delete removes every budget table (invoices first). Removing a
+  member deletes their `budget_access`. Changing a member's role away from PARTNER
+  clears `partner_id`.
+
 ## Document storage
 `StorageService` must never take the API down with it: a failed container check at boot
 is logged, not thrown, and the container is created lazily on the next save. A storage
@@ -321,8 +411,11 @@ module. Every query is scoped to `userId = caller`, and someone else's notificat
   non-member out, but anyone with `TASKS` who *is* a member sees every task in that
   project, not only their own. Narrowing further would buy nothing today, since the
   same rows are already readable through the nested stages response.
-- Budget stays out; it is hardcoded in the UI for now.
-- Meetings, documents, partners and participants from the ERD are not modelled.
+- Meetings, documents and participants from the ERD are not modelled.
+- Partners are modelled (`partners`, `partner_projects`): org-wide, director-only
+  CRUD at `/partners`. Deleting a partner that a budget category, a budget position
+  or a project member uses is a 409, and so is unlinking a project whose budget
+  uses it.
 - The Zadania page still reads its in-memory store. Wiring it to the task
   endpoints — a `tasksApi` plus TanStack Query hooks — is the next round.
 
@@ -338,6 +431,13 @@ Two Solina tasks carry a subtask checklist: `zad-sp-7` is 2-of-4 ticked (a
 half-filled bar) and `zad-sp-12` is fully ticked while still `BLOCKED` — proof that
 a finished checklist neither completes its task nor closes its stage. Every task
 owner is a member of their project, which the task endpoints now enforce.
+
+The seed also adds exactly five partners (`PARTNERS`, group `partner`). Four are
+linked to Solina–Polańczyk, and Muzeum Budownictwa Ludowego is `PAUSED` with no
+agreement. Solina–Polańczyk also gets the frontend's mock budget (`seedBudget`):
+Wersja podstawowa and Aneks 1 approved (Aneks 1 current), Aneks 2 pending, the
+mock actuals and invoices, and "Oznakowanie szlaku" run by Gmina Lutowiska in
+summary mode.
 
 ## Conventions
 - UUID primary keys.

@@ -126,7 +126,9 @@ export class IndicatorsService {
     db: Db,
   ): Promise<FolderAccess> {
     if (await this.access.canManageTasks(viewer, projectId, db)) return 'all';
-    if (!viewer.modules.includes('DOCUMENTS')) return 'none';
+    if (!(await this.access.canUseModule(viewer, projectId, 'DOCUMENTS', db))) {
+      return 'none';
+    }
 
     const grants = await db.documentAccess.findMany({
       where: { projectId, userId: viewer.id },

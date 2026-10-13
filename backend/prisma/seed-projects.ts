@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { PROJECT_SCOPED_MODULES } from '../src/common/enums/module.enum';
 
 const GROUP = {
   status: 1,
@@ -14,6 +15,16 @@ const GROUP = {
   subtask: 11,
   event: 12,
   indicator: 13,
+  partner: 14,
+  budgetKey: 15,
+  budgetVersion: 16,
+  budgetCategory: 17,
+  budgetPosition: 18,
+  budgetColumn: 19,
+  budgetActual: 20,
+  budgetInvoice: 21,
+  budgetHistory: 22,
+  memberModule: 23,
 } as const;
 
 const takenIds = new Map<string, string>();
@@ -455,6 +466,356 @@ export const PROJECTS: SeedProject[] = [
   },
 ];
 
+const PARTNERS = [
+  {
+    key: 'fundacja-bieszczadzka',
+    name: 'Fundacja Bieszczadzka',
+    type: 'Fundacja',
+    nip: '6891122333',
+    city: 'Ustrzyki Dolne',
+    email: 'biuro@fundacja.pl',
+    contactName: 'Maria Zielińska',
+    contactEmail: 'm.zielinska@fundacja.pl',
+    contactPhone: '+48 601 234 567',
+    agreement: 'Umowa partnerska',
+    agreementValidUntil: '2026-12-31',
+    status: 'ACTIVE',
+    projects: ['solina-polanczyk'],
+  },
+  {
+    key: 'gmina-lutowiska',
+    name: 'Gmina Lutowiska',
+    type: 'Samorząd',
+    nip: '6881004521',
+    city: 'Lutowiska',
+    email: 'sekretariat@lutowiska.pl',
+    contactName: 'Tomasz Hnat',
+    contactEmail: 't.hnat@lutowiska.pl',
+    contactPhone: '+48 13 461 00 01',
+    agreement: 'Porozumienie',
+    agreementValidUntil: null,
+    status: 'ACTIVE',
+    projects: ['solina-polanczyk'],
+  },
+  {
+    key: 'nadlesnictwo-ustrzyki',
+    name: 'Nadleśnictwo Ustrzyki Dolne',
+    type: 'Instytucja publiczna',
+    nip: '',
+    city: 'Ustrzyki Dolne',
+    email: 'ustrzyki@krosno.lasy.gov.pl',
+    contactName: 'Piotr Sawicki',
+    contactEmail: 'p.sawicki@krosno.lasy.gov.pl',
+    contactPhone: '+48 13 461 13 10',
+    agreement: 'List intencyjny',
+    agreementValidUntil: '2026-11-30',
+    status: 'ACTIVE',
+    projects: ['solina-polanczyk'],
+  },
+  {
+    key: 'lgd-zielone-bieszczady',
+    name: 'LGD Zielone Bieszczady',
+    type: 'Stowarzyszenie',
+    nip: '6891233771',
+    city: 'Lesko',
+    email: 'biuro@zielonebieszczady.pl',
+    contactName: 'Anna Kowalska',
+    contactEmail: 'biuro@zielonebieszczady.pl',
+    contactPhone: '+48 604 555 120',
+    agreement: 'Umowa partnerska',
+    agreementValidUntil: '2027-06-30',
+    status: 'ACTIVE',
+    projects: ['solina-polanczyk'],
+  },
+  {
+    key: 'muzeum-budownictwa-ludowego',
+    name: 'Muzeum Budownictwa Ludowego',
+    type: 'Instytucja kultury',
+    nip: '',
+    city: 'Sanok',
+    email: 'muzeum@mbl.sanok.pl',
+    contactName: 'Ewa Wójcik',
+    contactEmail: 'e.wojcik@mbl.sanok.pl',
+    contactPhone: '+48 13 463 09 04',
+    agreement: 'Brak umowy',
+    agreementValidUntil: null,
+    status: 'PAUSED',
+    projects: [],
+  },
+];
+
+type SeedPlanRow = [
+  category: string,
+  key: string,
+  name: string,
+  planned: number,
+  grant: number,
+  ownContribution: number,
+];
+
+const BUDGET_CATEGORIES: {
+  key: string;
+  name: string;
+  partner: string | null;
+}[] = [
+  { key: 'programme', name: 'Działania programowe', partner: null },
+  { key: 'signage', name: 'Oznakowanie szlaku', partner: 'gmina-lutowiska' },
+  { key: 'promotion', name: 'Promocja i wydarzenia', partner: null },
+  { key: 'admin', name: 'Koszty administracyjne', partner: null },
+];
+
+const BASE_PLAN: SeedPlanRow[] = [
+  ['programme', 'shelter', 'Zbudowanie wiaty', 100000, 85000, 15000],
+  ['programme', 'site', 'Przygotowanie terenu', 50000, 42500, 7500],
+  ['programme', 'equipment', 'Wyposażenie wiaty', 50000, 0, 50000],
+  ['signage', 'boards', 'Tablice informacyjne', 18000, 15300, 2700],
+  ['signage', 'signs', 'Znaki kierunkowe', 9500, 8075, 1425],
+  ['promotion', 'festival', 'Festyn otwarcia szlaku', 20000, 17000, 3000],
+  ['promotion', 'materials', 'Materiały promocyjne', 15000, 12750, 2250],
+  ['admin', 'coordination', 'Koordynacja projektu', 30000, 0, 30000],
+];
+
+const ANNEX_1_PLAN: SeedPlanRow[] = BASE_PLAN.map((row) => {
+  if (row[1] === 'festival')
+    return [...row.slice(0, 3), 13800, 11730, 2070] as SeedPlanRow;
+  if (row[1] === 'coordination')
+    return [...row.slice(0, 3), 36200, 0, 36200] as SeedPlanRow;
+  return row;
+});
+
+const ANNEX_2_PLAN: SeedPlanRow[] = [
+  ...ANNEX_1_PLAN.filter((row) => row[1] !== 'signs').map((row) =>
+    row[1] === 'boards'
+      ? ([...row.slice(0, 3), 18500, 15725, 2775] as SeedPlanRow)
+      : row,
+  ),
+  ['admin', 'evaluation', 'Ewaluacja projektu', 8000, 6800, 1200],
+];
+
+const BUDGET_VERSIONS = [
+  {
+    key: 'base',
+    number: 0,
+    name: 'Wersja podstawowa',
+    status: 'APPROVED',
+    isCurrent: false,
+    createdAt: '2026-01-15T09:00:00.000Z',
+    submittedAt: null,
+    approvedAt: '2026-01-20T10:00:00.000Z',
+    savedAt: null,
+    description: 'Budżet z umowy o dofinansowanie',
+    plan: BASE_PLAN,
+  },
+  {
+    key: 'annex-1',
+    number: 1,
+    name: 'Aneks 1',
+    status: 'APPROVED',
+    isCurrent: true,
+    createdAt: '2026-05-04T08:30:00.000Z',
+    submittedAt: '2026-05-05T12:10:00.000Z',
+    approvedAt: '2026-05-12T09:45:00.000Z',
+    savedAt: null,
+    description: 'Przesunięcie środków z promocji na koordynację',
+    plan: ANNEX_1_PLAN,
+  },
+  {
+    key: 'annex-2',
+    number: 2,
+    name: 'Aneks 2',
+    status: 'PENDING',
+    isCurrent: false,
+    createdAt: '2026-10-01T07:50:00.000Z',
+    submittedAt: '2026-10-02T14:20:00.000Z',
+    approvedAt: null,
+    savedAt: '2026-10-02T14:05:00.000Z',
+    description: '',
+    plan: ANNEX_2_PLAN,
+  },
+];
+
+const BUDGET_ACTUALS: {
+  position: string;
+  person: string;
+  source: string;
+  incurred: number;
+  invoices: [
+    key: string,
+    number: string,
+    amount: number,
+    contractor: string,
+    date: string,
+    grant: number,
+    ownContribution: number,
+    status: string,
+  ][];
+}[] = [
+  {
+    position: 'shelter',
+    person: 'Anna Wiśniowska',
+    source: 'Dotacja PROW',
+    incurred: 72500,
+    invoices: [
+      [
+        'shelter-1',
+        'FV/2026/02/114',
+        40000,
+        'Budmax Sp. z o.o.',
+        '2026-02-14',
+        34000,
+        6000,
+        'PAID',
+      ],
+      [
+        'shelter-2',
+        'FV/2026/03/052',
+        22500,
+        'Budmax Sp. z o.o.',
+        '2026-03-21',
+        19125,
+        3375,
+        'PAID',
+      ],
+      [
+        'shelter-3',
+        'FV/2026/04/017',
+        10000,
+        'Tartak Leśny s.c.',
+        '2026-04-08',
+        8500,
+        1500,
+        'TO_BE_PAID',
+      ],
+    ],
+  },
+  {
+    position: 'site',
+    person: 'Marek Zieliński',
+    source: 'Dotacja PROW',
+    incurred: 50000,
+    invoices: [],
+  },
+  {
+    position: 'equipment',
+    person: 'Ewa Kowalska',
+    source: 'Wkład własny gminy',
+    incurred: 0,
+    invoices: [],
+  },
+  {
+    position: 'boards',
+    person: 'Piotr Nowak',
+    source: 'Dotacja PROW',
+    incurred: 18450,
+    invoices: [],
+  },
+  {
+    position: 'signs',
+    person: 'Piotr Nowak',
+    source: 'Dotacja PROW',
+    incurred: 4200,
+    invoices: [],
+  },
+  {
+    position: 'festival',
+    person: 'Katarzyna Mazur',
+    source: 'Dotacja PROW',
+    incurred: 12000,
+    invoices: [],
+  },
+  {
+    position: 'materials',
+    person: 'Katarzyna Mazur',
+    source: 'Dotacja PROW',
+    incurred: 15000,
+    invoices: [],
+  },
+  {
+    position: 'coordination',
+    person: 'Anna Wiśniowska',
+    source: 'Wkład własny',
+    incurred: 36200,
+    invoices: [],
+  },
+];
+
+const BUDGET_HISTORY: {
+  key: string;
+  at: string;
+  byDirector: boolean;
+  version: string;
+  kind: string;
+  comment: string | null;
+}[] = [
+  {
+    key: 'h-1',
+    at: '2026-01-20T10:00:00.000Z',
+    byDirector: true,
+    version: 'base',
+    kind: 'APPROVED',
+    comment: 'Budżet z umowy o dofinansowanie',
+  },
+  {
+    key: 'h-2',
+    at: '2026-05-04T08:30:00.000Z',
+    byDirector: false,
+    version: 'annex-1',
+    kind: 'CREATED',
+    comment: null,
+  },
+  {
+    key: 'h-3',
+    at: '2026-05-05T12:10:00.000Z',
+    byDirector: false,
+    version: 'annex-1',
+    kind: 'SUBMITTED',
+    comment: null,
+  },
+  {
+    key: 'h-4',
+    at: '2026-05-12T09:45:00.000Z',
+    byDirector: true,
+    version: 'annex-1',
+    kind: 'APPROVED',
+    comment: 'Przesunięcie środków z promocji na koordynację',
+  },
+  {
+    key: 'h-5',
+    at: '2026-10-01T07:50:00.000Z',
+    byDirector: false,
+    version: 'annex-2',
+    kind: 'CREATED',
+    comment: null,
+  },
+  {
+    key: 'h-6',
+    at: '2026-10-02T14:05:00.000Z',
+    byDirector: false,
+    version: 'annex-2',
+    kind: 'EDITED',
+    comment: null,
+  },
+  {
+    key: 'h-7',
+    at: '2026-10-02T14:20:00.000Z',
+    byDirector: false,
+    version: 'annex-2',
+    kind: 'SUBMITTED',
+    comment: null,
+  },
+];
+
+const BUDGET_COLUMNS = [
+  { key: 'planned', name: 'Plan', type: 'money', locked: true },
+  { key: 'incurred', name: 'Poniesione', type: 'money', locked: true },
+  { key: 'person', name: 'Osoba odpowiedzialna', type: 'text', locked: false },
+  { key: 'source', name: 'Źródło finansowania', type: 'text', locked: false },
+  { key: 'grant', name: 'Dotacja', type: 'money', locked: true },
+  { key: 'ownContribution', name: 'Wkład własny', type: 'money', locked: true },
+];
+
+const BUDGET_PROJECT = 'solina-polanczyk';
+
 const day = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
 
 export async function upsertUserWithModules(
@@ -587,7 +948,7 @@ export async function seedProjects(
 
     for (const member of project.members) {
       const userId = userIdByKey.get(member.person)!;
-      await prisma.projectMember.upsert({
+      const memberRow = await prisma.projectMember.upsert({
         where: { projectId_userId: { projectId, userId } },
         update: { projectRole: member.role },
         create: {
@@ -595,6 +956,37 @@ export async function seedProjects(
           projectId,
           userId,
           projectRole: member.role,
+        },
+      });
+      for (const module of PROJECT_SCOPED_MODULES) {
+        await prisma.projectMemberModule.upsert({
+          where: { memberId_module: { memberId: memberRow.id, module } },
+          update: {},
+          create: {
+            id: id('memberModule', `${project.key}:${member.person}:${module}`),
+            memberId: memberRow.id,
+            module,
+          },
+        });
+      }
+    }
+
+    for (const event of project.events ?? []) {
+      const eventId = id('event', `${project.key}:${event.key}`);
+      const eventData = {
+        actorId: userIdByKey.get(event.actor)!,
+        source: 'MANUAL',
+        content: event.content,
+        createdAt: new Date(event.at),
+      };
+      await prisma.projectEvent.upsert({
+        where: { id: eventId },
+        update: eventData,
+        create: {
+          id: eventId,
+          projectId,
+          dedupeKey: `seed:${project.key}:${event.key}`,
+          ...eventData,
         },
       });
     }
@@ -729,5 +1121,221 @@ export async function seedProjects(
         create: { id: indicatorId, projectId, ...indicatorData },
       });
     }
+  }
+
+  for (const partner of PARTNERS) {
+    const partnerId = id('partner', partner.key);
+    const partnerData = {
+      name: partner.name,
+      type: partner.type,
+      nip: partner.nip,
+      city: partner.city,
+      email: partner.email,
+      contactName: partner.contactName,
+      contactEmail: partner.contactEmail,
+      contactPhone: partner.contactPhone,
+      agreement: partner.agreement,
+      status: partner.status,
+      agreementValidUntil: partner.agreementValidUntil
+        ? day(partner.agreementValidUntil)
+        : null,
+    };
+    await prisma.partner.upsert({
+      where: { id: partnerId },
+      update: partnerData,
+      create: { id: partnerId, ...partnerData },
+    });
+
+    for (const projectKey of partner.projects) {
+      const projectId = id('project', projectKey);
+      await prisma.partnerProject.upsert({
+        where: { partnerId_projectId: { partnerId, projectId } },
+        update: {},
+        create: { partnerId, projectId },
+      });
+    }
+  }
+
+  if (projects.some((project) => project.key === BUDGET_PROJECT)) {
+    await seedBudget(prisma, grantedById, userIdByKey.get('anna')!);
+  }
+}
+
+async function seedBudget(
+  prisma: PrismaClient,
+  directorId: string,
+  authorId: string,
+): Promise<void> {
+  const projectId = id('project', BUDGET_PROJECT);
+  const key = (name: string) => id('budgetKey', name);
+
+  for (const [index, column] of BUDGET_COLUMNS.entries()) {
+    const columnId = id('budgetColumn', column.key);
+    const columnData = { ...column, sortOrder: index + 1 };
+    await prisma.budgetColumn.upsert({
+      where: { id: columnId },
+      update: columnData,
+      create: { id: columnId, projectId, ...columnData },
+    });
+  }
+
+  for (const version of BUDGET_VERSIONS) {
+    const versionId = id('budgetVersion', version.key);
+    const versionData = {
+      number: version.number,
+      name: version.name,
+      status: version.status,
+      isCurrent: version.isCurrent,
+      description: version.description,
+      createdById: authorId,
+      createdAt: new Date(version.createdAt),
+      submittedById: version.submittedAt ? authorId : null,
+      submittedAt: version.submittedAt ? new Date(version.submittedAt) : null,
+      approvedById: version.approvedAt ? directorId : null,
+      approvedAt: version.approvedAt ? new Date(version.approvedAt) : null,
+      savedAt: version.savedAt ? new Date(version.savedAt) : null,
+    };
+    await prisma.budgetVersion.upsert({
+      where: { id: versionId },
+      update: versionData,
+      create: { id: versionId, projectId, ...versionData },
+    });
+
+    const usedCategories = new Set(version.plan.map((row) => row[0]));
+    for (const [index, category] of BUDGET_CATEGORIES.entries()) {
+      if (!usedCategories.has(category.key)) continue;
+      const categoryId = id('budgetCategory', `${version.key}:${category.key}`);
+      const categoryData = {
+        name: category.name,
+        partnerId: category.partner ? id('partner', category.partner) : null,
+        sortOrder: index + 1,
+      };
+      await prisma.budgetCategory.upsert({
+        where: { id: categoryId },
+        update: categoryData,
+        create: {
+          id: categoryId,
+          versionId,
+          key: key(category.key),
+          ...categoryData,
+        },
+      });
+    }
+
+    const keptPositions = version.plan.map((row) =>
+      id('budgetPosition', `${version.key}:${row[1]}`),
+    );
+    await prisma.budgetPosition.deleteMany({
+      where: { versionId, id: { notIn: keptPositions } },
+    });
+    for (const [index, row] of version.plan.entries()) {
+      const [category, position, name, planned, grant, ownContribution] = row;
+      const positionId = id('budgetPosition', `${version.key}:${position}`);
+      const positionData = {
+        categoryKey: key(category),
+        name,
+        sortOrder: index + 1,
+        planned,
+        grant,
+        ownContribution,
+      };
+      await prisma.budgetPosition.upsert({
+        where: { id: positionId },
+        update: positionData,
+        create: {
+          id: positionId,
+          versionId,
+          key: key(position),
+          ...positionData,
+        },
+      });
+    }
+  }
+
+  const signage = key('signage');
+  await prisma.budgetCategorySettings.upsert({
+    where: { projectId_categoryKey: { projectId, categoryKey: signage } },
+    update: { detailed: false, partnerCanEdit: false, visibleToPartner: true },
+    create: {
+      projectId,
+      categoryKey: signage,
+      detailed: false,
+      partnerCanEdit: false,
+      visibleToPartner: true,
+    },
+  });
+
+  for (const actual of BUDGET_ACTUALS) {
+    const positionKey = key(actual.position);
+    const stored = await prisma.budgetActual.upsert({
+      where: { projectId_positionKey: { projectId, positionKey } },
+      update: {},
+      create: {
+        id: id('budgetActual', actual.position),
+        projectId,
+        positionKey,
+      },
+    });
+
+    const values = {
+      person: actual.person,
+      source: actual.source,
+      incurred: actual.incurred.toFixed(2),
+    };
+    for (const [columnKey, value] of Object.entries(values)) {
+      await prisma.budgetActualValue.upsert({
+        where: { actualId_columnKey: { actualId: stored.id, columnKey } },
+        update: { value },
+        create: { actualId: stored.id, columnKey, value },
+      });
+    }
+
+    for (const invoice of actual.invoices) {
+      const [
+        invoiceKey,
+        number,
+        amount,
+        contractor,
+        date,
+        grant,
+        ownContribution,
+        status,
+      ] = invoice;
+      const invoiceId = id('budgetInvoice', invoiceKey);
+      const invoiceData = {
+        actualId: stored.id,
+        number,
+        amount,
+        contractor,
+        date: day(date),
+        grant,
+        ownContribution,
+        status,
+        enteredById: authorId,
+      };
+      await prisma.budgetInvoice.upsert({
+        where: { id: invoiceId },
+        update: invoiceData,
+        create: { id: invoiceId, ...invoiceData },
+      });
+    }
+  }
+
+  for (const entry of BUDGET_HISTORY) {
+    const entryId = id('budgetHistory', entry.key);
+    const version = BUDGET_VERSIONS.find((v) => v.key === entry.version)!;
+    const entryData = {
+      versionId: id('budgetVersion', entry.version),
+      versionName: version.name,
+      kind: entry.kind,
+      comment: entry.comment,
+      actorId: entry.byDirector ? directorId : authorId,
+      at: new Date(entry.at),
+    };
+    await prisma.budgetHistoryEntry.upsert({
+      where: { id: entryId },
+      update: entryData,
+      create: { id: entryId, projectId, ...entryData },
+    });
   }
 }

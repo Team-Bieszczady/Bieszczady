@@ -184,6 +184,7 @@ export class TasksService {
   async findOne(id: string, actor: AuthenticatedUser) {
     const location = await this.access.locateTask(id);
     await this.access.assertCanRead(actor, location.projectId);
+    await this.access.assertCanUseModule(actor, location.projectId, 'TASKS');
 
     const task = await this.prisma.task.findUnique({
       where: { id },
@@ -356,6 +357,7 @@ export class TasksService {
   ) {
     const task = await this.access.locateTask(id);
     await this.access.assertCanChangeTaskStatus(actor, task);
+    await this.access.assertCanUseModule(actor, task.projectId, 'TASKS');
     await this.access.assertNotArchived(task.projectId);
 
     const updated = await this.prisma.$transaction(async (tx) => {

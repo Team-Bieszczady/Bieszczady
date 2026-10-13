@@ -22,6 +22,7 @@ import {
   DEFAULT_USER_MODULES,
   MODULES,
   MODULE_LABELS,
+  PROJECT_SCOPED_MODULES,
   applyModuleDependencies,
   toModuleFlags,
 } from '../../../lib/modules';
@@ -218,7 +219,9 @@ export default function AddUserModal({ isOpen, onClose }: AddUserModalProps) {
             Dostęp do modułów
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {MODULES.map((module) => {
+            {MODULES.filter(
+              (module) => !PROJECT_SCOPED_MODULES.includes(module),
+            ).map((module) => {
               const checked = moduleFlags[module];
               return (
                 <label

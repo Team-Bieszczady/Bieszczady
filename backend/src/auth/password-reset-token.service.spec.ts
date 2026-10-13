@@ -13,10 +13,6 @@ interface StoredRow {
   usedAt: Date | null;
 }
 
-/**
- * Stands in for the password_reset_tokens table. Only the three operations the
- * service actually uses are implemented; anything else would be untested code.
- */
 function createFakePrisma() {
   const rows: StoredRow[] = [];
   let nextId = 1;

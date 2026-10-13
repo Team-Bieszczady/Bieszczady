@@ -11,6 +11,7 @@ describe('SubtasksService', () => {
   const prisma = {
     project: { findUnique: jest.fn() },
     task: { count: jest.fn(), update: jest.fn() },
+    projectMember: { findFirst: jest.fn() },
     subtask: {
       findUnique: jest.fn(),
       findMany: jest.fn(),
@@ -53,6 +54,10 @@ describe('SubtasksService', () => {
     prisma.project.findUnique.mockResolvedValue({ archivedAt: null });
     prisma.subtask.aggregate.mockResolvedValue({ _max: { sortOrder: 2 } });
     prisma.subtask.create.mockResolvedValue({ id: 'st3' });
+    prisma.projectMember.findFirst.mockResolvedValue({
+      projectRole: 'EXECUTOR',
+      modules: [{ id: 'mm1' }],
+    });
   });
 
   describe('create', () => {
@@ -203,6 +208,32 @@ describe('SubtasksService', () => {
       await expect(
         service.create('t1', { title: 'Zebrać oferty' }, director),
       ).rejects.toThrow(/przypisano zadanie/);
+    });
+  });
+
+  describe('per-project modules', () => {
+    it('refuses the owner when Zadania is not ticked for them in this project', async () => {
+      prisma.projectMember.findFirst.mockResolvedValue({
+        projectRole: 'EXECUTOR',
+        modules: [],
+      });
+
+      await expect(
+        service.create('t1', { title: 'Zebrać oferty' }, owner),
+      ).rejects.toThrow(/w tym projekcie/);
+      expect(prisma.subtask.create).not.toHaveBeenCalled();
+    });
+
+    it('checks the TASKS module of the task project', async () => {
+      await service.create('t1', { title: 'Zebrać oferty' }, owner);
+
+      expect(prisma.projectMember.findFirst).toHaveBeenCalledWith({
+        where: { projectId: 'p1', userId: 'piotr' },
+        select: {
+          projectRole: true,
+          modules: { where: { module: 'TASKS' }, select: { id: true } },
+        },
+      });
     });
   });
 });

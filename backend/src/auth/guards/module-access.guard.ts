@@ -4,7 +4,7 @@ import { Reflector } from '@nestjs/core';
 import { MODULE_KEY } from '../decorators/require-module.decorator';
 import { AuthenticatedUser } from '../types/auth.types';
 import { ModuleAccessService } from '../../users/module-access.service';
-import { Module } from '../../common/enums/module.enum';
+import { Module, isProjectScopedModule } from '../../common/enums/module.enum';
 
 @Injectable()
 export class ModuleAccessGuard implements CanActivate {
@@ -23,9 +23,10 @@ export class ModuleAccessGuard implements CanActivate {
       return true;
     }
 
-    const { user } = context
-      .switchToHttp()
-      .getRequest<{ user?: AuthenticatedUser }>();
+    const { user, params } = context.switchToHttp().getRequest<{
+      user?: AuthenticatedUser;
+      params?: { projectId?: string };
+    }>();
 
     if (!user) {
       throw new ForbiddenException('Nie masz dostępu do tej sekcji');
@@ -33,12 +34,29 @@ export class ModuleAccessGuard implements CanActivate {
     if (user.isDirector) {
       return true;
     }
-    const hasAccess = await this.moduleAccess.userHasModule(
-      user.id,
-      requiredModule,
-    );
-    if (!hasAccess) {
-      throw new ForbiddenException('Nie masz dostępu do tej sekcji');
+    if (!isProjectScopedModule(requiredModule)) {
+      const hasAccess = await this.moduleAccess.userHasModule(
+        user.id,
+        requiredModule,
+      );
+      if (!hasAccess) {
+        throw new ForbiddenException('Nie masz dostępu do tej sekcji');
+      }
+      return true;
+    }
+
+    const projectId = params?.projectId;
+    if (projectId) {
+      const hasProjectAccess = await this.moduleAccess.memberHasProjectModule(
+        user.id,
+        projectId,
+        requiredModule,
+      );
+      if (!hasProjectAccess) {
+        throw new ForbiddenException(
+          'Nie masz dostępu do tej sekcji w tym projekcie',
+        );
+      }
     }
 
     return true;

@@ -11,6 +11,7 @@ import TeamSection from '../features/projects/components/overview/TeamSection';
 import { useProjectPlanApi } from '../features/projects/hooks/useProjectPlanApi';
 import {
   useMembers,
+  useCanUseProjectModule,
   useProject,
 } from '../features/projects/hooks/useProjectsApi';
 import {
@@ -32,6 +33,7 @@ function ProjectSections({ project, canEdit }: ProjectSectionsProps) {
   const plan = useProjectPlanApi(project.id);
   const { user } = useAuth();
   const { data: members = [] } = useMembers(project.id);
+  const canSeeBudget = useCanUseProjectModule(project.id, 'BUDGET');
 
   return (
     <>
@@ -52,7 +54,7 @@ function ProjectSections({ project, canEdit }: ProjectSectionsProps) {
           canChangeStatusOf(user, members, task.ownerId)
         }
       />
-      <BudgetSection canEdit={canEdit} />
+      {canSeeBudget && <BudgetSection projectId={project.id} />}
       <RisksSection projectId={project.id} canEdit={canEdit} />
       <TeamSection projectId={project.id} canEdit={canEdit} />
     </>
