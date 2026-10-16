@@ -121,6 +121,7 @@ export interface AttendanceFile {
   fileName: string;
   sizeBytes: number;
   canDelete: boolean;
+  mimeType: string
 }
 
 export interface BackendUser {

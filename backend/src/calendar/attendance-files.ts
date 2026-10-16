@@ -11,7 +11,7 @@ export const ATTENDANCE_FILE_FIELDS = {
       versions: {
         orderBy: { versionNo: 'desc' },
         take: 1,
-        select: { fileName: true, sizeBytes: true },
+        select: { fileName: true, sizeBytes: true, mimeType: true },
       },
     },
   },
@@ -33,6 +33,7 @@ export function toAttendanceFile(
   return {
     id: file.id,
     name: file.document.name,
+    mimeType: latest?.mimeType ?? '',
     fileName: latest?.fileName ?? '',
     sizeBytes: latest?.sizeBytes ?? 0,
     canDelete: viewer.isDirector || !isLockedDocument(file.document.status),

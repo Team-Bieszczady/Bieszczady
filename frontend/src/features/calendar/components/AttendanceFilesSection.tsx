@@ -1,9 +1,10 @@
 import toast from 'react-hot-toast';
-import { LuDownload, LuFileText, LuTrash2 } from 'react-icons/lu';
+import { LuDownload, LuEye, LuFileText, LuTrash2 } from 'react-icons/lu';
 import { FileDropzone } from '../../../components/ui/FileDropzone';
 import type { AttendanceFile } from '../../../lib/api';
-import { formatFileSize } from '../../documents/utils/formatters';
+import {canPreview, formatFileSize } from '../../documents/utils/formatters';
 import {
+  useAttendanceFilePreview,
   useDeleteAttendanceFile,
   useDownloadAttendanceFile,
   useUploadAttendanceFile,
@@ -18,6 +19,8 @@ interface AttendanceFilesSectionProps {
 const ICON_BUTTON_CLASSES =
   'inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-grayText transition-colors hover:bg-gray-100 hover:text-dark disabled:cursor-not-allowed disabled:opacity-40';
 
+
+
 export function AttendanceFilesSection({
   meetingId,
   files,
@@ -26,6 +29,9 @@ export function AttendanceFilesSection({
   const uploadFile = useUploadAttendanceFile(meetingId);
   const deleteFile = useDeleteAttendanceFile(meetingId);
   const download = useDownloadAttendanceFile(meetingId);
+
+  const {preview} = useAttendanceFilePreview(meetingId)
+
 
   const upload = (file: File | null) => {
     if (!file) return;
@@ -68,6 +74,15 @@ export function AttendanceFilesSection({
                   {formatFileSize(file.sizeBytes)}
                 </p>
               </div>
+              {canPreview(file.mimeType) &&  <button
+                type="button"
+                aria-label={`Podgląd ${file.fileName}`}
+                onClick={() => preview(file.id)}
+                className={ICON_BUTTON_CLASSES}
+              >
+                <LuEye size={16} />
+              </button>}
+             
               <button
                 type="button"
                 aria-label={`Pobierz ${file.fileName}`}

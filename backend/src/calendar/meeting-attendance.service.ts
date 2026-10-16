@@ -16,7 +16,7 @@ import {
   toAttendanceFile,
 } from './attendance-files';
 import { MeetingsService } from './meetings.service';
-import { isoDay, todayInPoland } from './dates';
+import { isoDay} from './dates';
 
 interface UploadedFile {
   buffer: Buffer;
@@ -54,11 +54,6 @@ export class MeetingAttendanceService {
     if (meeting.status === 'CANCELLED') {
       throw new BadRequestException(
         'Do odwołanego spotkania nie można dodać listy obecności',
-      );
-    }
-    if (isoDay(meeting.date) > todayInPoland()) {
-      throw new BadRequestException(
-        'Listę obecności można dodać dopiero w dniu spotkania',
       );
     }
 

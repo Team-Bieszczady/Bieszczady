@@ -99,18 +99,6 @@ describe('MeetingAttendanceService', () => {
       expect(storage.save).not.toHaveBeenCalled();
     });
 
-    it('refuses a meeting that has not happened yet', async () => {
-      meetings.findManageable.mockResolvedValue({
-        ...heldMeeting,
-        date: new Date('2099-08-20'),
-      });
-
-      await expect(service.upload('meeting-1', scan, user)).rejects.toThrow(
-        BadRequestException,
-      );
-      expect(storage.save).not.toHaveBeenCalled();
-    });
-
     it('creates the attendance folder when the project has none and waits for approval of an executor upload', async () => {
       prisma.folder.findFirst.mockResolvedValue(null);
       prisma.folder.create.mockResolvedValue({ id: 'new-folder' });
